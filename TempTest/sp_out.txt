@@ -1,0 +1,1005 @@
+
+
+CREATE PROCEDURE [dbo].[SP_New_Dashboard]	
+	 @Status varchar(50)='',
+	 @User_Type NVARCHAR(30)='',
+	 @USER_ID INT=0,
+     @Store_code NVARCHAR(20)='',
+	 @Store_ID INT =0,
+	 @SearchTerm VARCHAR(100) = '',
+	 @PageIndex INT =1,
+     @PageSize INT = 10,
+	 @RecordCount INT=0 OUTPUT,
+	 @TotalCount INT=0 OUTPUT,
+     @PROCESSED_HU INT=0 OUTPUT,
+	 @UNPROCESSED_HU INT=0 OUTPUT,
+     @PROCESSED_ARTICLE_QTY INT=0 OUTPUT,
+	 @QTY INT=0 OUTPUT,
+	 @ENCODED_QTY INT=0 OUTPUT,
+     @DIFF_QTY INT=0 OUTPUT,
+	 @DPOS_SALE INT=0 OUTPUT,
+     @RFID_CHECKOUT INT=0 OUTPUT,
+     @RFID_DPOS_SALE INT=0 OUTPUT,
+	 @MATCHING_WITH_DPOS_SALE INT=0 OUTPUT,
+	 @NOT_MATCHING_WITH_DPOS_SALE INT=0 OUTPUT,
+	 @NOT_MATCHING_WITH_RFID_CHECKOUT INT=0 OUTPUT,
+	 @TAFFETA_SALE INT=0 OUTPUT,
+	 @MANUAL_SALE INT=0 OUTPUT,
+	 @DPOS_VOID INT=0 OUTPUT,
+	 @RFID_VOID INT=0 OUTPUT,
+	 @DIFF_VOID INT=0 OUTPUT,
+	 @CURR_DATE DATE= NULL,
+	 @PREV_DATE DATE= NULL,
+	 @HU_VALIDATED_QTY INT = 0 OUTPUT,
+     @HU_WRONG_QTY INT = 0 OUTPUT,
+	 @HHT_VALIDATE_QTY INT = 0 OUTPUT,
+	 @HU_DIS_ACTUALQTY INT = 0 OUTPUT,
+     @HU_DIS_SCANNEDQTY INT = 0 OUTPUT,
+	 @HU_DIS_DIFFQTY INT = 0 OUTPUT,
+	 @HU_DIFF_TILL_DATE INT = 0 OUTPUT,
+	 @SortColumn NVARCHAR(100)='',
+     @SortDirection NVARCHAR(10)='',
+	 @SortType NVARCHAR(20) = 'string',
+	 @SQL NVARCHAR(MAX)='',
+	 @fromdate DATE ='',
+     @todate DATE =''
+	
+
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+    IF @CURR_DATE IS NULL SET @CURR_DATE = CONVERT(DATE, GETDATE());
+	IF @PREV_DATE IS NULL SET @PREV_DATE = CONVERT(DATE, GETDATE()-1);
+
+	DECLARE @Dt DATE = GETDATE()-1;
+	DECLARE @FromDt DATETIME = @Dt;
+	DECLARE @ToDt   DATETIME = DATEADD(DAY, 1, @Dt);
+
+	--IF @CURR_DATE IS NULL SET @CURR_DATE = CONVERT(DATE, GETDATE()-3);
+	--IF @PREV_DATE IS NULL SET @PREV_DATE = CONVERT(DATE, GETDATE()-3);
+
+	--DECLARE @Dt DATE = GETDATE()-3;
+	--DECLARE @FromDt DATETIME = @Dt;
+	--DECLARE @ToDt   DATETIME = DATEADD(DAY, 3, @Dt);
+
+    SELECT @User_Type=User_Type FROM dbo.[User_Registration] WHERE User_ID=@User_ID;
+	SELECT @Store_code=dbo.[tbl_Store_Master].Store_code FROM dbo.[tbl_Store_Master] JOIN dbo.[User_Registration] on dbo.[tbl_Store_Master].Store_ID=dbo.[User_Registration].Store_ID 
+	WHERE User_ID=@User_ID;
+
+	DECLARE @StartRow INT = (@PageIndex - 1) * @PageSize + 1;
+	DECLARE @EndRow   INT =  @PageIndex * @PageSize;
+	DECLARE @OrderBy NVARCHAR(200);
+
+	
+	---------------DC dashboard---------------------------------------
+
+	IF (@Status='DC_VALIDATE_DASHBOARD')
+	BEGIN
+		SELECT FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		FORMAT(DATEADD(DAY,-7, @CURR_DATE), 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',
+		dbo.tbl_Store_Master.Store_Code AS 'Reciving_Plant',dbo.tbl_Store_Master.Store_Name AS 'STORE_NAME',
+		COUNT(DISTINCT CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '1' THEN dbo.tbl_SAP_DC_Outward_Dtl.HU_No END) AS 'PROCESSED_HU',
+		COUNT(DISTINCT CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '0' THEN dbo.tbl_SAP_DC_Outward_Dtl.HU_No END) AS 'UNPROCESSED_HU',
+		CAST(SUM(CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '1' THEN dbo.tbl_SAP_DC_Outward_Dtl.scan_qty ELSE 0 END)AS INT) AS 'PROCESSED_ARTICLE_QTY'
+		INTO #DCVALIDATEDASHBOARD
+		FROM [dbo].[tbl_store_master] 
+		LEFT JOIN dbo.[tbl_SAP_DC_Outward_Dtl] ON dbo.[tbl_store_master].Store_code=dbo.[tbl_SAP_DC_Outward_Dtl].Reciving_Plant
+		AND CONVERT (DATE,dbo.[tbl_SAP_DC_Outward_Dtl].Sending_HU_Scan_Dt) = CONVERT(DATE,@CURR_DATE)
+		AND dbo.[tbl_SAP_DC_Outward_Dtl].Ref_No IS NOT NULL
+		AND dbo.[tbl_SAP_DC_Outward_Dtl].Ref_No <>''
+        WHERE (@User_Type IN ('Super Admin','Warehouse Admin') OR (@User_Type = 'Store Admin' AND dbo.tbl_Store_Master.Store_Code = @Store_code))
+		AND(@SearchTerm = '' OR dbo.tbl_Store_Master.Store_Code LIKE '%' + @SearchTerm + '%')
+		GROUP BY dbo.tbl_Store_Master.Store_Code,dbo.tbl_Store_Master.Store_Name ORDER BY dbo.tbl_Store_Master.Store_Code;
+
+		SET @OrderBy =	
+			CASE @SortColumn
+				WHEN 'PROCESSED HU QTY' THEN 'R.PROCESSED_HU'
+				WHEN 'UNPROCESSED HU QTY' THEN 'R.UNPROCESSED_HU'
+				WHEN 'VALIDATED HU ARTICLE QTY' THEN 'R.PROCESSED_ARTICLE_QTY'
+				WHEN 'Reciving_Plant' THEN 'R.Reciving_Plant'
+				ELSE 'R.Reciving_Plant'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #DCVALIDATEDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql @SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+
+       SELECT @PROCESSED_HU = ISNULL(SUM(PROCESSED_HU),0),@UNPROCESSED_HU = ISNULL(SUM(UNPROCESSED_HU),0),
+	   @PROCESSED_ARTICLE_QTY = ISNULL(SUM(PROCESSED_ARTICLE_QTY),0), @RecordCount=COUNT(*) FROM #DCVALIDATEDASHBOARD;
+
+	-- Clean up the temporary table
+	   DROP TABLE #DCVALIDATEDASHBOARD;
+
+    END 
+
+	---------RETURN DASHBOARD--------------------------
+
+	ELSE IF (@Status='RETURN_DASHBOARD')
+	BEGIN
+		SELECT FORMAT(@PREV_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		FORMAT(DATEADD(DAY,-7, @PREV_DATE), 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',
+		V.Store_Code,V.Store_Name AS 'STORE_NAME',SUM(V.RET_QTY) AS 'RETURN_QTY',
+		SUM(CASE WHEN V.RET_QTY < ISNULL(E.ENCODE_QTY,0)THEN V.RET_QTY ELSE ISNULL(E.ENCODE_QTY,0)END) AS'ENCODE_QTY',
+		SUM(V.RET_QTY)-SUM(CASE WHEN V.RET_QTY < ISNULL(E.ENCODE_QTY,0)THEN V.RET_QTY ELSE ISNULL(E.ENCODE_QTY,0)END) AS 'DIFFERENCE_QTY'
+		INTO #RETURNDASHBOARD
+		FROM
+		(SELECT [dbo].[tbl_Store_Master].Store_Code,[dbo].[tbl_Store_Master].Store_Name,[dbo].[VPOS_SALE_RET_DTL].SCAN_ITEM_EAN_CD,CAST(ISNULL(RET_QTY,0) AS INT) AS 'RET_QTY'
+		 FROM [dbo].[tbl_Store_Master] LEFT JOIN [dbo].[VPOS_SALE_RET_DTL] ON [dbo].[tbl_Store_Master].Store_Code=[dbo].[VPOS_SALE_RET_DTL].STORE_CODE
+		 AND [dbo].[VPOS_SALE_RET_DTL].BILL_DATE=CONVERT(DATE,@PREV_DATE)
+		 AND SUBSTRING (dbo.[VPOS_SALE_RET_DTL].item_cd,1,3) in ('111','112','113') AND [dbo].[VPOS_SALE_RET_DTL].COUNTER_NO IN ('RO','RE')
+		 )AS  V
+		LEFT JOIN 
+		(SELECT [dbo].[tbl_Encoding_Dtl].EAN,[dbo].[tbl_Store_Master].Store_Code,COUNT([dbo].[tbl_Encoding_Dtl].Encode_Trans_ID) AS 'ENCODE_QTY'
+		FROM [dbo].[tbl_Encoding_Dtl] INNER JOIN [dbo].[tbl_Store_Master] ON [dbo].[tbl_Encoding_Dtl].Store_ID = [dbo].[tbl_Store_Master].Store_ID
+		WHERE CONVERT(DATE,[dbo].[tbl_Encoding_Dtl].encode_date)>= CONVERT (DATE,@PREV_DATE)
+		AND [dbo].[tbl_Encoding_Dtl].STORE_FLOOR_ID IS NOT NULL AND [dbo].[tbl_Encoding_Dtl].STORE_ID IS NOT NULL AND [dbo].[tbl_Encoding_Dtl].WH_ID IS NULL
+		GROUP BY[dbo].[tbl_Encoding_Dtl].EAN,[dbo].[tbl_Store_Master].Store_Code
+		) AS E ON V.Store_Code = E.Store_Code AND V.SCAN_ITEM_EAN_CD = E.EAN 
+		WHERE (@SearchTerm = '' OR V.Store_Code LIKE '%' + @SearchTerm + '%')
+		GROUP BY V.Store_Code,V.Store_Name  
+		HAVING (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND V.Store_Code = @Store_code)) ORDER BY V.Store_Code
+
+		SELECT @QTY = ISNULL(SUM(RETURN_QTY),0),@ENCODED_QTY = ISNULL(SUM(ENCODE_QTY),0),@DIFF_QTY = ISNULL(SUM(DIFFERENCE_QTY),0),
+		@RecordCount=COUNT(*) FROM #RETURNDASHBOARD;
+
+		SET @SortDirection =
+				CASE 
+					WHEN LOWER(@SortDirection) = 'desc' THEN 'DESC'
+					ELSE 'ASC'
+				END;
+
+			SET @OrderBy =	
+				CASE @SortColumn
+					WHEN 'RETURN QTY' THEN 'R.RETURN_QTY' WHEN 'ENCODED VS RETURN (QTY)' THEN 'R.ENCODE_QTY'
+					WHEN 'PENDING QTY' THEN 'R.DIFFERENCE_QTY' WHEN 'STORE' THEN 'R.Store_Code'
+					ELSE 'R.Store_Code'
+				END
+				+ ' ' + @SortDirection
+				+ ', R.Store_Code ASC';
+
+           SET @SQL = N' SELECT * FROM (SELECT	ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,*
+					FROM #RETURNDASHBOARD R ) T
+					WHERE RowNumber BETWEEN @StartRow AND @EndRow
+					ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,	@EndRow   = @EndRow;
+	
+    -- Clean up the temporary table
+	   DROP TABLE #RETURNDASHBOARD;
+    END
+
+	------------VOID DASHBOARD---------------------------------
+
+	ELSE IF (@Status='VOID_DASHBOARD')
+	BEGIN
+          WITH BadEPC AS (SELECT EPC_TAG FROM dbo.VPOS_SCAN_ITEMS_DTL GROUP BY EPC_TAG HAVING COUNT(CASE WHEN EXT_COL = 'V' THEN 1 END) > 0
+					 AND COUNT(CASE WHEN EXT_COL IS NULL THEN 1 END) > 0),
+
+		  VoidBase AS (SELECT V.STORE_CODE,V.EPC_TAG,V.SCAN_ITEM_EAN_CD,ROW_NUMBER() OVER (PARTITION BY V.EPC_TAG, V.STORE_CODE ORDER BY V.LAST_UPDATED_DATETIME DESC) AS rn FROM dbo.VPOS_SCAN_ITEMS_DTL V
+					   WHERE V.LAST_UPDATED_DATETIME >= @PREV_DATE AND V.LAST_UPDATED_DATETIME < DATEADD(DAY, 1, @PREV_DATE)
+					   AND (V.item_cd LIKE '111%' OR V.item_cd LIKE '112%' OR V.item_cd LIKE '113%')
+					   AND V.EXT_COL = 'V' AND NOT EXISTS (SELECT 1 FROM BadEPC B WHERE B.EPC_TAG = V.EPC_TAG)),
+
+		  VoidCTE AS (SELECT STORE_CODE,SCAN_ITEM_EAN_CD,COUNT(EPC_TAG) AS VOID_QTY FROM VoidBase WHERE rn = 1 GROUP BY STORE_CODE,SCAN_ITEM_EAN_CD),
+
+		  EncodeCTE AS (SELECT SM.Store_Code,E.EAN,COUNT(E.Encode_Trans_ID) AS ENCODE_QTY FROM dbo.tbl_Encoding_Dtl E JOIN dbo.tbl_Store_Master SM ON E.Store_ID = SM.Store_ID
+					   WHERE E.encode_date >= @PREV_DATE AND E.encode_date < GETDATE()
+					   AND E.STORE_FLOOR_ID IS NOT NULL AND E.STORE_ID IS NOT NULL AND E.WH_ID IS NULL GROUP BY SM.Store_Code, E.EAN)
+
+		 SELECT FORMAT(@PREV_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		 FORMAT(DATEADD(DAY,-7, @PREV_DATE), 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',
+		 SM.Store_Code AS 'STORE',SM.Store_Name AS 'STORE_NAME',ISNULL(SUM(V.VOID_QTY), 0) AS 'VOID_QTY',
+		 ISNULL(SUM(CASE WHEN V.VOID_QTY < ISNULL(E.ENCODE_QTY, 0) THEN V.VOID_QTY ELSE ISNULL(E.ENCODE_QTY, 0)END), 0) AS 'ENCODE_QTY',
+		 ISNULL(SUM(V.VOID_QTY), 0) - ISNULL(SUM(CASE WHEN V.VOID_QTY < ISNULL(E.ENCODE_QTY, 0) THEN V.VOID_QTY ELSE ISNULL(E.ENCODE_QTY, 0) END), 0) AS 'DIFFERENCE_QTY'
+		 INTO #VOIDDASHBOARD
+		 FROM dbo.tbl_Store_Master SM 
+		 LEFT JOIN VoidCTE V  ON SM.Store_Code = V.STORE_CODE
+		 LEFT JOIN EncodeCTE E ON SM.Store_Code = E.Store_Code AND V.SCAN_ITEM_EAN_CD = E.EAN
+		 WHERE (@SearchTerm = '' OR SM.Store_Code LIKE '%' + @SearchTerm + '%')
+		 GROUP BY SM.Store_Code,SM.Store_Name HAVING (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND SM.Store_Code = @Store_code)) ORDER BY SM.Store_Code;
+
+		SELECT @QTY = ISNULL(SUM(VOID_QTY),0),@ENCODED_QTY = ISNULL(SUM(ENCODE_QTY),0),
+		@DIFF_QTY = ISNULL(SUM(DIFFERENCE_QTY),0),@RecordCount=COUNT(*) FROM #VOIDDASHBOARD;
+
+			SET @OrderBy =	
+			CASE @SortColumn
+				WHEN 'VOID QTY' THEN 'R.VOID_QTY' WHEN 'ENCODED VS VOID (QTY)' THEN 'R.ENCODE_QTY'
+				WHEN 'PENDING QTY' THEN 'R.DIFFERENCE_QTY' WHEN 'STORE'THEN 'R.STORE'
+				ELSE 'R.STORE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'
+			SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #VOIDDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+	
+     -- Clean up the temporary table
+		DROP TABLE #VOIDDASHBOARD;
+    END
+
+	-----------GRC STORE DASHBOARD--------------------------------------------
+    ELSE IF (@Status='STORE_DASHBOARD')
+	BEGIN
+		WITH  STOREBASE AS (SELECT DISTINCT S.Store_Code as STORE,S.Store_Name AS 'STORE_NAME' FROM dbo.[tbl_Store_Master] S ),
+
+        LAST_GRC_DATE AS (SELECT STORE_CODE,MAX(TRY_CONVERT(DATE, GRC_DATE, 105)) AS LAST_GRC_DATE,DATEADD(DAY, -7, MAX(TRY_CONVERT(DATE, GRC_DATE, 105))) AS LAST7_GRC_DATE FROM dbo.tbl_GRC_DETAILS GROUP BY STORE_CODE),
+
+        GRCBASE AS (SELECT g.Store_Code AS STORE,COUNT(DISTINCT g.HU) AS 'HU_RECEIVED_QTY',
+		     COUNT(DISTINCT CASE WHEN g.Is_Status = 1 THEN g.HU END) AS 'HU_VALIDATED_QTY',
+			 --COUNT(DISTINCT CASE WHEN g.Is_Status = 0 THEN g.HU END) AS 'HU_WRONG_QTY',
+			 lg.LAST_GRC_DATE,lg.LAST7_GRC_DATE
+			 FROM dbo.tbl_GRC_DETAILS g JOIN LAST_GRC_DATE lg  ON g.STORE_CODE = lg.STORE_CODE
+			 AND TRY_CONVERT(DATE, g.GRC_DATE, 105) = lg.LAST_GRC_DATE GROUP BY g.STORE_CODE,lg.LAST_GRC_DATE,lg.LAST7_GRC_DATE),
+
+       STOREGRCBASE AS (SELECT sgm.Reciving_Plant AS STORE,COUNT(DISTINCT CASE WHEN sgm.Store_GRC_Complete_Status_Flg = 1 THEN sgm.STORE_GRC_HUNO END) AS 'HHT_VALIDATE',
+	                    COUNT(DISTINCT CASE WHEN sgm.Store_GRC_Complete_Status_Flg = 2 THEN sgm.STORE_GRC_HUNO END) AS 'HU_WRONG_QTY'
+		     FROM dbo.tbl_STORE_GRC_MST_DTL sgm  
+			 INNER JOIN dbo.tbl_GRC_DETAILS g ON g.HU = sgm.STORE_GRC_HUNO AND g.STORE_CODE = sgm.Reciving_Plant
+			 INNER JOIN LAST_GRC_DATE lg ON g.STORE_CODE = lg.STORE_CODE AND TRY_CONVERT(DATE, g.GRC_DATE, 105) = lg.LAST_GRC_DATE
+			 GROUP BY sgm.Reciving_Plant)
+
+       SELECT FORMAT(gb.LAST_GRC_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+	   FORMAT(gb.LAST7_GRC_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',
+	   SB.STORE,SB.STORE_NAME,
+	   ISNULL(GB.HU_RECEIVED_QTY,0) AS 'HU_RECEIVED_QTY', 
+	   ISNULL(GB.HU_VALIDATED_QTY, 0) AS 'HU_VALIDATED_QTY',
+	   ISNULL(SGB.HHT_VALIDATE, 0) AS 'HHT_VALIDATE_QTY',
+	   ISNULL(GB.HU_RECEIVED_QTY,0) - (ISNULL(SGB.HHT_VALIDATE, 0) + ISNULL(SGB.HU_WRONG_QTY, 0)) AS 'STORE_PENDING_QTY',
+	   ISNULL(SGB.HU_WRONG_QTY, 0) AS 'HU_WRONG_QTY'
+	   INTO #STOREDASHBOARD
+       FROM STOREBASE SB LEFT JOIN  GRCBASE GB ON  SB.STORE = GB.STORE  LEFT JOIN STOREGRCBASE SGB ON SB.STORE=SGB.STORE
+	   WHERE (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND SB.STORE = @Store_code))
+	   AND (@SearchTerm = '' OR SB.STORE LIKE '%' + @SearchTerm + '%');
+
+
+		SELECT @QTY = ISNULL(SUM(HU_RECEIVED_QTY),0),
+		@HU_VALIDATED_QTY = ISNULL(SUM(HU_VALIDATED_QTY),0), @HHT_VALIDATE_QTY   = ISNULL(SUM(HHT_VALIDATE_QTY), 0), @HU_WRONG_QTY   = ISNULL(SUM(HU_WRONG_QTY), 0),
+		@ENCODED_QTY = ISNULL(SUM(STORE_PENDING_QTY),0),
+		@RecordCount=COUNT(*) FROM #STOREDASHBOARD;
+
+		SET @OrderBy =	
+			CASE @SortColumn
+			    WHEN 'HU RECEIVED QTY' THEN 'R.HU_RECEIVED_QTY'
+				WHEN 'WH VALIDATED QTY' THEN 'R.HU_VALIDATED_QTY' 
+				WHEN 'WRONG HU QTY' THEN 'R.HU_WRONG_QTY' 
+				WHEN 'STORE VALIDATED QTY' THEN 'R.HHT_VALIDATE_QTY' 
+				WHEN 'STORE PENDING FOR VALIDATION (QTY)' THEN 'R.STORE_PENDING_QTY' 
+				WHEN 'STORE'THEN 'R.STORE'
+				ELSE 'R.STORE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'
+			SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #STOREDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+	
+
+	-- Clean up the temporary table
+		DROP TABLE #STOREDASHBOARD;
+    END
+
+
+  ----------STOCK DASHBOARD---------
+
+	ELSE IF (@Status='STORE_STOCK_DASHBOARD')
+	BEGIN
+		SELECT FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		S.Store_Code  AS STORE,S.Store_Name AS 'STORE_NAME',COUNT(DISTINCT E.Encode_EPC) AS 'RFID_STOCK' 
+		INTO #STORESTOCKDASHBOARD
+		FROM dbo.[tbl_Store_Master] S 
+		LEFT JOIN dbo.[tbl_Encoding_Dtl] E ON S.Store_ID=E.Store_ID AND E.Is_Status IN (1,2)
+		WHERE (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND S.Store_Code = @Store_code))
+		AND (@SearchTerm = '' OR S.Store_Code LIKE '%' + @SearchTerm + '%')
+		GROUP BY S.Store_Code,S.Store_Name ORDER BY S.Store_Code;
+
+		SELECT @ENCODED_QTY = ISNULL(SUM(RFID_STOCK),0), @RecordCount=COUNT(*) FROM #STORESTOCKDASHBOARD;
+	
+	-- Retrieve the paginated results
+		SET @OrderBy =	
+			CASE @SortColumn
+				WHEN 'RFID STOCK' THEN 'R.RFID_STOCK' WHEN 'STORE' THEN 'R.STORE'
+				ELSE 'R.STORE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'SELECT * FROM (SELECT	ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #STORESTOCKDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+
+
+		SELECT COUNT(DISTINCT TID) AS 'FRESH_RFID_TAG' FROM dbo.[tbl_Encoding_Dtl] WHERE Is_Status IN (3,4) --AND CONVERT(DATE,Encode_Date) = CONVERT(DATE, GETDATE()-2)
+		AND (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND Store_ID = @Store_ID)) 
+
+
+	-- Clean up the temporary table
+		DROP TABLE #STORESTOCKDASHBOARD;
+	END
+
+
+	---------SALE DASHBOARD-----------------------------
+
+	ELSE IF(@Status='SALE_DASHBOARD')
+	BEGIN
+		
+		WITH POS_BASE AS (
+		SELECT S.STORE_CODE,ISNULL(SUM(SALE_QTY),0) AS Total_POS_Sale FROM TBL_STORE_MASTER S LEFT JOIN VPOS_SALE_RET_DTL V ON V.STORE_CODE=S.Store_CODE
+		AND BILL_DATE = @Dt AND COUNTER_NO NOT IN ('RO', 'RE') AND LEFT(ITEM_CD, 3) IN ('111','112','113')
+		GROUP BY S.STORE_CODE
+					  ),
+
+		RFID_CHECKOUT AS (
+		SELECT CHECKOUT_STORE_CODE AS STORE_CODE,COUNT(DISTINCT Encode_EPC) AS Total_RFID_Checkout--,COUNT(DISTINCT CASE WHEN Void_Flg = 'V' THEN Encode_EPC END) AS RFID_Void
+		FROM tbl_Encoding_Dtl WHERE Is_Status IN ('3','4') AND Checkout_DtTime >= @FromDt AND Checkout_DtTime <  @ToDt
+		GROUP BY CHECKOUT_STORE_CODE
+					  ),
+
+		RFID_POS AS (
+		SELECT STORE_CODE,COUNT(DISTINCT EPC_TAG) AS Total_RFID_POS_Sale,COUNT(DISTINCT CASE WHEN MANUAL_SCAN_FLAG = '1' THEN TRANS_ID END) AS Total_Manual_Sale
+		--,COUNT(DISTINCT CASE WHEN EXT_COL = 'V' THEN TRANS_ID END) AS Total_Void 
+		FROM VPOS_SCAN_ITEMS_DTL
+		WHERE Is_Status = '3'AND CHECKOUT_DATETIME >= @FromDt AND CHECKOUT_DATETIME <  @ToDt GROUP BY STORE_CODE
+				 ),
+
+        VOIDS AS (
+		SELECT BB.STORE_CODE,COUNT(DISTINCT BB.EPC_TAG) AS Total_Void,COUNT(DISTINCT CASE WHEN Void_Sync_Flg  = '1' THEN BB.EPC_TAG END) AS RFID_Void FROM (
+        SELECT V.EPC_TAG,V.STORE_CODE,V.Void_Sync_Flg,ROW_NUMBER() OVER (PARTITION BY V.EPC_TAG, V.STORE_CODE ORDER BY V.LAST_UPDATED_DATETIME DESC) AS rn
+        FROM VPOS_SCAN_ITEMS_DTL V WHERE V.EXT_COL = 'V' AND V.LAST_UPDATED_DATETIME >= @FromDt AND V.LAST_UPDATED_DATETIME < @ToDt AND (V.item_cd LIKE '111%' OR V.item_cd LIKE '112%' OR V.item_cd LIKE '113%')
+        AND NOT EXISTS
+        (SELECT 1 FROM VPOS_SCAN_ITEMS_DTL VP WHERE VP.EPC_TAG = V.EPC_TAG GROUP BY VP.EPC_TAG HAVING COUNT(CASE WHEN VP.EXT_COL = 'V' THEN 1 END) > 0 
+         AND COUNT(CASE WHEN VP.EXT_COL IS NULL THEN 1 END) > 0)
+         )BB WHERE BB.RN=1 GROUP BY BB.STORE_CODE),
+
+		MATCHING AS (
+		SELECT s.STORE_CODE,COUNT(DISTINCT e.Encode_EPC) AS Checkout_Matching_POS,
+        COUNT(DISTINCT CASE WHEN e.Is_Status not IN ('3','4') THEN e.Encode_EPC END) AS RFID_Not_Matching_POS,
+        COUNT(DISTINCT CASE WHEN e.Encode_EPC IS NULL OR e.Is_Status NOT IN ('3','4')THEN s.EPC_TAG END) AS POS_Not_Matching_RFID
+        FROM VPOS_SCAN_ITEMS_DTL s LEFT JOIN tbl_Encoding_Dtl e ON e.Encode_EPC = s.EPC_TAG AND e.CHECKOUT_STORE_CODE = s.STORE_CODE
+		AND e.Checkout_DtTime >= @FromDt AND e.Checkout_DtTime <  @ToDt
+		WHERE s.Is_Status = '3' AND s.CHECKOUT_DATETIME >= @FromDt AND s.CHECKOUT_DATETIME <  @ToDt GROUP BY s.STORE_CODE
+				)
+
+		SELECT FORMAT(@Dt, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		FORMAT(DATEADD(DAY,-7, @Dt), 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',
+		SM.STORE_CODE as STORE,SM.Store_Name AS 'STORE_NAME',
+		CAST(p.Total_POS_Sale AS INT) AS 'TOTAL_DPOS_SALE',ISNULL(r.Total_RFID_Checkout, 0) AS 'TOTAL_RFID_CHECKOUT',
+		ISNULL(rp.Total_RFID_POS_Sale, 0) AS 'TOTAL_RFID_DPOS_SALE',ISNULL(m.Checkout_Matching_POS, 0) AS 'RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE',
+		ISNULL(m.RFID_Not_Matching_POS, 0) AS 'RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE',
+		ISNULL(m.POS_Not_Matching_RFID, 0) AS 'DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT',
+		CAST(p.Total_POS_Sale AS INT)-ISNULL(r.Total_RFID_Checkout, 0) AS 'TOTAL_TAFFETA_SALE',ISNULL(rp.Total_Manual_Sale, 0) AS 'TOTAL_MANUAL_SALE',
+		ISNULL(v.Total_Void, 0) AS 'TOTAL_VOID',ISNULL(v.RFID_Void, 0) AS 'RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID',
+		ISNULL(v.Total_Void, 0)-ISNULL(v.RFID_Void, 0)  AS 'TOTAL_DIFF_VOID'
+		INTO #SALEDASHBOARD
+		FROM  [dbo].[tbl_Store_Master] SM 
+		LEFT JOIN POS_BASE p ON SM.Store_Code = p.STORE_CODE
+		LEFT JOIN RFID_CHECKOUT r ON p.STORE_CODE = r.STORE_CODE 
+		LEFT JOIN RFID_POS rp ON p.STORE_CODE = rp.STORE_CODE
+		LEFT JOIN VOIDS V ON p.STORE_CODE = V.STORE_CODE
+		LEFT JOIN MATCHING m ON p.STORE_CODE = m.STORE_CODE
+		WHERE (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND p.Store_Code = @Store_code))
+		AND(@SearchTerm = '' OR P.Store_Code LIKE '%' + @SearchTerm + '%')
+		ORDER BY SM.STORE_CODE,SM.Store_Name;
+
+
+		SET @OrderBy =	
+		CASE @SortColumn
+			WHEN 'TOTAL SALE QTY' THEN 'R.TOTAL_DPOS_SALE'
+			WHEN 'TOTAL RFID CHECKOUT QTY' THEN 'R.TOTAL_RFID_CHECKOUT'
+			WHEN 'TOTAL RFID SALE' THEN 'R.TOTAL_RFID_DPOS_SALE'
+			WHEN 'RFID CHECKOUT MATCHING WITH DPOS SALE' THEN 'R.RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE'
+			WHEN 'RFID CHECKOUT NOT MATCHING WITH DPOS SALE' THEN 'R.RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE'
+			WHEN 'DPOS SALE NOT MATCHING WITH RFID CHECKOUT' THEN 'R.DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT'
+			WHEN 'TOTAL TAFFETA SALE QTY' THEN 'R.TOTAL_TAFFETA_SALE'
+			WHEN 'TOTAL MANUAL SALE QTY' THEN 'R.TOTAL_MANUAL_SALE'
+			WHEN 'TOTAL VOID' THEN 'R.TOTAL_VOID'
+			WHEN 'RFID CHECKOUT MATCHING WITH DPOS VOID' THEN 'R.RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID'
+			WHEN 'TOTAL DIFF VOID' THEN 'R.TOTAL_DIFF_VOID'
+			WHEN 'STORE' THEN 'R.STORE'
+			ELSE 'R.STORE'
+			END + ' ' +
+		CASE 
+			WHEN @SortDirection = 'desc' THEN 'DESC'
+			ELSE 'ASC'
+			END;
+
+			SET @SQL = N'SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,
+					STORE,STORE_NAME,[DATE],[LASTDATE],TOTAL_DPOS_SALE, TOTAL_RFID_CHECKOUT, TOTAL_RFID_DPOS_SALE,
+					RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE, RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE,
+					DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT, TOTAL_TAFFETA_SALE, TOTAL_MANUAL_SALE,
+					TOTAL_VOID, RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID, TOTAL_DIFF_VOID
+					FROM #SALEDASHBOARD R) T
+					WHERE RowNumber BETWEEN @StartRow AND @EndRow
+					ORDER BY RowNumber;';
+		EXEC sp_executesql
+		@SQL,
+		N'@StartRow INT, @EndRow INT',
+		@StartRow = @StartRow,
+		@EndRow   = @EndRow;
+
+		SELECT @RecordCount=COUNT(*),@DPOS_SALE=SUM(TOTAL_DPOS_SALE),@RFID_CHECKOUT=SUM(TOTAL_RFID_CHECKOUT),@RFID_DPOS_SALE=SUM(TOTAL_RFID_DPOS_SALE), 
+		@MATCHING_WITH_DPOS_SALE=SUM(RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE),@NOT_MATCHING_WITH_DPOS_SALE=SUM(RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE), 
+		@NOT_MATCHING_WITH_RFID_CHECKOUT=SUM(DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT),
+		@TAFFETA_SALE=SUM(TOTAL_TAFFETA_SALE),@MANUAL_SALE=SUM(TOTAL_MANUAL_SALE),@DPOS_VOID=SUM(TOTAL_VOID),
+		@RFID_VOID=SUM(RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID),@DIFF_VOID=SUM(TOTAL_DIFF_VOID) FROM #SALEDASHBOARD;
+
+		 -- Clean up the temporary table
+		DROP TABLE #SALEDASHBOARD;
+
+	END
+
+	-------------------------------CYCLE COUNT DASHBOARD-----------------------------
+
+	ELSE IF (@Status='CYCLE_COUNT_DASHBOARD')
+	BEGIN
+		--SELECT FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',BB.Store_Code AS 'STORE_CODE',BB.Store_Name AS 'STORE_NAME',ISNULL(BB.CYCLE_COUNT_TYPE,'NA') AS 'CYCLE_COUNT_TYPE',
+		--ISNULL(BB.Ref_ID,'NA') AS 'REF_NO'
+		--INTO #CYCLECOUNTDASHBOARD
+		--FROM 
+		--    ( SELECT S.Store_Code,S.Store_Name,C.CYCLE_COUNT_TYPE,C.Ref_ID,ROW_NUMBER() OVER (PARTITION BY S.Store_Code ORDER BY C.ENTRY_DT DESC) AS rn FROM [dbo].[tbl_Store_Master] S 
+		--	  LEFT JOIN [dbo].[tbl_Cycle_count_Dtl] C ON S.Store_Code = C.Site_Code  
+		--	  AND (C.ENTRY_DT >= @CURR_DATE) AND (C.ENTRY_DT < DATEADD(DAY, 1, @CURR_DATE))
+		--	) BB WHERE BB.rn=1 AND (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND BB.Store_Code = @Store_code))
+		--AND(@SearchTerm = '' OR BB.Store_Code LIKE '%' + @SearchTerm + '%')
+
+		;WITH LatestCycle AS
+		(
+			SELECT S.Store_Code, S.Store_Name, C.CYCLE_COUNT_TYPE, C.Ref_id, C.Entry_dt, ROW_NUMBER() OVER(PARTITION BY S.Store_Code ORDER BY C.Entry_dt DESC) AS rn 
+			FROM dbo.tbl_Store_Master S LEFT JOIN dbo.tbl_Cycle_count_Dtl C ON S.Store_Code = C.Site_Code
+		)
+
+		SELECT FORMAT(L.Entry_dt, 'yyyy-MM-dd') AS 'DATE', L.Store_Code AS STORE_CODE, L.Store_Name AS STORE_NAME, ISNULL(L.CYCLE_COUNT_TYPE,'NA') AS CYCLE_COUNT_TYPE, ISNULL(L.Ref_id,'NA') AS REF_NO,
+		--(SELECT MIN( TRY_CONVERT(datetime, NULLIF(C2.START_DATE,'') + ' ' + ISNULL(CONVERT(varchar(8), C2.Start_Time,108),''))) 
+		--FROM dbo.tbl_Cycle_count_Dtl C2 WHERE C2.Ref_id = L.Ref_id ) AS Start_DateTime, 
+		--(SELECT MAX( TRY_CONVERT(datetime, NULLIF(C2.END_DATE,'') + ' ' + ISNULL(CONVERT(varchar(8), C2.END_Time,108),''))) 
+		--FROM dbo.tbl_Cycle_count_Dtl C2 WHERE C2.Ref_id = L.Ref_id ) AS END_DateTime
+
+		(SELECT CONVERT(VARCHAR(8),MIN(TRY_CONVERT(datetime,NULLIF(C2.START_DATE,'') + ' ' +ISNULL(CONVERT(varchar(8), C2.Start_Time,108),''))), 108)
+         FROM dbo.tbl_Cycle_count_Dtl C2 WHERE C2.Ref_id = L.Ref_id) AS Start_DateTime,
+
+        (SELECT CONVERT(VARCHAR(8),MAX(TRY_CONVERT(datetime,NULLIF(C2.END_DATE,'') + ' ' +ISNULL(CONVERT(varchar(8), C2.END_Time,108),''))), 108)
+        FROM dbo.tbl_Cycle_count_Dtl C2 WHERE C2.Ref_id = L.Ref_id) AS END_DateTime,
+
+		CONVERT(VARCHAR(8),DATEADD(SECOND,DATEDIFF(SECOND,
+		
+		(SELECT MIN(TRY_CONVERT(datetime,NULLIF(C2.START_DATE,'') + ' ' +ISNULL(CONVERT(varchar(8), C2.Start_Time,108),'')))
+        FROM dbo.tbl_Cycle_count_Dtl C2 WHERE C2.Ref_id = L.Ref_id),
+
+        (SELECT MAX(TRY_CONVERT(datetime,NULLIF(C2.END_DATE,'') + ' ' +ISNULL(CONVERT(varchar(8), C2.END_Time,108),'')))FROM dbo.tbl_Cycle_count_Dtl C2
+         WHERE C2.Ref_id = L.Ref_id)
+		 
+		 ),0), 108) AS Time_Taken
+
+		INTO #CYCLECOUNTDASHBOARD
+
+		FROM LatestCycle L
+		WHERE L.rn = 1
+			AND (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND L.Store_Code = @Store_code))
+			AND (@SearchTerm = '' OR L.Store_Code LIKE '%' + @SearchTerm + '%');
+
+		SET @OrderBy =	
+			CASE @SortColumn
+				WHEN 'STORE CODE' THEN 'R.STORE_CODE'
+				WHEN 'DATE' THEN 'R.DATE'
+				WHEN 'STORE NAME' THEN 'R.STORE_NAME'
+				WHEN 'CYCLE COUNT TYPE' THEN 'R.CYCLE_COUNT_TYPE'
+				WHEN 'STARTED ON' THEN 'R.Start_DateTime'
+				WHEN 'ENDED ON' THEN 'R.END_DateTime'
+				WHEN 'TIME TAKEN' THEN 'R.Time_Taken'
+				WHEN 'REFERENCE NO' THEN 'REF_NO'
+				ELSE 'STORE_CODE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #CYCLECOUNTDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql @SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+
+       SELECT @QTY = COUNT(CASE WHEN REF_NO NOT IN ('0','NA') THEN 1 END), @RecordCount=COUNT(*) FROM #CYCLECOUNTDASHBOARD;
+
+	-- Clean up the temporary table
+	   DROP TABLE #CYCLECOUNTDASHBOARD;
+    END 
+
+	-------------------------------LIVE STOCK DASHBOARD-----------------------------
+
+	ELSE IF (@Status='LIVE_STOCK_DASHBOARD')
+
+	BEGIN
+		
+		;WITH SAP_STOCK AS (SELECT CONVERT(DATE, Entry_Dt) AS EntryDate,PLANT,ARTICLE,SUM(STOCK) AS SAP_STOCK FROM dbo.tbl_ZCURR_STOCK
+		GROUP BY CONVERT(DATE, Entry_Dt), PLANT, ARTICLE
+		),
+
+		LATEST_DATE AS (SELECT  PLANT, MAX(EntryDate) AS LatestDate FROM SAP_STOCK GROUP BY PLANT),
+
+		FILTERED_SAP AS (SELECT S.* FROM SAP_STOCK S INNER JOIN LATEST_DATE L ON S.PLANT = L.PLANT AND S.EntryDate = L.LatestDate),
+
+		RFID_STOCK AS (SELECT S.Store_Code,EN.Material AS ARTICLE,COUNT(DISTINCT E.ENCODE_EPC) AS RFID_STOCK
+			FROM dbo.tbl_Ean_Mat_Mst EN
+			JOIN dbo.tbl_Encoding_Dtl E ON EN.EAN_UPC = E.EAN 
+			JOIN dbo.tbl_store_master S ON E.STORE_ID = S.STORE_ID 
+			WHERE E.Is_Status IN ('1','2') AND E.Store_ID IS NOT NULL 
+			GROUP BY EN.Material, S.Store_Code
+		)
+
+		SELECT FORMAT(L.LatestDate, 'yyyy-MM-dd') AS DATE,SM.Store_Code AS 'STORE_CODE',SM.Store_Name AS 'STORE_NAME',
+		CAST(SUM(ISNULL(F.SAP_STOCK, 0)) AS INT) AS SAP_STOCK,
+		CAST(SUM(ISNULL(R.RFID_STOCK, 0)) AS INT) AS RFID_STOCK,
+		CAST(SUM(ISNULL(F.SAP_STOCK, 0)) AS INT) - 
+		CAST(SUM(ISNULL(R.RFID_STOCK, 0)) AS INT) AS DIFFERENCE,
+		ISNULL(FORMAT((CAST(SUM(ISNULL(R.RFID_STOCK, 0)) AS DECIMAL(10,2)) / NULLIF(CAST(SUM(ISNULL(F.SAP_STOCK, 0)) AS DECIMAL(10,2)), 0)) * 100,'0.00'),'0.00') AS PERCENTAGE
+
+		INTO #LIVESTOICK
+		FROM dbo.tbl_Store_Master SM
+		LEFT JOIN LATEST_DATE L ON SM.Store_Code = L.PLANT
+		LEFT JOIN FILTERED_SAP F ON F.PLANT = SM.Store_Code
+		LEFT JOIN RFID_STOCK R ON R.Store_Code = SM.Store_Code AND R.ARTICLE = F.ARTICLE
+
+		WHERE (@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND SM.Store_Code = @Store_code))
+        AND (@SearchTerm = '' OR SM.Store_Code LIKE '%' + @SearchTerm + '%')
+
+		GROUP BY L.LatestDate, SM.Store_Code, SM.Store_Name;
+
+        SET @OrderBy =           
+            CASE @SortColumn
+                            WHEN 'STORE CODE' THEN 'R.STORE_CODE'
+                            WHEN 'SAP STOCK QTY' THEN 'R.SAP_STOCK'
+                            WHEN 'RFID STOCK QTY' THEN 'R.RFID_STOCK'
+                            WHEN 'DIFFERENCE QTY' THEN 'DIFFERENCE'
+							WHEN 'SYNC DATE' THEN 'DATE'
+							WHEN 'COVERAGE (%)' THEN 'PERCENTAGE'
+                            ELSE 'STORE_CODE'
+                            END + ' ' +
+            CASE 
+                            WHEN @SortDirection = 'desc' THEN 'DESC'
+                            ELSE 'ASC'
+                            END;
+
+            SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #LIVESTOICK R ) T
+            WHERE RowNumber BETWEEN @StartRow AND @EndRow
+            ORDER BY RowNumber;';
+
+            EXEC sp_executesql @SQL,
+            N'@StartRow INT, @EndRow INT',
+            @StartRow = @StartRow,
+            @EndRow   = @EndRow;
+
+		SELECT @QTY =SUM(SAP_STOCK),@ENCODED_QTY=SUM(RFID_STOCK),@DIFF_QTY=SUM(DIFFERENCE), @RecordCount=COUNT(*) FROM #LIVESTOICK;
+
+        -- Clean up the temporary table
+        DROP TABLE #LIVESTOICK;
+	END
+
+
+	---------LAST7DAY_SALE DASHBOARD-----------------------------
+
+	ELSE IF(@Status='LAST7DAY_SALE_DASHBOARD')
+	BEGIN
+		
+		WITH POS_BASE AS (
+		SELECT S.STORE_CODE,ISNULL(SUM(SALE_QTY),0) AS Total_POS_Sale,BILL_DATE FROM TBL_STORE_MASTER S LEFT JOIN VPOS_SALE_RET_DTL V ON V.STORE_CODE=S.Store_CODE
+		AND BILL_DATE >= @fromdate AND BILL_DATE < DATEADD(DAY,1,@todate) AND COUNTER_NO NOT IN ('RO', 'RE') AND LEFT(ITEM_CD, 3) IN ('111','112','113')
+		GROUP BY S.STORE_CODE,BILL_DATE HAVING ISNULL(SUM(SALE_QTY),0)>0
+					  ),
+
+		RFID_CHECKOUT AS (
+		SELECT CHECKOUT_STORE_CODE AS STORE_CODE,COUNT(DISTINCT Encode_EPC) AS Total_RFID_Checkout,CAST(Checkout_DtTime AS DATE) AS 'Checkout_DtTime'
+		FROM tbl_Encoding_Dtl WHERE Is_Status IN ('3','4') AND Checkout_DtTime >= @fromdate AND Checkout_DtTime < DATEADD(DAY,1,@todate)
+		GROUP BY CHECKOUT_STORE_CODE,CAST(Checkout_DtTime AS DATE) HAVING COUNT(DISTINCT Encode_EPC)>0
+					  ),
+
+       	RFID_POS AS (
+		SELECT STORE_CODE,COUNT(DISTINCT CASE WHEN MANUAL_SCAN_FLAG = '1' THEN TRANS_ID END) AS Total_Manual_Sale,CAST (CHECKOUT_DATETIME AS DATE) AS 'CHECKOUT_DATETIME' FROM VPOS_SCAN_ITEMS_DTL
+		WHERE Is_Status = '3'AND CHECKOUT_DATETIME >= @fromdate AND CHECKOUT_DATETIME < DATEADD(DAY,1,@todate) 
+		GROUP BY STORE_CODE,CAST (CHECKOUT_DATETIME AS DATE) HAVING COUNT(DISTINCT CASE WHEN MANUAL_SCAN_FLAG = '1' THEN TRANS_ID END)>0
+				 )
+
+	    SELECT p.BILL_DATE AS 'DATE',SM.STORE_CODE as STORE,SM.Store_Name AS 'STORE_NAME',CAST(p.Total_POS_Sale AS INT) AS 'TOTAL_DPOS_SALE',
+		ISNULL(r.Total_RFID_Checkout, 0) AS 'TOTAL_RFID_CHECKOUT',CAST(p.Total_POS_Sale AS INT)-ISNULL(r.Total_RFID_Checkout, 0) AS 'TOTAL_TAFFETA_SALE',
+		ISNULL(rp.Total_Manual_Sale, 0) AS 'TOTAL_MANUAL_SALE'
+        INTO #LAST7DAYSALEDASHBOARD
+		FROM  [dbo].[tbl_Store_Master] SM 
+		LEFT JOIN POS_BASE p ON SM.Store_Code = p.STORE_CODE
+		LEFT JOIN RFID_CHECKOUT r ON p.STORE_CODE = r.STORE_CODE AND p.BILL_DATE=r.Checkout_DtTime
+		LEFT JOIN RFID_POS rp ON p.STORE_CODE = rp.STORE_CODE AND p.BILL_DATE=rp.CHECKOUT_DATETIME
+	    WHERE --(@User_Type = 'Super Admin' OR (@User_Type = 'Store Admin' AND p.Store_Code = @Store_code))
+		(@Store_code = '' OR p.Store_Code  IN (SELECT TRIM(value)FROM STRING_SPLIT(@Store_code, ',')))
+		--(@Store_code ='' OR p.Store_Code = @Store_code)
+		AND(@SearchTerm = '' OR P.Store_Code LIKE '%' + @SearchTerm + '%');
+
+
+		SET @OrderBy =	
+		CASE @SortColumn
+		    WHEN 'DATE' THEN 'R.DATE'
+			WHEN 'TOTAL_DPOS_SALE' THEN 'R.TOTAL_DPOS_SALE'
+			WHEN 'TOTAL_RFID_CHECKOUT' THEN 'R.TOTAL_RFID_CHECKOUT'
+			WHEN 'TOTAL_TAFFETA_SALE' THEN 'R.TOTAL_TAFFETA_SALE'
+			WHEN 'TOTAL_MANUAL_SALE' THEN 'R.TOTAL_MANUAL_SALE'
+	        WHEN 'TOTAL_VOID' THEN 'R.TOTAL_VOID'
+		    WHEN 'STORE' THEN 'R.STORE'
+			WHEN 'STORE_NAME' THEN 'R.STORE_NAME'
+			ELSE 'R.DATE'
+			END + ' ' +
+		CASE 
+			WHEN @SortDirection = 'desc' THEN 'DESC'
+			ELSE 'ASC'
+			END;
+
+			SET @SQL = N'SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,
+					STORE,STORE_NAME,[DATE],TOTAL_DPOS_SALE, TOTAL_RFID_CHECKOUT, TOTAL_TAFFETA_SALE,TOTAL_MANUAL_SALE FROM #LAST7DAYSALEDASHBOARD R) T
+					WHERE RowNumber BETWEEN @StartRow AND @EndRow ORDER BY RowNumber;';
+		EXEC sp_executesql
+		@SQL,
+		N'@StartRow INT, @EndRow INT',
+		@StartRow = @StartRow,
+		@EndRow   = @EndRow;
+
+		SELECT @RecordCount=COUNT(*),@DPOS_SALE=SUM(TOTAL_DPOS_SALE),@RFID_CHECKOUT=SUM(TOTAL_RFID_CHECKOUT),
+		@TAFFETA_SALE=SUM(TOTAL_TAFFETA_SALE),@MANUAL_SALE=SUM(TOTAL_MANUAL_SALE) FROM #LAST7DAYSALEDASHBOARD;
+
+		 -- Clean up the temporary table
+		DROP TABLE #LAST7DAYSALEDASHBOARD;
+
+	END
+
+	-----------LAST7DAY STORE DASHBOARD--------------------------------------------
+
+	ELSE IF (@Status='LAST7DAY_STORE_DASHBOARD')
+	BEGIN
+		WITH  STOREBASE AS (SELECT DISTINCT S.Store_Code as STORE,S.Store_Name AS 'STORE_NAME' FROM dbo.[tbl_Store_Master] S ),
+
+        GRCBASE AS (SELECT g.Store_Code AS STORE,COUNT(DISTINCT g.HU) AS 'HU_RECEIVED_QTY',
+		     COUNT(DISTINCT CASE WHEN g.Is_Status = 1 THEN g.HU END) AS 'HU_VALIDATED_QTY',
+			 TRY_CONVERT(DATE, g.GRC_DATE, 105) AS 'GRC_DATE'
+			 --COUNT(DISTINCT CASE WHEN g.Is_Status = 0 THEN g.HU END) AS 'HU_WRONG_QTY'
+			 FROM dbo.tbl_GRC_DETAILS g 
+			 WHERE TRY_CONVERT(DATE, g.GRC_DATE, 105) >= @fromdate AND TRY_CONVERT(DATE, g.GRC_DATE, 105) < DATEADD(DAY,1,@todate)
+			 GROUP BY g.STORE_CODE,TRY_CONVERT(DATE, g.GRC_DATE, 105)),
+
+       STOREGRCBASE AS (SELECT sgm.Reciving_Plant AS STORE,COUNT(DISTINCT CASE WHEN sgm.Store_GRC_Complete_Status_Flg = 1 THEN sgm.STORE_GRC_HUNO END) AS 'HHT_VALIDATE',
+	                    COUNT(DISTINCT CASE WHEN sgm.Store_GRC_Complete_Status_Flg = 2 THEN sgm.STORE_GRC_HUNO END) AS 'HU_WRONG_QTY',
+						TRY_CONVERT(DATE, g.GRC_DATE, 105) AS 'GRC_DATE'
+		     FROM dbo.tbl_STORE_GRC_MST_DTL sgm  
+			 INNER JOIN dbo.tbl_GRC_DETAILS g ON g.HU = sgm.STORE_GRC_HUNO AND g.STORE_CODE = sgm.Reciving_Plant
+			 AND TRY_CONVERT(DATE, g.GRC_DATE, 105) >= @fromdate AND TRY_CONVERT(DATE, g.GRC_DATE, 105) < DATEADD(DAY,1,@todate)
+			 GROUP BY sgm.Reciving_Plant,TRY_CONVERT(DATE, g.GRC_DATE, 105))
+
+       SELECT GB.GRC_DATE,SB.STORE,SB.STORE_NAME,ISNULL(GB.HU_RECEIVED_QTY,0) AS 'HU_RECEIVED_QTY', ISNULL(GB.HU_VALIDATED_QTY, 0) AS 'HU_VALIDATED_QTY',
+	   ISNULL(SGB.HHT_VALIDATE, 0) AS 'HHT_VALIDATE_QTY',
+	   ISNULL(GB.HU_RECEIVED_QTY,0) - (ISNULL(SGB.HHT_VALIDATE, 0) + ISNULL(SGB.HU_WRONG_QTY, 0)) AS 'STORE_PENDING_QTY',
+	   ISNULL(SGB.HU_WRONG_QTY, 0) AS 'HU_WRONG_QTY' 
+	   INTO #LAST7DAYSTOREDASHBOARD
+       FROM STOREBASE SB LEFT JOIN  GRCBASE GB ON  SB.STORE = GB.STORE  LEFT JOIN STOREGRCBASE SGB ON SB.STORE=SGB.STORE AND GB.GRC_DATE=SGB.GRC_DATE
+	   WHERE (@Store_code = '' OR SB.STORE  IN (SELECT TRIM(value)FROM STRING_SPLIT(@Store_code, ',')))
+	   AND GB.GRC_DATE IS NOT NULL
+	   --(@Store_code ='' OR SB.STORE = @Store_code)
+	   AND (@SearchTerm = '' OR SB.STORE LIKE '%' + @SearchTerm + '%');
+
+
+		SELECT @QTY = ISNULL(SUM(HU_RECEIVED_QTY),0),
+		@HU_VALIDATED_QTY = ISNULL(SUM(HU_VALIDATED_QTY),0), @HHT_VALIDATE_QTY   = ISNULL(SUM(HHT_VALIDATE_QTY), 0), @HU_WRONG_QTY   = ISNULL(SUM(HU_WRONG_QTY), 0),
+		@ENCODED_QTY = ISNULL(SUM(STORE_PENDING_QTY),0),
+		@RecordCount=COUNT(*) FROM #LAST7DAYSTOREDASHBOARD;
+
+		SET @OrderBy =	
+			CASE @SortColumn
+			    WHEN 'GRC_DATE' THEN 'R.GRC_DATE'
+			    WHEN 'HU_RECEIVED_QTY' THEN 'R.HU_RECEIVED_QTY'
+				WHEN 'HU_VALIDATED_QTY' THEN 'R.HU_VALIDATED_QTY' 
+				WHEN 'HU_WRONG_QTY' THEN 'R.HU_WRONG_QTY' 
+				WHEN 'HHT_VALIDATE_QTY' THEN 'R.HHT_VALIDATE_QTY' 
+				WHEN 'STORE_PENDING_QTY' THEN 'R.STORE_PENDING_QTY' 
+				WHEN 'STORE'THEN 'R.STORE'
+				WHEN 'STORE_NAME' THEN 'R.STORE_NAME'
+				ELSE 'R.GRC_DATE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'
+			SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #LAST7DAYSTOREDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+	
+
+	-- Clean up the temporary table
+		DROP TABLE #LAST7DAYSTOREDASHBOARD;
+    END
+
+	---------------LAST7DAY DC dashboard---------------------------------------
+
+	IF (@Status='LAST7DAY_DC_VALIDATE_DASHBOARD')
+	BEGIN
+		SELECT CAST(dbo.[tbl_SAP_DC_Outward_Dtl].Sending_HU_Scan_Dt AS DATE) AS 'DATE',
+		dbo.tbl_Store_Master.Store_Code AS 'Reciving_Plant',dbo.tbl_Store_Master.Store_Name AS 'STORE_NAME',
+		COUNT(DISTINCT CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '1' THEN dbo.tbl_SAP_DC_Outward_Dtl.HU_No END) AS 'PROCESSED_HU',
+		COUNT(DISTINCT CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '0' THEN dbo.tbl_SAP_DC_Outward_Dtl.HU_No END) AS 'UNPROCESSED_HU',
+		CAST(SUM(CASE WHEN dbo.tbl_SAP_DC_Outward_Dtl.Is_Complete_Status_Flg = '1' THEN dbo.tbl_SAP_DC_Outward_Dtl.scan_qty ELSE 0 END)AS INT) AS 'PROCESSED_ARTICLE_QTY'
+		INTO #LAST7DAYDCVALIDATEDASHBOARD
+		FROM [dbo].[tbl_store_master] 
+		LEFT JOIN dbo.[tbl_SAP_DC_Outward_Dtl] ON dbo.[tbl_store_master].Store_code=dbo.[tbl_SAP_DC_Outward_Dtl].Reciving_Plant
+		AND dbo.[tbl_SAP_DC_Outward_Dtl].Sending_HU_Scan_Dt  >= @fromdate AND dbo.[tbl_SAP_DC_Outward_Dtl].Sending_HU_Scan_Dt < DATEADD(DAY,1,@todate)
+		AND dbo.[tbl_SAP_DC_Outward_Dtl].Ref_No IS NOT NULL
+		AND dbo.[tbl_SAP_DC_Outward_Dtl].Ref_No <>''
+        WHERE (@SearchTerm = '' OR dbo.tbl_Store_Master.Store_Code LIKE '%' + @SearchTerm + '%')
+        AND (@Store_code = '' OR dbo.tbl_Store_Master.Store_Code IN (SELECT TRIM(value)FROM STRING_SPLIT(@Store_code, ',')))
+		GROUP BY dbo.tbl_Store_Master.Store_Code,dbo.tbl_Store_Master.Store_Name,CAST(dbo.[tbl_SAP_DC_Outward_Dtl].Sending_HU_Scan_Dt AS DATE)
+		HAVING COUNT(dbo.tbl_SAP_DC_Outward_Dtl.HU_No) > 0;
+
+		SET @OrderBy =	
+			CASE @SortColumn
+			    WHEN 'DATE' THEN 'R.DATE'
+				WHEN 'PROCESSED HU QTY' THEN 'R.PROCESSED_HU'
+				WHEN 'UNPROCESSED HU QTY' THEN 'R.UNPROCESSED_HU'
+				WHEN 'VALIDATED HU ARTICLE QTY' THEN 'R.PROCESSED_ARTICLE_QTY'
+				WHEN 'Reciving_Plant' THEN 'R.Reciving_Plant'
+				WHEN 'STORE_NAME' THEN 'R.STORE_NAME'
+				ELSE 'R.DATE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #LAST7DAYDCVALIDATEDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql @SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+
+       SELECT @PROCESSED_HU = ISNULL(SUM(PROCESSED_HU),0),@UNPROCESSED_HU = ISNULL(SUM(UNPROCESSED_HU),0),
+	   @PROCESSED_ARTICLE_QTY = ISNULL(SUM(PROCESSED_ARTICLE_QTY),0), @RecordCount=COUNT(*) FROM #LAST7DAYDCVALIDATEDASHBOARD;
+
+	-- Clean up the temporary table
+	   DROP TABLE #LAST7DAYDCVALIDATEDASHBOARD;
+
+    END 
+
+	---------LAST7DAY RETURN DASHBOARD--------------------------
+
+	ELSE IF (@Status='LAST7DAY_RETURN_DASHBOARD')
+	BEGIN
+		SELECT V.BILL_DATE AS 'DATE',V.Store_Code,V.Store_Name AS 'STORE_NAME',SUM(V.RET_QTY) AS 'RETURN_QTY',
+		SUM(CASE WHEN V.RET_QTY < ISNULL(E.ENCODE_QTY,0)THEN V.RET_QTY ELSE ISNULL(E.ENCODE_QTY,0)END) AS'ENCODE_QTY',
+		SUM(V.RET_QTY)-SUM(CASE WHEN V.RET_QTY < ISNULL(E.ENCODE_QTY,0)THEN V.RET_QTY ELSE ISNULL(E.ENCODE_QTY,0)END) AS 'DIFFERENCE_QTY'
+		INTO #LAST7DAYRETURNDASHBOARD
+		FROM
+		(SELECT [dbo].[tbl_Store_Master].Store_Code,[dbo].[tbl_Store_Master].Store_Name,[dbo].[VPOS_SALE_RET_DTL].SCAN_ITEM_EAN_CD,CAST(ISNULL(RET_QTY,0) AS INT) AS 'RET_QTY',
+		 [dbo].[VPOS_SALE_RET_DTL].BILL_DATE FROM [dbo].[tbl_Store_Master] LEFT JOIN [dbo].[VPOS_SALE_RET_DTL] ON [dbo].[tbl_Store_Master].Store_Code=[dbo].[VPOS_SALE_RET_DTL].STORE_CODE
+		 AND BILL_DATE >= @fromdate AND BILL_DATE < DATEADD(DAY,1,@todate) 
+		 AND SUBSTRING (dbo.[VPOS_SALE_RET_DTL].item_cd,1,3) in ('111','112','113') AND [dbo].[VPOS_SALE_RET_DTL].COUNTER_NO IN ('RO','RE')
+		 )AS  V
+		LEFT JOIN 
+		(SELECT [dbo].[tbl_Encoding_Dtl].EAN,[dbo].[tbl_Store_Master].Store_Code,COUNT([dbo].[tbl_Encoding_Dtl].Encode_Trans_ID) AS 'ENCODE_QTY',
+		CAST([dbo].[tbl_Encoding_Dtl].Encode_Date AS DATE) AS ENCODE_DATE
+		FROM [dbo].[tbl_Encoding_Dtl] INNER JOIN [dbo].[tbl_Store_Master] ON [dbo].[tbl_Encoding_Dtl].Store_ID = [dbo].[tbl_Store_Master].Store_ID
+		WHERE [dbo].[tbl_Encoding_Dtl].encode_date >= @fromdate AND [dbo].[tbl_Encoding_Dtl].encode_date < DATEADD(DAY,1,@todate)
+		AND [dbo].[tbl_Encoding_Dtl].STORE_FLOOR_ID IS NOT NULL AND [dbo].[tbl_Encoding_Dtl].STORE_ID IS NOT NULL AND [dbo].[tbl_Encoding_Dtl].WH_ID IS NULL
+		GROUP BY[dbo].[tbl_Encoding_Dtl].EAN,[dbo].[tbl_Store_Master].Store_Code,CAST([dbo].[tbl_Encoding_Dtl].Encode_Date AS DATE)
+		) AS E ON V.Store_Code = E.Store_Code AND V.SCAN_ITEM_EAN_CD = E.EAN AND V.BILL_DATE=E.ENCODE_DATE
+		WHERE (@SearchTerm = '' OR V.Store_Code LIKE '%' + @SearchTerm + '%')
+		GROUP BY V.Store_Code,V.Store_Name,V.BILL_DATE  
+		HAVING (@Store_code='' OR V.Store_Code = @Store_code) AND SUM(V.RET_QTY) > 0 ORDER BY V.Store_Code
+
+		SELECT @QTY = ISNULL(SUM(RETURN_QTY),0),@ENCODED_QTY = ISNULL(SUM(ENCODE_QTY),0),@DIFF_QTY = ISNULL(SUM(DIFFERENCE_QTY),0),
+		@RecordCount=COUNT(*) FROM #LAST7DAYRETURNDASHBOARD;
+
+		SET @SortDirection =
+				CASE 
+					WHEN LOWER(@SortDirection) = 'desc' THEN 'DESC'
+					ELSE 'ASC'
+				END;
+
+			SET @OrderBy =	
+				CASE @SortColumn
+				    WHEN 'DATE' THEN 'R.DATE'
+					WHEN 'RETURN QTY' THEN 'R.RETURN_QTY' 
+					WHEN 'ENCODED VS RETURN (QTY)' THEN 'R.ENCODE_QTY'
+					WHEN 'PENDING QTY' THEN 'R.DIFFERENCE_QTY' 
+					WHEN 'STORE' THEN 'R.Store_Code'
+					WHEN 'STORE_NAME' THEN 'R.STORE_NAME'
+					ELSE 'R.DATE'
+				END
+				+ ' ' + @SortDirection
+				+ ', R.Store_Code ASC';
+
+           SET @SQL = N' SELECT * FROM (SELECT	ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,*
+					FROM #LAST7DAYRETURNDASHBOARD R ) T
+					WHERE RowNumber BETWEEN @StartRow AND @EndRow
+					ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,	@EndRow   = @EndRow;
+	
+    -- Clean up the temporary table
+	   DROP TABLE #LAST7DAYRETURNDASHBOARD;
+    END
+
+		------------LAST7DAY_VOID DASHBOARD---------------------------------
+
+	ELSE IF (@Status='LAST7DAY_VOID_DASHBOARD')
+	BEGIN
+       WITH BadEPC AS (SELECT EPC_TAG FROM dbo.VPOS_SCAN_ITEMS_DTL WHERE (LAST_UPDATED_DATETIME >= @fromdate) AND (LAST_UPDATED_DATETIME < DATEADD(DAY, 1, @Todate))
+		                  GROUP BY EPC_TAG HAVING COUNT(CASE WHEN EXT_COL = 'V' THEN 1 END) > 0 AND COUNT(CASE WHEN EXT_COL IS NULL THEN 1 END) > 0),
+
+		  VoidBase AS (SELECT V.STORE_CODE,V.EPC_TAG,V.SCAN_ITEM_EAN_CD,CAST(V.LAST_UPDATED_DATETIME AS DATE) AS 'VOID_DATE',ROW_NUMBER() OVER (PARTITION BY V.EPC_TAG, V.STORE_CODE ORDER BY V.LAST_UPDATED_DATETIME DESC) AS rn FROM dbo.VPOS_SCAN_ITEMS_DTL V
+					   WHERE V.LAST_UPDATED_DATETIME >= @fromdate AND V.LAST_UPDATED_DATETIME < DATEADD(DAY, 1,@todate)
+					   AND (V.item_cd LIKE '111%' OR V.item_cd LIKE '112%' OR V.item_cd LIKE '113%')
+					   AND V.EXT_COL = 'V' AND NOT EXISTS (SELECT 1 FROM BadEPC B WHERE B.EPC_TAG = V.EPC_TAG)),
+
+		  VoidCTE AS (SELECT  VOID_DATE,STORE_CODE,SCAN_ITEM_EAN_CD,COUNT(EPC_TAG) AS VOID_QTY FROM VoidBase WHERE rn = 1 GROUP BY STORE_CODE,SCAN_ITEM_EAN_CD,VOID_DATE),
+
+		  EncodeCTE AS (SELECT CAST(E.Encode_Date AS DATE) AS 'ENCODE_DATE',SM.Store_Code,E.EAN,COUNT(E.Encode_Trans_ID) AS ENCODE_QTY FROM dbo.tbl_Encoding_Dtl E JOIN dbo.tbl_Store_Master SM ON E.Store_ID = SM.Store_ID
+					   WHERE E.encode_date >= @fromdate AND E.encode_date < DATEADD(DAY, 1, @todate)
+					   AND E.STORE_FLOOR_ID IS NOT NULL AND E.STORE_ID IS NOT NULL AND E.WH_ID IS NULL GROUP BY SM.Store_Code, E.EAN,CAST(E.Encode_Date AS DATE))
+
+		 SELECT V.VOID_DATE AS 'DATE',SM.Store_Code AS 'STORE',SM.Store_Name AS 'STORE_NAME',ISNULL(SUM(V.VOID_QTY), 0) AS 'VOID_QTY',
+		 ISNULL(SUM(CASE WHEN V.VOID_QTY < ISNULL(E.ENCODE_QTY, 0) THEN V.VOID_QTY ELSE ISNULL(E.ENCODE_QTY, 0)END), 0) AS 'ENCODE_QTY',
+		 ISNULL(SUM(V.VOID_QTY), 0) - ISNULL(SUM(CASE WHEN V.VOID_QTY < ISNULL(E.ENCODE_QTY, 0) THEN V.VOID_QTY ELSE ISNULL(E.ENCODE_QTY, 0) END), 0) AS 'DIFFERENCE_QTY'
+		 INTO #LAST7DAYVOIDDASHBOARD
+		 FROM dbo.tbl_Store_Master SM 
+		 LEFT JOIN VoidCTE V  ON SM.Store_Code = V.STORE_CODE
+		 LEFT JOIN EncodeCTE E ON SM.Store_Code = E.Store_Code AND V.SCAN_ITEM_EAN_CD = E.EAN AND V.VOID_DATE=E.ENCODE_DATE
+		 WHERE (@SearchTerm = '' OR SM.Store_Code LIKE '%' + @SearchTerm + '%')
+		 GROUP BY SM.Store_Code,SM.Store_Name,V.VOID_DATE HAVING (@Store_code='' OR SM.Store_Code = @Store_code) AND ISNULL(SUM(V.VOID_QTY), 0) > 0  ORDER BY SM.Store_Code;
+
+		SELECT @QTY = ISNULL(SUM(VOID_QTY),0),@ENCODED_QTY = ISNULL(SUM(ENCODE_QTY),0),
+		@DIFF_QTY = ISNULL(SUM(DIFFERENCE_QTY),0),@RecordCount=COUNT(*) FROM #LAST7DAYVOIDDASHBOARD;
+
+			SET @OrderBy =	
+			CASE @SortColumn
+			    WHEN 'DATE' THEN 'R.DATE'
+				WHEN 'VOID QTY' THEN 'R.VOID_QTY' 
+				WHEN 'ENCODED VS VOID (QTY)' THEN 'R.ENCODE_QTY'
+				WHEN 'PENDING QTY' THEN 'R.DIFFERENCE_QTY' 
+				WHEN 'STORE'THEN 'R.STORE'
+				WHEN 'STORE_NAME' THEN 'R.STORE_NAME'
+				ELSE 'R.DATE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			SET @SQL = N'
+			SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #LAST7DAYVOIDDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql
+			@SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+	
+     -- Clean up the temporary table
+		DROP TABLE #LAST7DAYVOIDDASHBOARD;
+    END
+
+		---------------HU Discrepancy - Vendor Wise dashboard---------------------------------------
+
+	IF (@Status='HU_DISCREPANCY_VENDOR_DASHBOARD')
+	BEGIN
+		--SELECT FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		--FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',		
+		--VM.Vendor_Code AS VENDOR_CODE, VM.Vendor_Name AS VENDOR_NAME, SUM(P.Act_Qty) AS ACTUAL_QTY, SUM(P.Park_Qty) AS SCANNED_QTY, SUM(ISNULL(P.Park_Qty,0) - ISNULL(P.Act_Qty,0)) AS DIFF_QTY,
+		--( SELECT SUM(ISNULL(P2.Park_Qty,0) - ISNULL(P2.Act_Qty,0)) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P2 INNER JOIN dbo.tbl_Vendor_Master VM2 ON P2.Article_Code = VM2.Article_No
+  --      WHERE VM2.Vendor_Code = VM.Vendor_Code AND P2.Park_No = (SELECT MAX(P3.Park_No) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P3 WHERE P3.HU_No = P2.HU_No) AND P2.Park_Dt < DATEADD(DAY,1,@CURR_DATE) ) AS DIFF_TILL_DATE
+		--INTO #HUDISCREPANYVENDORDASHBOARD
+		--FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P INNER JOIN dbo.tbl_Vendor_Master VM ON P.Article_Code = VM.Article_No WHERE P.Act_Qty <> P.Park_Qty
+		--AND p.Park_Dt >= @CURR_DATE AND  p.Park_Dt < DATEADD(DAY,2,@PREV_DATE) AND P.Park_No = ( SELECT MAX(P2.Park_No) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P2 WHERE P2.HU_No = P.HU_No) and
+		--(@User_Type IN ('Super Admin','Warehouse Admin'))
+		--AND (@SearchTerm = '' OR VM.Vendor_Code LIKE '%' + @SearchTerm + '%')
+		--GROUP BY VM.Vendor_Code, VM.Vendor_Name ORDER BY VM.Vendor_Name;
+
+		;With VENDORDATA AS (SELECT FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'DATE',
+		FORMAT(@CURR_DATE, 'yyyy-MM-dd hh:mm tt dddd') AS 'LASTDATE',		
+		VM.Vendor_Code AS VENDOR_CODE, VM.Vendor_Name AS VENDOR_NAME, SUM(P.Act_Qty) AS ACTUAL_QTY, SUM(P.Park_Qty) AS SCANNED_QTY, SUM(ISNULL(P.Park_Qty,0) - ISNULL(P.Act_Qty,0)) AS DIFF_QTY,
+		SUM(ISNULL(P.Park_Qty,0) - ISNULL(P.Act_Qty,0)) AS DIFF_TILL_DATE,
+		( SELECT min(cast(Park_Dt as date)) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P2 INNER JOIN dbo.tbl_Vendor_Master VM2 ON P2.Article_Code = VM2.Article_No
+        WHERE VM2.Vendor_Code = VM.Vendor_Code AND P2.Park_No = (SELECT MAX(P3.Park_No) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P3 WHERE P3.HU_No = P2.HU_No) ) as MIN_DATE
+		FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P INNER JOIN dbo.tbl_Vendor_Master VM ON P.Article_Code = VM.Article_No WHERE P.Act_Qty <> P.Park_Qty
+		AND p.Park_Dt < DATEADD(DAY,1,@CURR_DATE) AND P.Park_No = ( SELECT MAX(P2.Park_No) FROM dbo.tbl_WH_Val_Box_HU_Park_Dtl P2 WHERE P2.HU_No = P.HU_No)
+		GROUP BY VM.Vendor_Code, VM.Vendor_Name)
+
+		SELECT TOP 10 DATE, LASTDATE, VENDOR_CODE, VENDOR_NAME, ACTUAL_QTY, SCANNED_QTY, DIFF_QTY, DIFF_TILL_DATE, MIN_DATE
+		INTO #HUDISCREPANYVENDORDASHBOARD
+		FROM VENDORDATA where 1=1 and
+		(@User_Type IN ('Super Admin','Warehouse Admin'))
+		AND (@SearchTerm = '' OR VENDOR_CODE LIKE '%' + @SearchTerm + '%')
+		ORDER BY DIFF_QTY, VENDOR_CODE ASC
+
+		SET @OrderBy =	
+			CASE @SortColumn
+				WHEN 'DATE' THEN 'R.DATE'
+				WHEN 'VENDOR CODE' THEN 'R.VENDOR_CODE'
+				WHEN 'VENDOR NAME' THEN 'R.VENDOR_NAME'
+				WHEN 'ACTUAL QTY' THEN 'R.ACTUAL_QTY'
+				WHEN 'SCANNED QTY' THEN 'R.SCANNED_QTY'
+				WHEN 'DIFFERENCE QTY' THEN 'R.DIFF_QTY'
+				ELSE 'R.DATE'
+				END + ' ' +
+			CASE 
+				WHEN @SortDirection = 'desc' THEN 'DESC'
+				ELSE 'ASC'
+				END;
+
+			--SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY ' + @OrderBy + N') AS RowNumber,* FROM #HUDISCREPANYVENDORDASHBOARD R ) T
+			SET @SQL = N'SELECT *FROM (SELECT ROW_NUMBER() OVER (ORDER BY R.DIFF_QTY ASC) AS RowNumber,* FROM #HUDISCREPANYVENDORDASHBOARD R ) T
+			WHERE RowNumber BETWEEN @StartRow AND @EndRow
+			ORDER BY RowNumber;';
+
+			EXEC sp_executesql @SQL,
+			N'@StartRow INT, @EndRow INT',
+			@StartRow = @StartRow,
+			@EndRow   = @EndRow;
+
+       SELECT @HU_DIS_ACTUALQTY = ISNULL(SUM(ACTUAL_QTY),0), @HU_DIS_SCANNEDQTY = ISNULL(SUM(SCANNED_QTY),0),
+	   @HU_DIS_DIFFQTY = ISNULL(SUM(DIFF_QTY),0), @HU_DIFF_TILL_DATE=ISNULL(SUM(DIFF_TILL_DATE),0), @RecordCount=COUNT(*) FROM #HUDISCREPANYVENDORDASHBOARD;
+
+	-- Clean up the temporary table
+	   DROP TABLE #HUDISCREPANYVENDORDASHBOARD;
+
+    END
+
+END
