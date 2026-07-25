@@ -1,7 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using VS_Mart_Backend.Models;
 
 namespace VS_Mart_Backend.Services
@@ -13,6 +13,10 @@ namespace VS_Mart_Backend.Services
         Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request);
         Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request);
         Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request);
+        Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
+        Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
+        Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
+        void InvalidateDashboardCache(string userId = "26");
     }
 
     public class LiveStockService : ILiveStockService
@@ -108,8 +112,8 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
-            // Cache the result for 5 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -192,8 +196,8 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
-            // Cache the result for 5 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -239,6 +243,22 @@ namespace VS_Mart_Backend.Services
                                 row[columnName] = value;
                             }
                             response.Items.Add(row);
+                        }
+
+                        // Fetch second result set for recycle distribution (1, 2, 3, 4, >=5)
+                        if (await reader.NextResultAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                var row = new Dictionary<string, object?>();
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string columnName = reader.GetName(i);
+                                    object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                    row[columnName] = value;
+                                }
+                                response.Distribution.Add(row);
+                            }
                         }
                     }
 
@@ -397,9 +417,262 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
-            // Cache the result for 5 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(5));
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
+            return response;
+        }
+
+        public void InvalidateDashboardCache(string userId = "26")
+        {
+            _cache.Remove($"LiveStockDetails_{userId}__1_100");
+            _cache.Remove($"CycleCountDashboard_{userId}__1_100_STORE CODE_ASC");
+            _cache.Remove($"VendorHUDiscrepancy_{userId}__1_100_DIFF_TILL_DATE_asc");
+            _cache.Remove($"TagManagementLocation");
+            _cache.Remove($"WarehouseEncoding_{DateTime.Now:yyyy-MM-dd}_{DateTime.Now:yyyy-MM-dd}");
+        }
+
+        public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request)
+        {
+            string cacheKey = $"VendorHUDiscrepancy_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+
+            if (_cache.TryGetValue(cacheKey, out VendorHUDiscrepancyResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
+            var response = new VendorHUDiscrepancyResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("SP_New_Dashboard", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@Status", "HU_DISCREPANCY_VENDOR_DASHBOARD");
+                cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                cmd.Parameters.AddWithValue("@USER_ID", userId);
+                cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DIFF_TILL_DATE" : request.SortColumn);
+                cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                // Output Parameters
+                var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int);
+                pRecordCount.Direction = ParameterDirection.Output;
+
+                var pActualQty = cmd.Parameters.Add("@HU_DIS_ACTUALQTY", SqlDbType.Int);
+                pActualQty.Direction = ParameterDirection.Output;
+
+                var pScannedQty = cmd.Parameters.Add("@HU_DIS_SCANNEDQTY", SqlDbType.Int);
+                pScannedQty.Direction = ParameterDirection.Output;
+
+                var pDiffQty = cmd.Parameters.Add("@HU_DIS_DIFFQTY", SqlDbType.Int);
+                pDiffQty.Direction = ParameterDirection.Output;
+
+                var pDiffTillDate = cmd.Parameters.Add("@HU_DIFF_TILL_DATE", SqlDbType.Int);
+                pDiffTillDate.Direction = ParameterDirection.Output;
+
+                await conn.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object?>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string columnName = reader.GetName(i);
+                            object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            row[columnName] = value;
+                        }
+                        response.Items.Add(row);
+                    }
+                }
+
+                response.Summary = new VendorHUDiscrepancySummary
+                {
+                    PageIndex = request.PageIndex,
+                    RecordCount = pRecordCount.Value != DBNull.Value && pRecordCount.Value != null ? Convert.ToInt32(pRecordCount.Value) : 0,
+                    ActualQty = pActualQty.Value != DBNull.Value && pActualQty.Value != null ? Convert.ToInt32(pActualQty.Value) : 0,
+                    ScannedQty = pScannedQty.Value != DBNull.Value && pScannedQty.Value != null ? Convert.ToInt32(pScannedQty.Value) : 0,
+                    DifferenceQty = pDiffQty.Value != DBNull.Value && pDiffQty.Value != null ? Convert.ToInt32(pDiffQty.Value) : 0,
+                    DifferenceQtyTillDate = pDiffTillDate.Value != DBNull.Value && pDiffTillDate.Value != null ? Convert.ToInt32(pDiffTillDate.Value) : 0
+                };
+            }
+
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
+            return response;
+        }
+
+        public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request)
+        {
+            string cacheKey = $"TagManagementLocation";
+
+            if (_cache.TryGetValue(cacheKey, out TagManagementResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
+            var response = new TagManagementResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("SP_NEW_REPORT", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@status", "TAG_MANAGEMENT_LOCATION");
+                cmd.Parameters.AddWithValue("@SearchTerm", "");
+                cmd.Parameters.AddWithValue("@PageIndex", 1);
+                cmd.Parameters.AddWithValue("@PageSize", 100);
+                cmd.Parameters.AddWithValue("@SortColumn", "");
+                cmd.Parameters.AddWithValue("@SortDirection", "asc");
+
+                var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int);
+                pRecordCount.Direction = ParameterDirection.Output;
+
+                var pStoreCount = cmd.Parameters.Add("@STORECOUNT", SqlDbType.Int);
+                pStoreCount.Direction = ParameterDirection.Output;
+
+                var pWHCount = cmd.Parameters.Add("@WHCOUNT", SqlDbType.Int);
+                pWHCount.Direction = ParameterDirection.Output;
+
+                // Provide missing output parameters required by SP
+                cmd.Parameters.Add("@QTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+
+                await conn.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object?>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string columnName = reader.GetName(i);
+                            object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            row[columnName] = value;
+                        }
+                        response.Items.Add(row);
+                    }
+                }
+
+                response.Summary = new TagManagementSummary
+                {
+                    RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                    StoreCount = pStoreCount.Value != DBNull.Value ? Convert.ToInt32(pStoreCount.Value) : 0,
+                    WarehouseCount = pWHCount.Value != DBNull.Value ? Convert.ToInt32(pWHCount.Value) : 0
+                };
+            }
+
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            return response;
+        }
+
+        public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request)
+        {
+            string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}";
+
+            if (_cache.TryGetValue(cacheKey, out WarehouseEncodingResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
+            var response = new WarehouseEncodingResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("SP_NEW_REPORT", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@status", "SHOW_WAREHOUSE_ENCODE_DATA");
+                cmd.Parameters.AddWithValue("@fromdate", request.FromDate);
+                cmd.Parameters.AddWithValue("@todate", request.ToDate);
+                cmd.Parameters.AddWithValue("@User_ID", "");
+                cmd.Parameters.AddWithValue("@SearchTerm", "");
+                cmd.Parameters.AddWithValue("@SortColumn", "");
+                cmd.Parameters.AddWithValue("@SortDirection", "");
+
+                var p8To9 = cmd.Parameters.Add("@8TO9", SqlDbType.Int); p8To9.Direction = ParameterDirection.Output;
+                var p9To10 = cmd.Parameters.Add("@9TO10", SqlDbType.Int); p9To10.Direction = ParameterDirection.Output;
+                var p10To11 = cmd.Parameters.Add("@10TO11", SqlDbType.Int); p10To11.Direction = ParameterDirection.Output;
+                var p11To12 = cmd.Parameters.Add("@11TO12", SqlDbType.Int); p11To12.Direction = ParameterDirection.Output;
+                var p12To13 = cmd.Parameters.Add("@12TO13", SqlDbType.Int); p12To13.Direction = ParameterDirection.Output;
+                var p13To14 = cmd.Parameters.Add("@13TO14", SqlDbType.Int); p13To14.Direction = ParameterDirection.Output;
+                var p14To15 = cmd.Parameters.Add("@14TO15", SqlDbType.Int); p14To15.Direction = ParameterDirection.Output;
+                var p15To16 = cmd.Parameters.Add("@15TO16", SqlDbType.Int); p15To16.Direction = ParameterDirection.Output;
+                var p16To17 = cmd.Parameters.Add("@16TO17", SqlDbType.Int); p16To17.Direction = ParameterDirection.Output;
+                var p17To18 = cmd.Parameters.Add("@17TO18", SqlDbType.Int); p17To18.Direction = ParameterDirection.Output;
+                var p18To19 = cmd.Parameters.Add("@18TO19", SqlDbType.Int); p18To19.Direction = ParameterDirection.Output;
+                var p19To20 = cmd.Parameters.Add("@19TO20", SqlDbType.Int); p19To20.Direction = ParameterDirection.Output;
+
+                // Provide remaining dummy output parameters to prevent SP crashing
+                cmd.Parameters.Add("@8TO9_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@9TO10_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@10TO11_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@11TO12_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@12TO13_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@13TO14_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@14TO15_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@15TO16_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@16TO17_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@17TO18_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@18TO19_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@19TO20_ERR", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@MRGQTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@EVNQTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@QTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@ERRQTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@TotalCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@RecordCount", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@ENCQTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@AVGQTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@T_ENC_QTY", SqlDbType.Int).Direction = ParameterDirection.Output;
+                cmd.Parameters.Add("@T_ENC_USERS", SqlDbType.Int).Direction = ParameterDirection.Output;
+
+                await conn.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object?>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string columnName = reader.GetName(i);
+                            object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                            row[columnName] = value;
+                        }
+                        response.Items.Add(row);
+                    }
+                }
+
+                response.Summary = new WarehouseEncodingSummary
+                {
+                    Hour8To9 = p8To9.Value != DBNull.Value ? Convert.ToInt32(p8To9.Value) : 0,
+                    Hour9To10 = p9To10.Value != DBNull.Value ? Convert.ToInt32(p9To10.Value) : 0,
+                    Hour10To11 = p10To11.Value != DBNull.Value ? Convert.ToInt32(p10To11.Value) : 0,
+                    Hour11To12 = p11To12.Value != DBNull.Value ? Convert.ToInt32(p11To12.Value) : 0,
+                    Hour12To13 = p12To13.Value != DBNull.Value ? Convert.ToInt32(p12To13.Value) : 0,
+                    Hour13To14 = p13To14.Value != DBNull.Value ? Convert.ToInt32(p13To14.Value) : 0,
+                    Hour14To15 = p14To15.Value != DBNull.Value ? Convert.ToInt32(p14To15.Value) : 0,
+                    Hour15To16 = p15To16.Value != DBNull.Value ? Convert.ToInt32(p15To16.Value) : 0,
+                    Hour16To17 = p16To17.Value != DBNull.Value ? Convert.ToInt32(p16To17.Value) : 0,
+                    Hour17To18 = p17To18.Value != DBNull.Value ? Convert.ToInt32(p17To18.Value) : 0,
+                    Hour18To19 = p18To19.Value != DBNull.Value ? Convert.ToInt32(p18To19.Value) : 0,
+                    Hour19To20 = p19To20.Value != DBNull.Value ? Convert.ToInt32(p19To20.Value) : 0
+                };
+            }
+
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
             return response;
         }
     }

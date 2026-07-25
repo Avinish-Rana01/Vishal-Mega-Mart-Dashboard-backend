@@ -60,6 +60,7 @@ namespace VS_Mart_Backend.Models
     {
         public TagCycleCountSummary Summary { get; set; } = new TagCycleCountSummary();
         public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+        public List<Dictionary<string, object?>> Distribution { get; set; } = new List<Dictionary<string, object?>>();
     }
 
     public class CycleCountReportViewQueryRequest
@@ -107,6 +108,85 @@ namespace VS_Mart_Backend.Models
     public class CycleCountDashboardResponse
     {
         public CycleCountDashboardSummary Summary { get; set; } = new CycleCountDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    // --- Vendor HU Discrepancy Dashboard DTOs ---
+
+    public class VendorHUDiscrepancyQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortColumn { get; set; } = "DIFF_TILL_DATE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+        public string? UserId { get; set; } = string.Empty;
+    }
+
+    public class VendorHUDiscrepancySummary
+    {
+        public int PageIndex { get; set; }
+        public int RecordCount { get; set; }
+        public int ActualQty { get; set; }
+        public int ScannedQty { get; set; }
+        public int DifferenceQty { get; set; }
+        public int DifferenceQtyTillDate { get; set; }
+    }
+
+    public class VendorHUDiscrepancyResponse
+    {
+        public VendorHUDiscrepancySummary Summary { get; set; } = new VendorHUDiscrepancySummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    // --- Tag Management Location DTOs ---
+
+    public class TagManagementQueryRequest
+    {
+        // No pagination or sorting requested by frontend for this specific chart
+    }
+
+    public class TagManagementSummary
+    {
+        public int RecordCount { get; set; }
+        public int StoreCount { get; set; }
+        public int WarehouseCount { get; set; }
+    }
+
+    public class TagManagementResponse
+    {
+        public TagManagementSummary Summary { get; set; } = new TagManagementSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    // --- Warehouse Encoding Details DTOs ---
+
+    public class WarehouseEncodingQueryRequest
+    {
+        public string FromDate { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
+        public string ToDate { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
+    }
+
+    public class WarehouseEncodingSummary
+    {
+        public int Hour8To9 { get; set; }
+        public int Hour9To10 { get; set; }
+        public int Hour10To11 { get; set; }
+        public int Hour11To12 { get; set; }
+        public int Hour12To13 { get; set; }
+        public int Hour13To14 { get; set; }
+        public int Hour14To15 { get; set; }
+        public int Hour15To16 { get; set; }
+        public int Hour16To17 { get; set; }
+        public int Hour17To18 { get; set; }
+        public int Hour18To19 { get; set; }
+        public int Hour19To20 { get; set; }
+    }
+
+    public class WarehouseEncodingResponse
+    {
+        public WarehouseEncodingSummary Summary { get; set; } = new WarehouseEncodingSummary();
         public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
     }
 }

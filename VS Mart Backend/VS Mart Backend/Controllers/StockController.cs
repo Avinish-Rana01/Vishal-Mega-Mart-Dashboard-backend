@@ -99,5 +99,59 @@ namespace VS_Mart_Backend.Controllers
                 return StatusCode(500, new { message = "An error occurred while fetching cycle count dashboard data.", error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Retrieves vendor HU discrepancy dashboard data.
+        /// </summary>
+        [HttpGet("vendor-hu-discrepancy")]
+        public async Task<IActionResult> GetVendorHUDiscrepancy([FromQuery] VendorHUDiscrepancyQueryRequest request)
+        {
+            if (request == null)
+                return BadRequest("Request cannot be null.");
+
+            try
+            {
+                var result = await _liveStockService.GetVendorHUDiscrepancyAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves tag management location data (Store vs Warehouse).
+        /// </summary>
+        [HttpGet("tag-management-location")]
+        public async Task<IActionResult> GetTagManagementLocation([FromQuery] TagManagementQueryRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetTagManagementDataAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves warehouse encoding data by hour.
+        /// </summary>
+        [HttpGet("warehouse-encoding")]
+        public async Task<IActionResult> GetWarehouseEncoding([FromQuery] WarehouseEncodingQueryRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetWarehouseEncodingDataAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Error = ex.Message });
+            }
+        }
     }
 }
