@@ -63,6 +63,144 @@ namespace VS_Mart_Backend.Models
         public List<Dictionary<string, object?>> Distribution { get; set; } = new List<Dictionary<string, object?>>();
     }
 
+    public class StoreDashboardQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 100;
+        public string? UserId { get; set; } = string.Empty;
+        public string? SortColumn { get; set; } = "Store";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+    }
+
+    public class StoreDashboardSummary
+    {
+        public int RecordCount { get; set; }
+        public int TotalCount { get; set; }
+        public int HuReceivedQty { get; set; }
+        public int HuValidatedQty { get; set; }
+        public int HuWrongQty { get; set; }
+        public int HhtValidateQty { get; set; }
+        public int EncodedQty { get; set; }
+    }
+
+    public class StoreDashboardResponse
+    {
+        public StoreDashboardSummary Summary { get; set; } = new StoreDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    public class SaleDashboardQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 100;
+        public string? UserId { get; set; } = string.Empty;
+        public string? SortColumn { get; set; } = "STORE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+    }
+
+    public class SaleDashboardSummary
+    {
+        public int RecordCount { get; set; }
+        public int TotalDposSale { get; set; }
+        public int TotalRfidCheckout { get; set; }
+        public int TotalDposRfidSale { get; set; }
+        public int TotalRfidCheckoutMatch { get; set; }
+        public int TotalRfidCheckoutNotMatch { get; set; }
+        public int TotalPosSaleNotMatch { get; set; }
+        public int TotalTaffetaSale { get; set; }
+        public int TotalManualSale { get; set; }
+        public int TotalVoid { get; set; }
+        public int TotalRfidCheckoutMatchDpos { get; set; }
+        public int TotalDiffVoid { get; set; }
+    }
+
+    public class SaleDashboardResponse
+    {
+        public SaleDashboardSummary Summary { get; set; } = new SaleDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    public class ReturnDashboardQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 100;
+        public string? UserId { get; set; } = string.Empty;
+        public string? SortColumn { get; set; } = "STORE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+    }
+
+    public class ReturnDashboardSummary
+    {
+        public int RecordCount { get; set; }
+        public int TotalCount { get; set; }
+        public int ReturnQty { get; set; }
+        public int ReturnEncodedQty { get; set; }
+        public int PendingQty { get; set; }
+    }
+
+    public class ReturnDashboardResponse
+    {
+        public ReturnDashboardSummary Summary { get; set; } = new ReturnDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    public class VoidDashboardQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 100;
+        public string? UserId { get; set; } = string.Empty;
+        public string? SortColumn { get; set; } = "STORE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+    }
+
+    public class VoidDashboardSummary
+    {
+        public int RecordCount { get; set; }
+        public int TotalCount { get; set; }
+        public int ReturnQty { get; set; }
+        public int ReturnEncodedQty { get; set; }
+        public int PendingQty { get; set; }
+    }
+
+    public class VoidDashboardResponse
+    {
+        public VoidDashboardSummary Summary { get; set; } = new VoidDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
+    public class DcValidateDashboardQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 100;
+        public string? UserId { get; set; } = string.Empty;
+        public string? SortColumn { get; set; } = "Store";
+        public string? SortDirection { get; set; } = "asc";
+        public string? SortType { get; set; } = "string";
+    }
+
+    public class DcValidateDashboardSummary
+    {
+        public int RecordCount { get; set; }
+        public int ProcessedHu { get; set; }
+        public int UnprocessedHu { get; set; }
+        public int ArticleQty { get; set; }
+    }
+
+    public class DcValidateDashboardResponse
+    {
+        public DcValidateDashboardSummary Summary { get; set; } = new DcValidateDashboardSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
     public class CycleCountReportViewQueryRequest
     {
         public string? SearchTerm { get; set; } = string.Empty;

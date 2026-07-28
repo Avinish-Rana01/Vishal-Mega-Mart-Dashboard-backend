@@ -11,6 +11,11 @@ namespace VS_Mart_Backend.Services
         Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request);
         Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request);
         Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request);
+        Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request);
+        Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request);
+        Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request);
+        Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request);
+        Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request);
         Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request);
         Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request);
         Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
@@ -280,6 +285,317 @@ namespace VS_Mart_Backend.Services
                         Qty = qty,
                         ExactAverage = exactAverage,
                         AvgTagPercentage = roundedAverage
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request)
+        {
+            var response = new StoreDashboardResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@status", "STORE_DASHBOARD");
+                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                    cmd.Parameters.AddWithValue("@User_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                    cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                    var pTotalCount = cmd.Parameters.Add("@TotalCount", SqlDbType.Int); pTotalCount.Direction = ParameterDirection.Output;
+                    var pQty = cmd.Parameters.Add("@QTY", SqlDbType.Int); pQty.Direction = ParameterDirection.Output;
+                    var pHuValidatedQty = cmd.Parameters.Add("@HU_VALIDATED_QTY", SqlDbType.Int); pHuValidatedQty.Direction = ParameterDirection.Output;
+                    var pHuWrongQty = cmd.Parameters.Add("@HU_WRONG_QTY", SqlDbType.Int); pHuWrongQty.Direction = ParameterDirection.Output;
+                    var pHhtValidateQty = cmd.Parameters.Add("@HHT_VALIDATE_QTY", SqlDbType.Int); pHhtValidateQty.Direction = ParameterDirection.Output;
+                    var pEncodedQty = cmd.Parameters.Add("@ENCODED_QTY", SqlDbType.Int); pEncodedQty.Direction = ParameterDirection.Output;
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+                            response.Items.Add(row);
+                        }
+                    }
+
+                    response.Summary = new StoreDashboardSummary
+                    {
+                        RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                        TotalCount = pTotalCount.Value != DBNull.Value ? Convert.ToInt32(pTotalCount.Value) : 0,
+                        HuReceivedQty = pQty.Value != DBNull.Value ? Convert.ToInt32(pQty.Value) : 0,
+                        HuValidatedQty = pHuValidatedQty.Value != DBNull.Value ? Convert.ToInt32(pHuValidatedQty.Value) : 0,
+                        HuWrongQty = pHuWrongQty.Value != DBNull.Value ? Convert.ToInt32(pHuWrongQty.Value) : 0,
+                        HhtValidateQty = pHhtValidateQty.Value != DBNull.Value ? Convert.ToInt32(pHhtValidateQty.Value) : 0,
+                        EncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
+        {
+            var response = new SaleDashboardResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@status", "SALE_DASHBOARD");
+                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                    cmd.Parameters.AddWithValue("@User_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                    cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                    var pDposSale = cmd.Parameters.Add("@DPOS_SALE", SqlDbType.Int); pDposSale.Direction = ParameterDirection.Output;
+                    var pRfidCheckout = cmd.Parameters.Add("@RFID_CHECKOUT", SqlDbType.Int); pRfidCheckout.Direction = ParameterDirection.Output;
+                    var pRfidDposSale = cmd.Parameters.Add("@RFID_DPOS_SALE", SqlDbType.Int); pRfidDposSale.Direction = ParameterDirection.Output;
+                    var pMatchingWithDposSale = cmd.Parameters.Add("@MATCHING_WITH_DPOS_SALE", SqlDbType.Int); pMatchingWithDposSale.Direction = ParameterDirection.Output;
+                    var pNotMatchingWithDposSale = cmd.Parameters.Add("@NOT_MATCHING_WITH_DPOS_SALE", SqlDbType.Int); pNotMatchingWithDposSale.Direction = ParameterDirection.Output;
+                    var pNotMatchingWithRfidCheckout = cmd.Parameters.Add("@NOT_MATCHING_WITH_RFID_CHECKOUT", SqlDbType.Int); pNotMatchingWithRfidCheckout.Direction = ParameterDirection.Output;
+                    var pTaffetaSale = cmd.Parameters.Add("@TAFFETA_SALE", SqlDbType.Int); pTaffetaSale.Direction = ParameterDirection.Output;
+                    var pManualSale = cmd.Parameters.Add("@MANUAL_SALE", SqlDbType.Int); pManualSale.Direction = ParameterDirection.Output;
+                    var pDposVoid = cmd.Parameters.Add("@DPOS_VOID", SqlDbType.Int); pDposVoid.Direction = ParameterDirection.Output;
+                    var pRfidVoid = cmd.Parameters.Add("@RFID_VOID", SqlDbType.Int); pRfidVoid.Direction = ParameterDirection.Output;
+                    var pDiffVoid = cmd.Parameters.Add("@DIFF_VOID", SqlDbType.Int); pDiffVoid.Direction = ParameterDirection.Output;
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+                            response.Items.Add(row);
+                        }
+                    }
+
+                    response.Summary = new SaleDashboardSummary
+                    {
+                        RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                        TotalDposSale = pDposSale.Value != DBNull.Value ? Convert.ToInt32(pDposSale.Value) : 0,
+                        TotalRfidCheckout = pRfidCheckout.Value != DBNull.Value ? Convert.ToInt32(pRfidCheckout.Value) : 0,
+                        TotalDposRfidSale = pRfidDposSale.Value != DBNull.Value ? Convert.ToInt32(pRfidDposSale.Value) : 0,
+                        TotalRfidCheckoutMatch = pMatchingWithDposSale.Value != DBNull.Value ? Convert.ToInt32(pMatchingWithDposSale.Value) : 0,
+                        TotalRfidCheckoutNotMatch = pNotMatchingWithDposSale.Value != DBNull.Value ? Convert.ToInt32(pNotMatchingWithDposSale.Value) : 0,
+                        TotalPosSaleNotMatch = pNotMatchingWithRfidCheckout.Value != DBNull.Value ? Convert.ToInt32(pNotMatchingWithRfidCheckout.Value) : 0,
+                        TotalTaffetaSale = pTaffetaSale.Value != DBNull.Value ? Convert.ToInt32(pTaffetaSale.Value) : 0,
+                        TotalManualSale = pManualSale.Value != DBNull.Value ? Convert.ToInt32(pManualSale.Value) : 0,
+                        TotalVoid = pDposVoid.Value != DBNull.Value ? Convert.ToInt32(pDposVoid.Value) : 0,
+                        TotalRfidCheckoutMatchDpos = pRfidVoid.Value != DBNull.Value ? Convert.ToInt32(pRfidVoid.Value) : 0,
+                        TotalDiffVoid = pDiffVoid.Value != DBNull.Value ? Convert.ToInt32(pDiffVoid.Value) : 0
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request)
+        {
+            var response = new ReturnDashboardResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@status", "RETURN_DASHBOARD");
+                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                    cmd.Parameters.AddWithValue("@User_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                    cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                    var pTotalCount = cmd.Parameters.Add("@TotalCount", SqlDbType.Int); pTotalCount.Direction = ParameterDirection.Output;
+                    var pQty = cmd.Parameters.Add("@QTY", SqlDbType.Int); pQty.Direction = ParameterDirection.Output;
+                    var pEncodedQty = cmd.Parameters.Add("@ENCODED_QTY", SqlDbType.Int); pEncodedQty.Direction = ParameterDirection.Output;
+                    var pDiffQty = cmd.Parameters.Add("@DIFF_QTY", SqlDbType.Int); pDiffQty.Direction = ParameterDirection.Output;
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+                            response.Items.Add(row);
+                        }
+                    }
+
+                    response.Summary = new ReturnDashboardSummary
+                    {
+                        RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                        TotalCount = pTotalCount.Value != DBNull.Value ? Convert.ToInt32(pTotalCount.Value) : 0,
+                        ReturnQty = pQty.Value != DBNull.Value ? Convert.ToInt32(pQty.Value) : 0,
+                        ReturnEncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0,
+                        PendingQty = pDiffQty.Value != DBNull.Value ? Convert.ToInt32(pDiffQty.Value) : 0
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
+        {
+            var response = new VoidDashboardResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@status", "VOID_DASHBOARD");
+                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                    cmd.Parameters.AddWithValue("@User_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                    cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                    var pTotalCount = cmd.Parameters.Add("@TotalCount", SqlDbType.Int); pTotalCount.Direction = ParameterDirection.Output;
+                    var pQty = cmd.Parameters.Add("@QTY", SqlDbType.Int); pQty.Direction = ParameterDirection.Output;
+                    var pEncodedQty = cmd.Parameters.Add("@ENCODED_QTY", SqlDbType.Int); pEncodedQty.Direction = ParameterDirection.Output;
+                    var pDiffQty = cmd.Parameters.Add("@DIFF_QTY", SqlDbType.Int); pDiffQty.Direction = ParameterDirection.Output;
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+                            response.Items.Add(row);
+                        }
+                    }
+
+                    response.Summary = new VoidDashboardSummary
+                    {
+                        RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                        TotalCount = pTotalCount.Value != DBNull.Value ? Convert.ToInt32(pTotalCount.Value) : 0,
+                        ReturnQty = pQty.Value != DBNull.Value ? Convert.ToInt32(pQty.Value) : 0,
+                        ReturnEncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0,
+                        PendingQty = pDiffQty.Value != DBNull.Value ? Convert.ToInt32(pDiffQty.Value) : 0
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request)
+        {
+            var response = new DcValidateDashboardResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            int userId = 0;
+            int.TryParse(request.UserId, out userId);
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Status", "DC_VALIDATE_DASHBOARD");
+                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                    cmd.Parameters.AddWithValue("@USER_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn);
+                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                    cmd.Parameters.AddWithValue("@SortType", request.SortType ?? "string");
+
+                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                    var pProcessedHu = cmd.Parameters.Add("@PROCESSED_HU", SqlDbType.Int); pProcessedHu.Direction = ParameterDirection.Output;
+                    var pUnprocessedHu = cmd.Parameters.Add("@UNPROCESSED_HU", SqlDbType.Int); pUnprocessedHu.Direction = ParameterDirection.Output;
+                    var pProcessedArticleQty = cmd.Parameters.Add("@PROCESSED_ARTICLE_QTY", SqlDbType.Int); pProcessedArticleQty.Direction = ParameterDirection.Output;
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>();
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+                            response.Items.Add(row);
+                        }
+                    }
+
+                    response.Summary = new DcValidateDashboardSummary
+                    {
+                        RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                        ProcessedHu = pProcessedHu.Value != DBNull.Value ? Convert.ToInt32(pProcessedHu.Value) : 0,
+                        UnprocessedHu = pUnprocessedHu.Value != DBNull.Value ? Convert.ToInt32(pUnprocessedHu.Value) : 0,
+                        ArticleQty = pProcessedArticleQty.Value != DBNull.Value ? Convert.ToInt32(pProcessedArticleQty.Value) : 0
                     };
                 }
             }

@@ -67,6 +67,91 @@ namespace VS_Mart_Backend.Controllers
         }
 
         /// <summary>
+        /// Retrieves the store dashboard aggregated metrics.
+        /// </summary>
+        [HttpGet("store-dashboard")]
+        public async Task<IActionResult> GetStoreDashboard([FromQuery] StoreDashboardQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetStoreDashboardAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching store dashboard data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the sale dashboard aggregated metrics.
+        /// </summary>
+        [HttpGet("sale-dashboard")]
+        public async Task<IActionResult> GetSaleDashboard([FromQuery] SaleDashboardQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetSaleDashboardAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching sale dashboard data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the return dashboard aggregated metrics.
+        /// </summary>
+        [HttpGet("return-dashboard")]
+        public async Task<IActionResult> GetReturnDashboard([FromQuery] ReturnDashboardQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetReturnDashboardAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching return dashboard data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the void dashboard aggregated metrics.
+        /// </summary>
+        [HttpGet("void-dashboard")]
+        public async Task<IActionResult> GetVoidDashboard([FromQuery] VoidDashboardQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetVoidDashboardAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching void dashboard data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the DC validate dashboard aggregated metrics.
+        /// </summary>
+        [HttpGet("dc-validate-dashboard")]
+        public async Task<IActionResult> GetDcValidateDashboard([FromQuery] DcValidateDashboardQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetDcValidateDashboardAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching DC validate dashboard data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Retrieves cycle count report view data (dashboard summary of cycles).
         /// </summary>
         [HttpGet("cycle-count-report")]
