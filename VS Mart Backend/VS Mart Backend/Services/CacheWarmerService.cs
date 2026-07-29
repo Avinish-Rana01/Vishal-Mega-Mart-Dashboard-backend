@@ -32,6 +32,14 @@ namespace VS_Mart_Backend.Services
                     using (var scope = _serviceProvider.CreateScope())
                     {
                         var liveStockService = scope.ServiceProvider.GetRequiredService<ILiveStockService>();
+
+                        if (!liveStockService.IsCacheEnabled())
+                        {
+                            _logger.LogInformation("Cache is currently DISABLED. Skipping pre-warming iteration.");
+                            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+                            continue;
+                        }
+
                         string superAdminId = "26";
 
                         // Clear old caches for Super Admin
@@ -82,6 +90,68 @@ namespace VS_Mart_Backend.Services
                             ToDate = DateTime.Now.ToString("yyyy-MM-dd")
                         };
                         await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest);
+
+                        // Pre-warm Store Dashboard
+                        var storeDashboardRequest = new StoreDashboardQueryRequest
+                        {
+                            UserId = superAdminId,
+                            SearchTerm = "",
+                            PageIndex = 1,
+                            PageSize = 100,
+                            SortColumn = "Store",
+                            SortDirection = "asc"
+                        };
+                        await liveStockService.GetStoreDashboardAsync(storeDashboardRequest);
+
+                        // Pre-warm Sale Dashboard
+                        var saleDashboardRequest = new SaleDashboardQueryRequest
+                        {
+                            UserId = superAdminId,
+                            SearchTerm = "",
+                            PageIndex = 1,
+                            PageSize = 100
+                        };
+                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest);
+
+                        // Pre-warm Void Dashboard
+                        var voidDashboardRequest = new VoidDashboardQueryRequest
+                        {
+                            UserId = superAdminId,
+                            SearchTerm = "",
+                            PageIndex = 1,
+                            PageSize = 100
+                        };
+                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest);
+
+                        // Pre-warm Return Dashboard
+                        var returnDashboardRequest = new ReturnDashboardQueryRequest
+                        {
+                            UserId = superAdminId,
+                            SearchTerm = "",
+                            PageIndex = 1,
+                            PageSize = 100
+                        };
+                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest);
+
+                        // Pre-warm DC Validate Dashboard
+                        var dcValidateRequest = new DcValidateDashboardQueryRequest
+                        {
+                            UserId = superAdminId,
+                            PageIndex = 1,
+                            PageSize = 100
+                        };
+                        await liveStockService.GetDcValidateDashboardAsync(dcValidateRequest);
+
+                        // Pre-warm Tag Cycle Count
+                        var tagCycleCountRequest = new TagCycleCountQueryRequest
+                        {
+                            SearchTerm = "",
+                            PageIndex = 1,
+                            PageSize = 100,
+                            SortColumn = "CYCLE_COUNT",
+                            SortDirection = "DESC"
+                        };
+                        await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest);
 
                         _logger.LogInformation("Cache successfully pre-warmed for Super Admin.");
                     }

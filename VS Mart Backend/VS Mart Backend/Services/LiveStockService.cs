@@ -8,6 +8,8 @@ namespace VS_Mart_Backend.Services
 {
     public interface ILiveStockService
     {
+        bool IsCacheEnabled();
+        void SetCacheEnabled(bool enabled);
         Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request);
         Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request);
         Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request);
@@ -28,6 +30,7 @@ namespace VS_Mart_Backend.Services
     {
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
+        private static bool? _cacheOverride = null;
 
         public LiveStockService(IConfiguration configuration, IMemoryCache cache)
         {
@@ -35,11 +38,22 @@ namespace VS_Mart_Backend.Services
             _cache = cache;
         }
 
+        public bool IsCacheEnabled()
+        {
+            if (_cacheOverride.HasValue) return _cacheOverride.Value;
+            return _configuration.GetValue<bool>("EnableCache", true);
+        }
+
+        public void SetCacheEnabled(bool enabled)
+        {
+            _cacheOverride = enabled;
+        }
+
         public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request)
         {
             string cacheKey = $"LiveStockDetails_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
 
-            if (_cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -118,7 +132,7 @@ namespace VS_Mart_Backend.Services
             }
 
             // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -127,7 +141,7 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"LiveStockReport_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (_cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -202,13 +216,20 @@ namespace VS_Mart_Backend.Services
             }
 
             // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)
         {
+            string cacheKey = $"TagCycleCount_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out TagCycleCountResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new TagCycleCountResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -289,11 +310,21 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
             return response;
         }
 
         public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request)
         {
+            string cacheKey = $"StoreDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out StoreDashboardResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new StoreDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -352,11 +383,21 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
+            // Cache the result for 2 minutes
+            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
             return response;
         }
 
         public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
         {
+            string cacheKey = $"SaleDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out SaleDashboardResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new SaleDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -425,11 +466,21 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
+            // Cache the result for 2 minutes
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
             return response;
         }
 
         public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request)
         {
+            string cacheKey = $"ReturnDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out ReturnDashboardResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new ReturnDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -484,11 +535,21 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
+            // Cache the result for 2 minutes
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
             return response;
         }
 
         public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
         {
+            string cacheKey = $"VoidDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out VoidDashboardResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new VoidDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -543,11 +604,21 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
+            // Cache the result for 2 minutes
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+
             return response;
         }
 
         public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request)
         {
+            string cacheKey = $"DcValidation_{request.UserId}_{request.PageIndex}_{request.PageSize}";
+
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out DcValidateDashboardResponse? cachedResponse) && cachedResponse != null)
+            {
+                return cachedResponse;
+            }
+
             var response = new DcValidateDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -599,6 +670,9 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
+
+            // Cache the result for 2 minutes
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -670,7 +744,7 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"CycleCountDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (_cache.TryGetValue(cacheKey, out CycleCountDashboardResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out CycleCountDashboardResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -734,7 +808,7 @@ namespace VS_Mart_Backend.Services
             }
 
             // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -746,13 +820,20 @@ namespace VS_Mart_Backend.Services
             _cache.Remove($"VendorHUDiscrepancy_{userId}__1_100_DIFF_TILL_DATE_asc");
             _cache.Remove($"TagManagementLocation");
             _cache.Remove($"WarehouseEncoding_{DateTime.Now:yyyy-MM-dd}_{DateTime.Now:yyyy-MM-dd}");
+            _cache.Remove($"TagCycleCount__1_100_CYCLE_COUNT_DESC");
+            // New dashboard caches
+            _cache.Remove($"StoreDashboard_{userId}__1_100_Store_asc");
+            _cache.Remove($"SaleDashboard_{userId}__1_100");
+            _cache.Remove($"VoidDashboard_{userId}__1_100");
+            _cache.Remove($"ReturnDashboard_{userId}__1_100");
+            _cache.Remove($"DcValidation_{userId}_1_100");
         }
 
         public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request)
         {
             string cacheKey = $"VendorHUDiscrepancy_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (_cache.TryGetValue(cacheKey, out VendorHUDiscrepancyResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out VendorHUDiscrepancyResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -822,7 +903,7 @@ namespace VS_Mart_Backend.Services
             }
 
             // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
 
             return response;
         }
@@ -831,7 +912,7 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"TagManagementLocation";
 
-            if (_cache.TryGetValue(cacheKey, out TagManagementResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out TagManagementResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -888,7 +969,7 @@ namespace VS_Mart_Backend.Services
                 };
             }
 
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
             return response;
         }
 
@@ -896,7 +977,7 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}";
 
-            if (_cache.TryGetValue(cacheKey, out WarehouseEncodingResponse? cachedResponse) && cachedResponse != null)
+            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out WarehouseEncodingResponse? cachedResponse) && cachedResponse != null)
             {
                 return cachedResponse;
             }
@@ -988,7 +1069,7 @@ namespace VS_Mart_Backend.Services
                 };
             }
 
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
+            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
             return response;
         }
     }

@@ -238,5 +238,24 @@ namespace VS_Mart_Backend.Controllers
                 return StatusCode(500, new { Error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Retrieves current backend cache status (Enabled or Disabled).
+        /// </summary>
+        [HttpGet("cache-status")]
+        public IActionResult GetCacheStatus()
+        {
+            return Ok(new { cacheEnabled = _liveStockService.IsCacheEnabled() });
+        }
+
+        /// <summary>
+        /// Dynamically enables or disables the cache system at runtime.
+        /// </summary>
+        [HttpPost("toggle-cache")]
+        public IActionResult ToggleCache([FromQuery] bool enabled)
+        {
+            _liveStockService.SetCacheEnabled(enabled);
+            return Ok(new { message = $"Cache system is now {(enabled ? "ENABLED" : "DISABLED")}.", cacheEnabled = enabled });
+        }
     }
 }
