@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using VS_Mart_Backend.Models;
+using System.Collections.Concurrent;
 
 namespace VS_Mart_Backend.Services
 {
@@ -31,6 +32,45 @@ namespace VS_Mart_Backend.Services
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
         private static bool? _cacheOverride = null;
+        private readonly ConcurrentDictionary<string, bool> _refreshingKeys = new();
+
+        private class CacheItem<T>
+        {
+            public T Data { get; set; } = default!;
+            public DateTime CreatedAt { get; set; }
+        }
+
+        private async Task<T> GetOrCreateWithSWRAsync<T>(string cacheKey, Func<Task<T>> databaseQuery)
+        {
+            if (!IsCacheEnabled()) return await databaseQuery();
+
+            if (_cache.TryGetValue(cacheKey, out CacheItem<T>? cachedItem) && cachedItem != null)
+            {
+                if (DateTime.UtcNow - cachedItem.CreatedAt > TimeSpan.FromSeconds(100)) // Stale after 1 min 40s
+                {
+                    if (_refreshingKeys.TryAdd(cacheKey, true))
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var freshData = await databaseQuery();
+                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(2));
+                            }
+                            finally
+                            {
+                                _refreshingKeys.TryRemove(cacheKey, out _);
+                            }
+                        });
+                    }
+                }
+                return cachedItem.Data;
+            }
+
+            var initialData = await databaseQuery();
+            _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(2));
+            return initialData;
+        }
 
         public LiveStockService(IConfiguration configuration, IMemoryCache cache)
         {
@@ -53,12 +93,9 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"LiveStockDetails_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new LiveStockResponse();
+                var response = new LiveStockResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -130,23 +167,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request)
         {
             string cacheKey = $"LiveStockReport_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out LiveStockResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new LiveStockResponse();
+                var response = new LiveStockResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -214,23 +245,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)
         {
             string cacheKey = $"TagCycleCount_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out TagCycleCountResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new TagCycleCountResponse();
+                var response = new TagCycleCountResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -309,23 +334,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request)
         {
             string cacheKey = $"StoreDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out StoreDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new StoreDashboardResponse();
+                var response = new StoreDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -382,23 +401,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
         {
             string cacheKey = $"SaleDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out SaleDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new SaleDashboardResponse();
+                var response = new SaleDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -465,23 +478,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request)
         {
             string cacheKey = $"ReturnDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out ReturnDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new ReturnDashboardResponse();
+                var response = new ReturnDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -534,23 +541,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
         {
             string cacheKey = $"VoidDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out VoidDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new VoidDashboardResponse();
+                var response = new VoidDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -603,23 +604,17 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request)
         {
             string cacheKey = $"DcValidation_{request.UserId}_{request.PageIndex}_{request.PageSize}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out DcValidateDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new DcValidateDashboardResponse();
+                var response = new DcValidateDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -670,11 +665,8 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request)
@@ -744,12 +736,9 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"CycleCountDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out CycleCountDashboardResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new CycleCountDashboardResponse();
+                var response = new CycleCountDashboardResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -806,11 +795,8 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public void InvalidateDashboardCache(string userId = "26")
@@ -833,12 +819,9 @@ namespace VS_Mart_Backend.Services
         {
             string cacheKey = $"VendorHUDiscrepancy_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out VendorHUDiscrepancyResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new VendorHUDiscrepancyResponse();
+                var response = new VendorHUDiscrepancyResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -901,23 +884,17 @@ namespace VS_Mart_Backend.Services
                     DifferenceQtyTillDate = pDiffTillDate.Value != DBNull.Value && pDiffTillDate.Value != null ? Convert.ToInt32(pDiffTillDate.Value) : 0
                 };
             }
-
-            // Cache the result for 2 minutes
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-
-            return response;
+                return response;
+            });
         }
 
         public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request)
         {
             string cacheKey = $"TagManagementLocation";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out TagManagementResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new TagManagementResponse();
+                var response = new TagManagementResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -968,21 +945,17 @@ namespace VS_Mart_Backend.Services
                     WarehouseCount = pWHCount.Value != DBNull.Value ? Convert.ToInt32(pWHCount.Value) : 0
                 };
             }
-
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-            return response;
+                return response;
+            });
         }
 
         public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request)
         {
             string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}";
 
-            if (IsCacheEnabled() && _cache.TryGetValue(cacheKey, out WarehouseEncodingResponse? cachedResponse) && cachedResponse != null)
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
-                return cachedResponse;
-            }
-
-            var response = new WarehouseEncodingResponse();
+                var response = new WarehouseEncodingResponse();
             string connectionString = _configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -1068,9 +1041,8 @@ namespace VS_Mart_Backend.Services
                     Hour19To20 = p19To20.Value != DBNull.Value ? Convert.ToInt32(p19To20.Value) : 0
                 };
             }
-
-            if (IsCacheEnabled()) _cache.Set(cacheKey, response, TimeSpan.FromMinutes(2));
-            return response;
+                return response;
+            });
         }
     }
 }
