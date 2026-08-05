@@ -15,6 +15,7 @@ namespace VS_Mart_Backend.Services
         Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request);
         Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request);
         Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request);
+        Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request);
         Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request);
         Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request);
         Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request);
@@ -404,6 +405,82 @@ namespace VS_Mart_Backend.Services
                 return response;
             });
         }
+
+        public async Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request)
+        {
+            string cacheKey = $"StoreGrcReport_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            {
+                var response = new StoreDashboardResponse();
+                string connectionString = _configuration.GetConnectionString("POS")
+                    ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    using (var cmd = new SqlCommand("SP_NEW_DASHBOARD", connection))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@status", "LAST7DAY_STORE_DASHBOARD");
+                        cmd.Parameters.AddWithValue("@SearchTerm", request.StoreCode ?? "");
+                        cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                        cmd.Parameters.AddWithValue("@PageSize", request.PageSize); 
+                        
+                        cmd.Parameters.AddWithValue("@Store_Code", request.StoreCode ?? "");
+                        cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                        cmd.Parameters.AddWithValue("@todate", request.ToDate ?? "");
+                        cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "GRC_DATE" : request.SortColumn);
+                        cmd.Parameters.AddWithValue("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection);
+
+                        var pRecordCount = new SqlParameter("@RecordCount", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                        var pQty = new SqlParameter("@QTY", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                        var pHuValidatedQty = new SqlParameter("@HU_VALIDATED_QTY", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                        var pHuWrongQty = new SqlParameter("@HU_WRONG_QTY", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                        var pHhtValidateQty = new SqlParameter("@HHT_VALIDATE_QTY", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                        var pEncodedQty = new SqlParameter("@ENCODED_QTY", SqlDbType.Int) { Direction = ParameterDirection.Output };
+
+                        cmd.Parameters.Add(pRecordCount);
+                        cmd.Parameters.Add(pQty);
+                        cmd.Parameters.Add(pHuValidatedQty);
+                        cmd.Parameters.Add(pHuWrongQty);
+                        cmd.Parameters.Add(pHhtValidateQty);
+                        cmd.Parameters.Add(pEncodedQty);
+
+                        await connection.OpenAsync();
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            // Result Set: The Rows
+                            while (await reader.ReadAsync())
+                            {
+                                var row = new Dictionary<string, object?>();
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string columnName = reader.GetName(i);
+                                    object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                    row[columnName] = value;
+                                }
+                                response.Items.Add(row);
+                            }
+                        }
+
+                        // Output parameters are populated ONLY AFTER the reader is closed
+                        response.Summary = new StoreDashboardSummary
+                        {
+                            RecordCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                            TotalCount = pRecordCount.Value != DBNull.Value ? Convert.ToInt32(pRecordCount.Value) : 0,
+                            HuReceivedQty = pQty.Value != DBNull.Value ? Convert.ToInt32(pQty.Value) : 0,
+                            HuValidatedQty = pHuValidatedQty.Value != DBNull.Value ? Convert.ToInt32(pHuValidatedQty.Value) : 0,
+                            HuWrongQty = pHuWrongQty.Value != DBNull.Value ? Convert.ToInt32(pHuWrongQty.Value) : 0,
+                            HhtValidateQty = pHhtValidateQty.Value != DBNull.Value ? Convert.ToInt32(pHhtValidateQty.Value) : 0,
+                            EncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0
+                        };
+                    }
+                }
+                return response;
+            });
+        }
+
 
         public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
         {

@@ -91,6 +91,18 @@ namespace VS_Mart_Backend.Models
         public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
     }
 
+    public class StoreGrcReportQueryRequest
+    {
+        public string? StoreCode { get; set; } = string.Empty;
+        public string? FromDate { get; set; } = string.Empty;
+        public string? ToDate { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortColumn { get; set; } = "DATE";
+        public string? SortDirection { get; set; } = "DESC";
+    }
+
+
     public class SaleDashboardQueryRequest
     {
         public string? SearchTerm { get; set; } = string.Empty;

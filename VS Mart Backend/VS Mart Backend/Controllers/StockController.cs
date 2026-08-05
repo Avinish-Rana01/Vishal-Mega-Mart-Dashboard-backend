@@ -84,6 +84,23 @@ namespace VS_Mart_Backend.Controllers
         }
 
         /// <summary>
+        /// Retrieves the store GRC report data with custom date ranges.
+        /// </summary>
+        [HttpGet("store-grc-report")]
+        public async Task<IActionResult> GetStoreGrcReport([FromQuery] StoreGrcReportQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetStoreGrcReportAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching store GRC report data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Retrieves the sale dashboard aggregated metrics.
         /// </summary>
         [HttpGet("sale-dashboard")]
