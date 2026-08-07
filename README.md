@@ -35,6 +35,29 @@ When building new APIs or migrating old WebForms Stored Procedures, you **MUST**
 
 ---
 
+## 🌊 Project Flow: How Data Moves (For New C# Developers)
+
+If you are new to the project, the easiest way to understand the backend is to think of it like a restaurant. Here is exactly what happens when a user clicks a button on the dashboard:
+
+### 1. The Request (The Customer Orders)
+The React frontend makes an HTTP GET request to our server. For example: `http://localhost:5000/api/stock/sale-dashboard?storeCode=HD44`.
+
+### 2. The Controller (The Waiter)
+The request first hits our **Controller** (`StockController.cs`). The Controller's *only* job is to listen for requests. It takes the messy URL parameters (`storeCode=HD44`) and maps them into a clean, strictly typed C# object called a **DTO** (Data Transfer Object). Once the data is organized in the DTO, the Controller hands it off to the Service layer. *Controllers do not write SQL or do math!*
+
+### 3. The Service (The Chef)
+The **Service** (`LiveStockService.cs`) is where all the heavy lifting happens. It looks at the DTO and executes the business logic:
+- **Cache Check:** It first checks if we recently asked for this exact data (using our SWR Cache Engine). If we have it in memory, it instantly returns it!
+- **Database Query:** If the cache is empty or stale, it connects to the SQL Server using `SqlConnection`. It builds a `SqlCommand` to execute the legacy Stored Procedures (like `SP_NEW_DASHBOARD`), mapping the DTO parameters to SQL parameters.
+
+### 4. Data Processing (Boxing the Food)
+The Service reads the raw rows and columns coming back from the database via `SqlDataReader`. Instead of passing ugly SQL data directly to the user, the Service neatly organizes this raw data into a pristine **Response DTO** (like `SaleDashboardResponse`). Summary metrics (from SQL `OUTPUT` parameters) and list items are bundled together.
+
+### 5. The Delivery
+The Service passes the clean Response DTO back to the Controller. The Controller simply wraps it in an HTTP 200 Success code (`Ok(response)`) and the ASP.NET framework automatically translates it into JSON format before sending it across the internet back to the user's browser.
+
+---
+
 ## 🗺️ API Documentation (21 Total Endpoints)
 
 ### 1. GRC Report APIs (`GrcReportController.cs`)

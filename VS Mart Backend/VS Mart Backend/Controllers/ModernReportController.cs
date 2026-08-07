@@ -59,6 +59,8 @@ namespace VS_Mart_Backend.Controllers
         public int SapStockCount { get; set; }
         public int RfidStockCount { get; set; }
         public int DifferenceCount { get; set; }
+        public string? StoreName { get; set; }
+        public string? Date { get; set; }
     }
 
     #endregion
@@ -202,7 +204,7 @@ namespace VS_Mart_Backend.Controllers
                     {
                         while (await reader.ReadAsync())
                         {
-                            var row = new Dictionary<string, object?>();
+                            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                             for (int i = 0; i < reader.FieldCount; i++)
                             {
                                 row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
@@ -216,6 +218,8 @@ namespace VS_Mart_Backend.Controllers
                     response.Summary.SapStockCount = pQty.Value != DBNull.Value ? Convert.ToInt32(pQty.Value) : 0;
                     response.Summary.RfidStockCount = pEncQty.Value != DBNull.Value ? Convert.ToInt32(pEncQty.Value) : 0;
                     response.Summary.DifferenceCount = pDiffQty.Value != DBNull.Value ? Convert.ToInt32(pDiffQty.Value) : 0;
+                    response.Summary.StoreName = response.Data.Count > 0 && response.Data[0].ContainsKey("STORE_NAME") ? response.Data[0]["STORE_NAME"]?.ToString() : request.StoreName;
+                    response.Summary.Date = request.StockDate;
                 }
                 return Ok(response);
             }

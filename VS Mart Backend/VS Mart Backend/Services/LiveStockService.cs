@@ -145,7 +145,7 @@ namespace VS_Mart_Backend.Services
                     {
                         while (await reader.ReadAsync())
                         {
-                            var row = new Dictionary<string, object?>();
+                            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                             for (int i = 0; i < reader.FieldCount; i++)
                             {
                                 string columnName = reader.GetName(i);
@@ -164,7 +164,9 @@ namespace VS_Mart_Backend.Services
                         TotalCount = pTotalCount.Value != DBNull.Value && pTotalCount.Value != null ? Convert.ToInt32(pTotalCount.Value) : 0,
                         SapQty = pQty.Value != DBNull.Value && pQty.Value != null ? Convert.ToInt32(pQty.Value) : 0,
                         RfidQty = pEncodedQty.Value != DBNull.Value && pEncodedQty.Value != null ? Convert.ToInt32(pEncodedQty.Value) : 0,
-                        DiffQty = pDiffQty.Value != DBNull.Value && pDiffQty.Value != null ? Convert.ToInt32(pDiffQty.Value) : 0
+                        DiffQty = pDiffQty.Value != DBNull.Value && pDiffQty.Value != null ? Convert.ToInt32(pDiffQty.Value) : 0,
+                        StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : null,
+                        Date = null
                     };
                 }
             }
@@ -376,7 +378,7 @@ namespace VS_Mart_Backend.Services
                             // Result Set: The Rows
                             while (await reader.ReadAsync())
                             {
-                                var row = new Dictionary<string, object?>();
+                                var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
                                 for (int i = 0; i < reader.FieldCount; i++)
                                 {
                                     string columnName = reader.GetName(i);
@@ -396,7 +398,9 @@ namespace VS_Mart_Backend.Services
                             HuValidatedQty = pHuValidatedQty.Value != DBNull.Value ? Convert.ToInt32(pHuValidatedQty.Value) : 0,
                             HuWrongQty = pHuWrongQty.Value != DBNull.Value ? Convert.ToInt32(pHuWrongQty.Value) : 0,
                             HhtValidateQty = pHhtValidateQty.Value != DBNull.Value ? Convert.ToInt32(pHhtValidateQty.Value) : 0,
-                            EncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0
+                            EncodedQty = pEncodedQty.Value != DBNull.Value ? Convert.ToInt32(pEncodedQty.Value) : 0,
+                            StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : request.StoreCode,
+                            Date = request.FromDate
                         };
                     }
                 }
