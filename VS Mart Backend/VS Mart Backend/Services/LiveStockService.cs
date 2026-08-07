@@ -12,7 +12,7 @@ namespace VS_Mart_Backend.Services
         bool IsCacheEnabled();
         void SetCacheEnabled(bool enabled);
         Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request);
-        Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request);
+
         Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request);
         Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request);
         Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request);
@@ -172,83 +172,6 @@ namespace VS_Mart_Backend.Services
             });
         }
 
-        public async Task<LiveStockResponse> GetLiveStockReportAsync(LiveStockReportQueryRequest request)
-        {
-            string cacheKey = $"LiveStockReport_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
-
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
-            {
-                var response = new LiveStockResponse();
-            string connectionString = _configuration.GetConnectionString("POS")
-                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
-
-            using (var connection = new SqlConnection(connectionString))
-            {
-                using (var cmd = new SqlCommand("[SP_New_Dashboard]", connection))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    // Input Parameters
-                    cmd.Parameters.AddWithValue("@status", "LIVE_STOCK_REPORT");
-                    cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
-                    cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
-                    cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
-                    cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn);
-                    cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
-
-                    if (!string.IsNullOrEmpty(request.FromDate))
-                        cmd.Parameters.AddWithValue("@FromDate", request.FromDate);
-                    if (!string.IsNullOrEmpty(request.ToDate))
-                        cmd.Parameters.AddWithValue("@ToDate", request.ToDate);
-                    if (!string.IsNullOrEmpty(request.ArticleNo))
-                        cmd.Parameters.AddWithValue("@ArticleNo", request.ArticleNo);
-                    if (!string.IsNullOrEmpty(request.StoreName))
-                        cmd.Parameters.AddWithValue("@StoreName", request.StoreName);
-
-                    // Output Parameters
-                    var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int);
-                    pRecordCount.Direction = ParameterDirection.Output;
-
-                    var pQty = cmd.Parameters.Add("@QTY", SqlDbType.Int);
-                    pQty.Direction = ParameterDirection.Output;
-
-                    var pEncQty = cmd.Parameters.Add("@ENCODED_QTY", SqlDbType.Int);
-                    pEncQty.Direction = ParameterDirection.Output;
-
-                    var pDiffQty = cmd.Parameters.Add("@DIFF_QTY", SqlDbType.Int);
-                    pDiffQty.Direction = ParameterDirection.Output;
-
-                    await connection.OpenAsync();
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            var row = new Dictionary<string, object?>();
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                string columnName = reader.GetName(i);
-                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                                row[columnName] = value;
-                            }
-                            response.Items.Add(row);
-                        }
-                    }
-
-                    response.Summary = new LiveStockSummary
-                    {
-                        PageIndex = request.PageIndex,
-                        RecordCount = pRecordCount.Value != DBNull.Value && pRecordCount.Value != null ? Convert.ToInt32(pRecordCount.Value) : 0,
-                        TotalCount = pRecordCount.Value != DBNull.Value && pRecordCount.Value != null ? Convert.ToInt32(pRecordCount.Value) : 0,
-                        SapQty = pQty.Value != DBNull.Value && pQty.Value != null ? Convert.ToInt32(pQty.Value) : 0,
-                        RfidQty = pEncQty.Value != DBNull.Value && pEncQty.Value != null ? Convert.ToInt32(pEncQty.Value) : 0,
-                        DiffQty = pDiffQty.Value != DBNull.Value && pDiffQty.Value != null ? Convert.ToInt32(pDiffQty.Value) : 0
-                    };
-                }
-            }
-                return response;
-            });
-        }
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)
         {

@@ -32,22 +32,7 @@ namespace VS_Mart_Backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Retrieves detailed article-level live stock report records.
-        /// </summary>
-        [HttpGet("report")]
-        public async Task<IActionResult> GetLiveStockReport([FromQuery] LiveStockReportQueryRequest query)
-        {
-            try
-            {
-                var result = await _liveStockService.GetLiveStockReportAsync(query);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while fetching live stock report.", error = ex.Message });
-            }
-        }
+
 
         /// <summary>
         /// Retrieves tag cycle count data and summary metrics.
