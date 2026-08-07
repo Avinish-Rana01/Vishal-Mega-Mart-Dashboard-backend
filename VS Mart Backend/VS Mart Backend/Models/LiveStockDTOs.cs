@@ -32,6 +32,8 @@ namespace VS_Mart_Backend.Models
         public int SapQty { get; set; }
         public int RfidQty { get; set; }
         public int DiffQty { get; set; }
+        public string? StoreName { get; set; }
+        public string? Date { get; set; }
     }
 
     public class LiveStockResponse
@@ -83,6 +85,8 @@ namespace VS_Mart_Backend.Models
         public int HuWrongQty { get; set; }
         public int HhtValidateQty { get; set; }
         public int EncodedQty { get; set; }
+        public string? StoreName { get; set; }
+        public string? Date { get; set; }
     }
 
     public class StoreDashboardResponse
