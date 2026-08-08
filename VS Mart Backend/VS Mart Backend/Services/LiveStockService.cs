@@ -25,6 +25,8 @@ namespace VS_Mart_Backend.Services
         Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
         Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
         Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
+        Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request);
+        Task<BindStoreResponse> BindStoreAsync(BindStoreQueryRequest request);
         void InvalidateDashboardCache(string userId = "26");
     }
 
@@ -1048,5 +1050,179 @@ namespace VS_Mart_Backend.Services
                 return response;
             });
         }
+
+        public async Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request)
+        {
+            string cacheKey = $"StoreSaleReport_{request.UserId}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            {
+                var response = new StoreSaleReportResponse();
+
+                string connectionString = _configuration.GetConnectionString("POS")
+                    ?? throw new InvalidOperationException(
+                        "Connection string 'POS' was not found in configuration.");
+
+                using var connection = new SqlConnection(connectionString);
+
+                using var cmd = new SqlCommand("SP_NEW_DASHBOARD", connection)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+
+                cmd.Parameters.Add("@status", SqlDbType.VarChar, 50)
+                    .Value = "LAST7DAY_SALE_DASHBOARD";
+
+                cmd.Parameters.Add("@SearchTerm", SqlDbType.VarChar, 200)
+                    .Value = request.SearchTerm ?? "";
+
+                cmd.Parameters.Add("@PageIndex", SqlDbType.Int)
+                    .Value = request.PageIndex;
+
+                cmd.Parameters.Add("@PageSize", SqlDbType.Int)
+                    .Value = request.PageSize;
+
+                cmd.Parameters.Add("@Store_Code", SqlDbType.VarChar, 50)
+                    .Value = request.StoreCode ?? "";
+
+                cmd.Parameters.Add("@fromdate", SqlDbType.VarChar, 20)
+                    .Value = request.FromDate ?? "";
+
+                cmd.Parameters.Add("@todate", SqlDbType.VarChar, 20)
+                    .Value = request.ToDate ?? "";
+
+                cmd.Parameters.Add("@SortColumn", SqlDbType.VarChar, 50)
+                    .Value = string.IsNullOrEmpty(request.SortColumn)
+                        ? "DATE"
+                        : request.SortColumn;
+
+                cmd.Parameters.Add("@SortDirection", SqlDbType.VarChar, 10)
+                    .Value = string.IsNullOrEmpty(request.SortDirection)
+                        ? "desc"
+                        : request.SortDirection;
+
+                var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int);
+                pRecordCount.Direction = ParameterDirection.Output;
+
+                var pDposSale = cmd.Parameters.Add("@DPOS_SALE", SqlDbType.Int);
+                pDposSale.Direction = ParameterDirection.Output;
+
+                var pRfidCheckout = cmd.Parameters.Add("@RFID_CHECKOUT", SqlDbType.Int);
+                pRfidCheckout.Direction = ParameterDirection.Output;
+
+                var pTaffetaSale = cmd.Parameters.Add("@TAFFETA_SALE", SqlDbType.Int);
+                pTaffetaSale.Direction = ParameterDirection.Output;
+
+                var pManualSale = cmd.Parameters.Add("@MANUAL_SALE", SqlDbType.Int);
+                pManualSale.Direction = ParameterDirection.Output;
+
+                await connection.OpenAsync();
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    var row = new Dictionary<string, object?>(
+                        StringComparer.OrdinalIgnoreCase);
+
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        row[reader.GetName(i)] =
+                            reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    }
+
+                    response.Items.Add(row);
+                }
+
+                response.Summary = new StoreSaleReportSummary
+                {
+                    RecordCount = pRecordCount.Value == DBNull.Value
+                        ? 0
+                        : Convert.ToInt32(pRecordCount.Value),
+
+                    POSSaleQty = pDposSale.Value == DBNull.Value
+                        ? 0
+                        : Convert.ToInt32(pDposSale.Value),
+
+                    RFIDCheckoutQty = pRfidCheckout.Value == DBNull.Value
+                        ? 0
+                        : Convert.ToInt32(pRfidCheckout.Value),
+
+                    TaffetaSaleQty = pTaffetaSale.Value == DBNull.Value
+                        ? 0
+                        : Convert.ToInt32(pTaffetaSale.Value),
+
+                    ManualSaleQty = pManualSale.Value == DBNull.Value
+                        ? 0
+                        : Convert.ToInt32(pManualSale.Value),
+
+                    StoreCode = request.StoreCode ?? "",
+                    FromDate = request.FromDate ?? "",
+                    ToDate = request.ToDate ?? ""
+                };
+
+                return response;
+            });
+        }
+
+        public async Task<BindStoreResponse> BindStoreAsync(BindStoreQueryRequest request)
+        {
+            var response = new BindStoreResponse();
+            string connectionString = _configuration.GetConnectionString("POS")
+                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+            string fdate = "";
+            string tdate = "";
+
+            if (!string.IsNullOrEmpty(request.FromDate) && string.IsNullOrEmpty(request.ToDate))
+            {
+                fdate = request.FromDate;
+                tdate = request.FromDate;
+            }
+            else
+            {
+                fdate = request.FromDate ?? "";
+                tdate = request.ToDate ?? "";
+            }
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var cmd = new SqlCommand("SP_NEW_REPORT", connection))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@status", "BIND_STORE_FOR_ALL");
+                    cmd.Parameters.AddWithValue("@USER_ID", request.UserId ?? "");
+                    cmd.Parameters.AddWithValue("@FromDate", fdate);
+                    cmd.Parameters.AddWithValue("@ToDate", tdate);
+
+                    await connection.OpenAsync();
+                    using (var reader = await cmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                string columnName = reader.GetName(i);
+                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                row[columnName] = value;
+                            }
+
+                            if (row.TryGetValue("STORE_CODE", out object? val) && val != null)
+                            {
+                                string storeCode = val.ToString() ?? "";
+                                response.Stores.Add(new StoreItem
+                                {
+                                    Text = storeCode,
+                                    Value = storeCode
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            return response;
+        }
     }
 }
+

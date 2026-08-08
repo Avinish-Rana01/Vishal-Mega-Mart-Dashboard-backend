@@ -242,6 +242,40 @@ namespace VS_Mart_Backend.Controllers
         }
 
         /// <summary>
+        /// Retrieves store sale report metrics and dynamic grid details.
+        /// </summary>
+        [HttpGet("store-sale-report")]
+        public async Task<IActionResult> GetStoreSaleReport([FromQuery] StoreSaleReportQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetStoreSaleReportAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching store sale report data.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Retrieves store dropdown list for report filtering.
+        /// </summary>
+        [HttpGet("bind-store")]
+        public async Task<IActionResult> BindStore([FromQuery] BindStoreQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.BindStoreAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching store dropdown options.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Retrieves current backend cache status (Enabled or Disabled).
         /// </summary>
         [HttpGet("cache-status")]
@@ -261,3 +295,4 @@ namespace VS_Mart_Backend.Controllers
         }
     }
 }
+
