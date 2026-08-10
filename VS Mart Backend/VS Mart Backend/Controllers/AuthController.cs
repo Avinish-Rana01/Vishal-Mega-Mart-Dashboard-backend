@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -42,8 +42,8 @@ namespace VS_Mart_Backend.Controllers
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
 
-                        cmd.Parameters.AddWithValue("@User_Name", request.UserName.Trim());
-                        cmd.Parameters.AddWithValue("@Password", request.Password.Trim());
+                        cmd.Parameters.AddWithValue("@User_Name", request.UserName?.Trim() ?? "");
+                        cmd.Parameters.AddWithValue("@Password", request.Password?.Trim() ?? "");
                         cmd.Parameters.AddWithValue("@Status", "SP_Login");
 
                         SqlParameter msgParam = new SqlParameter("@Message", SqlDbType.VarChar, 200);
@@ -53,7 +53,7 @@ namespace VS_Mart_Backend.Controllers
                         SqlDataAdapter da = new SqlDataAdapter(cmd);
                         da.Fill(ds1);
 
-                        dbMessage = msgParam.Value?.ToString();
+                        dbMessage = msgParam.Value?.ToString() ?? string.Empty;
                     }
                 }
 
@@ -69,7 +69,7 @@ namespace VS_Mart_Backend.Controllers
 
                 DataRow row = ds1.Tables[0].Rows[0];
 
-                string userType = row["User_Type"].ToString().Trim();
+                string userType = row["User_Type"]?.ToString()?.Trim() ?? string.Empty;
 
                 // Invalid User Type
                 if (userType == "Store" || userType == "Warehouse")
