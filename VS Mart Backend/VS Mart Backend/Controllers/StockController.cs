@@ -275,22 +275,6 @@ namespace VS_Mart_Backend.Controllers
             }
         }
 
-        /// <summary>
-        /// Retrieves store dropdown list for report filtering.
-        /// </summary>
-        [HttpGet("bind-store")]
-        public async Task<IActionResult> BindStore([FromQuery] BindStoreQueryRequest query)
-        {
-            try
-            {
-                var result = await _liveStockService.BindStoreAsync(query);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while fetching store dropdown options.", error = ex.Message });
-            }
-        }
 
         /// <summary>
         /// Retrieves current backend cache status (Enabled or Disabled).
@@ -309,6 +293,64 @@ namespace VS_Mart_Backend.Controllers
         {
             _liveStockService.SetCacheEnabled(enabled);
             return Ok(new { message = $"Cache system is now {(enabled ? "ENABLED" : "DISABLED")}.", cacheEnabled = enabled });
+        }
+
+        // --- Sale Details Endpoints ---
+
+        [HttpGet("sale/pos-counters")]
+        public async Task<IActionResult> BindPOSCounter([FromQuery] BindPOSCounterRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.BindPOSCounterAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching POS counters.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("sale/articles")]
+        public async Task<IActionResult> SearchArticlesSale([FromQuery] SearchArticlesSaleRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.SearchArticlesSaleAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching articles.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("sale/eans")]
+        public async Task<IActionResult> SearchEANSale([FromQuery] SearchEANSaleRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.SearchEANSaleAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching EANs.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("sale-data")]
+        public async Task<IActionResult> GetSaleData([FromQuery] SaleDataQueryRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetSaleDataAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
+            }
         }
     }
 }

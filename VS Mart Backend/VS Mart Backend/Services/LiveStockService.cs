@@ -27,7 +27,13 @@ namespace VS_Mart_Backend.Services
         Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
         Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
         Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request);
-        Task<BindStoreResponse> BindStoreAsync(BindStoreQueryRequest request);
+
+        
+        Task<List<DropdownItem>> BindPOSCounterAsync(BindPOSCounterRequest request);
+        Task<List<DropdownItem>> SearchArticlesSaleAsync(SearchArticlesSaleRequest request);
+        Task<List<DropdownItem>> SearchEANSaleAsync(SearchEANSaleRequest request);
+        Task<SaleDataResponse> GetSaleDataAsync(SaleDataQueryRequest request);
+
         void InvalidateDashboardCache(string userId = "26");
     }
 
@@ -1236,61 +1242,191 @@ namespace VS_Mart_Backend.Services
             });
         }
 
-        public async Task<BindStoreResponse> BindStoreAsync(BindStoreQueryRequest request)
+
+        public async Task<List<DropdownItem>> BindPOSCounterAsync(BindPOSCounterRequest request)
         {
-            var response = new BindStoreResponse();
-            string connectionString = _configuration.GetConnectionString("POS")
-                ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
-
-            string fdate = "";
-            string tdate = "";
-
-            if (!string.IsNullOrEmpty(request.FromDate) && string.IsNullOrEmpty(request.ToDate))
-            {
-                fdate = request.FromDate;
-                tdate = request.FromDate;
-            }
-            else
-            {
-                fdate = request.FromDate ?? "";
-                tdate = request.ToDate ?? "";
-            }
-
+            var list = new List<DropdownItem>();
+            string connectionString = _configuration.GetConnectionString("POS") ?? "";
             using (var connection = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
             {
-                using (var cmd = new SqlCommand("SP_NEW_REPORT", connection))
+                cmd.CommandType = CommandType.StoredProcedure;
+                string status = "";
+                if (request.ColumnName == "TOTAL_DPOS_SALE") status = "BIND_COUNTER_FOR_POS_SALE";
+                else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "BIND_COUNTER_FOR_RFID_DPOS_SALE";
+                else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID") status = "BIND_COUNTER_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
+                
+                if (!string.IsNullOrEmpty(status)) cmd.Parameters.AddWithValue("@status", status);
+                
+                cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                cmd.Parameters.AddWithValue("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
+                cmd.Parameters.AddWithValue("@store_code", request.Store ?? "");
+
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@status", "BIND_STORE_FOR_ALL");
-                    cmd.Parameters.AddWithValue("@USER_ID", request.UserId ?? "");
-                    cmd.Parameters.AddWithValue("@FromDate", fdate);
-                    cmd.Parameters.AddWithValue("@ToDate", tdate);
-
-                    await connection.OpenAsync();
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    while (await reader.ReadAsync())
                     {
-                        while (await reader.ReadAsync())
+                        if (reader["COUNTER_NO"] != DBNull.Value)
                         {
-                            var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                string columnName = reader.GetName(i);
-                                object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
-                                row[columnName] = value;
-                            }
-
-                            if (row.TryGetValue("STORE_CODE", out object? val) && val != null)
-                            {
-                                string storeCode = val.ToString() ?? "";
-                                response.Stores.Add(new StoreItem
-                                {
-                                    Text = storeCode,
-                                    Value = storeCode
-                                });
-                            }
+                            string val = reader["COUNTER_NO"].ToString() ?? "";
+                            list.Add(new DropdownItem { Id = val, Text = val });
                         }
                     }
                 }
+            }
+            return list;
+        }
+
+        public async Task<List<DropdownItem>> SearchArticlesSaleAsync(SearchArticlesSaleRequest request)
+        {
+            var list = new List<DropdownItem>();
+            string connectionString = _configuration.GetConnectionString("POS") ?? "";
+            using (var connection = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                string status = "";
+                bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
+                
+                if (request.ColumnName == "TOTAL_DPOS_SALE")
+                    status = isSearch ? "SEARCH_BIND_ARTICLE_FOR_POS_SALE" : "BIND_ARTICLE_FOR_POS_SALE";
+                else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
+                    status = isSearch ? "SEARCH_BIND_ARTICLE_FOR_RFID_DPOS_SALE" : "BIND_ARTICLE_FOR_RFID_DPOS_SALE";
+                else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID")
+                    status = isSearch ? "SEARCH_BIND_MATERIAL_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" : "BIND_MATERIAL_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
+                
+                if (!string.IsNullOrEmpty(status)) cmd.Parameters.AddWithValue("@status", status);
+
+                cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                cmd.Parameters.AddWithValue("@store_code", request.Store ?? "");
+                cmd.Parameters.AddWithValue("@COUNTER_NO", request.Pos ?? "");
+                cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                cmd.Parameters.AddWithValue("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
+                cmd.Parameters.AddWithValue("@User_ID", "0");
+
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        if (reader["ARTICLE"] != DBNull.Value)
+                        {
+                            string val = reader["ARTICLE"].ToString() ?? "";
+                            list.Add(new DropdownItem { Id = val, Text = val });
+                        }
+                    }
+                }
+            }
+            return list;
+        }
+
+        public async Task<List<DropdownItem>> SearchEANSaleAsync(SearchEANSaleRequest request)
+        {
+            var list = new List<DropdownItem>();
+            string connectionString = _configuration.GetConnectionString("POS") ?? "";
+            using (var connection = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                string status = "";
+                bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
+
+                if (request.ColumnName == "TOTAL_DPOS_SALE")
+                    status = isSearch ? "SEARCH_BIND_EAN_FOR_POS_SALE" : "BIND_EAN_FOR_POS_SALE";
+                else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
+                    status = isSearch ? "SEARCH_BIND_EAN_FOR_RFID_DPOS_SALE" : "BIND_EAN_FOR_RFID_DPOS_SALE";
+                else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID")
+                    status = isSearch ? "SEARCH_BIND_EAN_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" : "BIND_EAN_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
+
+                if (!string.IsNullOrEmpty(status)) cmd.Parameters.AddWithValue("@status", status);
+
+                cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                cmd.Parameters.AddWithValue("@store_code", request.Store ?? "");
+                cmd.Parameters.AddWithValue("@COUNTER_NO", request.Pos ?? "");
+                cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                cmd.Parameters.AddWithValue("@todate", request.ToDate ?? "");
+                cmd.Parameters.AddWithValue("@Material", request.Material ?? "");
+                cmd.Parameters.AddWithValue("@User_ID", "0");
+
+                await connection.OpenAsync();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        if (reader["EAN"] != DBNull.Value)
+                        {
+                            string val = reader["EAN"].ToString() ?? "";
+                            list.Add(new DropdownItem { Id = val, Text = val });
+                        }
+                    }
+                }
+            }
+            return list;
+        }
+
+        public async Task<SaleDataResponse> GetSaleDataAsync(SaleDataQueryRequest request)
+        {
+            var response = new SaleDataResponse();
+            string connectionString = _configuration.GetConnectionString("POS") ?? "";
+
+            using (var connection = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
+            {
+                cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
+
+                string status = "";
+                if (request.ColumnName == "TOTAL_DPOS_SALE") status = "SHOW_POS_SALE_DATA";
+                else if (request.ColumnName == "TOTAL_RFID_CHECKOUT") status = "SHOW_RFID_CHECKOUT_DATA";
+                else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "SHOW_RFID_DPOS_SALE_DATA";
+                else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE") status = "SHOW_RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE_DATA";
+                else if (request.ColumnName == "RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE") status = "SHOW_RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE_DATA";
+                else if (request.ColumnName == "DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT") status = "SHOW_DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT_DATA";
+                else if (request.ColumnName == "TOTAL_MANUAL_SALE") status = "SHOW_MANUAL_SALE_DATA";
+                else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID") status = "BIND_DATA_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
+
+                if (!string.IsNullOrEmpty(status)) cmd.Parameters.AddWithValue("@status", status);
+
+                cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                cmd.Parameters.AddWithValue("@store_code", request.StoreName ?? "");
+                cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                cmd.Parameters.AddWithValue("@todate", request.ToDate ?? "");
+                cmd.Parameters.AddWithValue("@COUNTER_NO", request.Pos ?? "");
+                cmd.Parameters.AddWithValue("@Material", request.ArticleNo ?? "");
+                cmd.Parameters.AddWithValue("@EAN", request.Ean ?? "");
+                cmd.Parameters.AddWithValue("@User_ID", request.UserId ?? "0");
+
+                cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "ITEM_CD" : request.SortColumn);
+                cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+
+                var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                var pTotalCount = cmd.Parameters.Add("@TotalCount", SqlDbType.Int); pTotalCount.Direction = ParameterDirection.Output;
+                var pQty = cmd.Parameters.Add("@QTY", SqlDbType.Int); pQty.Direction = ParameterDirection.Output;
+
+                await connection.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            row[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                        }
+                        response.Items.Add(row);
+                    }
+                }
+
+                response.Summary = new SaleDataSummary
+                {
+                    PageIndex = request.PageIndex,
+                    RecordCount = pRecordCount.Value != DBNull.Value && pRecordCount.Value != null ? Convert.ToInt32(pRecordCount.Value) : 0,
+                    TotalCount = pTotalCount.Value != DBNull.Value && pTotalCount.Value != null ? Convert.ToInt32(pTotalCount.Value) : 0,
+                    Qty = pQty.Value != DBNull.Value && pQty.Value != null ? Convert.ToInt32(pQty.Value) : 0
+                };
             }
             return response;
         }

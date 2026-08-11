@@ -84,7 +84,7 @@ namespace VS_Mart_Backend.Controllers
         }
 
         [HttpGet("stores")]
-        public async Task<IActionResult> GetStores([FromQuery] string? userId, [FromQuery] string? fromDate, [FromQuery] string? toDate)
+        public async Task<IActionResult> GetStores([FromQuery] string? userId)
         {
             try
             {
@@ -96,8 +96,8 @@ namespace VS_Mart_Backend.Controllers
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@status", "BIND_STORE_FOR_ALL");
                     cmd.Parameters.AddWithValue("@USER_ID", (object?)userId ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@FromDate", (object?)fromDate ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@ToDate", (object?)toDate ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@FromDate", "");
+                    cmd.Parameters.AddWithValue("@ToDate", "");
 
                     await con.OpenAsync();
                     

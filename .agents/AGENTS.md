@@ -29,4 +29,7 @@ When migrating or referencing legacy ASP.NET `[WebMethod]` functions to modern .
 1. **Strict Parameter Mapping**: You MUST extract every single argument from the legacy `[WebMethod]` signature and ensure they are included in the modern DTO (e.g., `ref_no`, `store_code`, `fromDate`, `toDate`).
 2. **Exact Stored Procedure Statuses**: You MUST use the exact `@status` flag passed to the stored procedure in the legacy code (e.g., `CYCLE_COUNT_REPORT`). Do not invent new statuses (e.g., `CYCLE_COUNT_DASHBOARD`) unless explicitly requested by the user.
 3. **Output Variables**: You MUST map all `ParameterDirection.Output` variables used in the legacy `SqlCommand` to the summary DTO of the modern API.
-        
+4. **3-Tier Dashboard Architecture**: Do NOT overwrite existing initial-load dashboard APIs when migrating legacy methods. Modules typically require three separate endpoints:
+   - **Dashboard Summary**: New initial-load API (e.g., `sale-dashboard`, `cycle-count-dashboard`) used to populate top-level widgets.
+   - **Main Report**: The high-level grid API mapping to legacy list methods (e.g., `cycle-count-report`, `store-sale-report`).
+   - **Drill-Down Details**: The detailed view mapping to legacy drill-down methods (e.g., `cycle-count-details`, `sale-details`) requiring specific IDs (like `ref_no` or `columnName`).
