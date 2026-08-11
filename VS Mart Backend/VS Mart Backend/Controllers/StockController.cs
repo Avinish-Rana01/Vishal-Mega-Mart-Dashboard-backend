@@ -188,6 +188,23 @@ namespace VS_Mart_Backend.Controllers
         }
 
         /// <summary>
+        /// Retrieves detailed drill-down data for a specific cycle count (requires ref_no).
+        /// </summary>
+        [HttpGet("cycle-count-details")]
+        public async Task<IActionResult> GetCycleCountDetails([FromQuery] CycleCountDetailsQueryRequest query)
+        {
+            try
+            {
+                var result = await _liveStockService.GetCycleCountDetailsAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching cycle count details.", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Retrieves vendor HU discrepancy dashboard data.
         /// </summary>
         [HttpGet("vendor-hu-discrepancy")]

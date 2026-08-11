@@ -23,3 +23,10 @@
 - **Current Auth State**: `AuthController.cs` (`POST /api/auth/login`) validates users against `SP_Master` but **DOES NOT** issue a JWT token. Additionally, it contains hardcoded logic (`Forbid()`) that blocks any user with `User_Type` of `"Store"` or `"Warehouse"`.
 - **The RBAC Plan**: We are migrating to JWT-based authentication. The next major step is to update `AuthController.cs` to generate and return a JWT containing `Role` and `StoreCode` claims.
 - **Data Filtering Strategy (Row-Level Security)**: Instead of duplicating our 20 APIs for different roles, we will use **Parameter Interception**. Services (like `LiveStockService.cs`) will use `IHttpContextAccessor` to read the JWT. If the user is a Biller or Manager, the backend will completely ignore their requested `StoreCode` and force-override the SQL parameter with the `StoreCode` from their token. Admins will bypass this override. Do not create new APIs for different user roles; use this interception strategy!
+
+## 5. Legacy API Migration Constraints
+When migrating or referencing legacy ASP.NET `[WebMethod]` functions to modern .NET Web APIs:
+1. **Strict Parameter Mapping**: You MUST extract every single argument from the legacy `[WebMethod]` signature and ensure they are included in the modern DTO (e.g., `ref_no`, `store_code`, `fromDate`, `toDate`).
+2. **Exact Stored Procedure Statuses**: You MUST use the exact `@status` flag passed to the stored procedure in the legacy code (e.g., `CYCLE_COUNT_REPORT`). Do not invent new statuses (e.g., `CYCLE_COUNT_DASHBOARD`) unless explicitly requested by the user.
+3. **Output Variables**: You MUST map all `ParameterDirection.Output` variables used in the legacy `SqlCommand` to the summary DTO of the modern API.
+        

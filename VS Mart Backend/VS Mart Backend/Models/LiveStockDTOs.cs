@@ -265,6 +265,37 @@ namespace VS_Mart_Backend.Models
         public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
     }
 
+    // --- Cycle Count Details DTOs ---
+    public class CycleCountDetailsQueryRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortColumn { get; set; } = "STORE_CODE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? StoreCode { get; set; } = string.Empty;
+        public string? FromDate { get; set; } = string.Empty;
+        public string? ToDate { get; set; } = string.Empty;
+        public string? RefNo { get; set; } = string.Empty;
+    }
+
+    public class CycleCountDetailsSummary
+    {
+        public int PageIndex { get; set; }
+        public int RecordCount { get; set; }
+        public int TotalCount { get; set; }
+        public int ActualQty { get; set; }
+        public int ScannedQty { get; set; }
+        public int DiffQty { get; set; }
+        public int ExcessQty { get; set; }
+    }
+
+    public class CycleCountDetailsResponse
+    {
+        public CycleCountDetailsSummary Summary { get; set; } = new CycleCountDetailsSummary();
+        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
+    }
+
     // --- Vendor HU Discrepancy Dashboard DTOs ---
 
     public class VendorHUDiscrepancyQueryRequest

@@ -22,6 +22,7 @@ namespace VS_Mart_Backend.Services
         Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request);
         Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request);
         Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request);
+        Task<CycleCountDetailsResponse> GetCycleCountDetailsAsync(CycleCountDetailsQueryRequest request);
         Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
         Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
         Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
@@ -801,6 +802,76 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
+                return response;
+            });
+        }
+
+        public async Task<CycleCountDetailsResponse> GetCycleCountDetailsAsync(CycleCountDetailsQueryRequest request)
+        {
+            string cacheKey = $"CycleCountDetails_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.RefNo}";
+
+            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            {
+                var response = new CycleCountDetailsResponse();
+                string connectionString = _configuration.GetConnectionString("POS")
+                    ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
+
+                        // Input Parameters
+                        cmd.Parameters.AddWithValue("@status", "CYCLE_COUNT_REPORT");
+                        cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                        cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                        cmd.Parameters.AddWithValue("@PageSize", request.PageSize);
+                        cmd.Parameters.AddWithValue("@Store_code", request.StoreCode ?? "");
+                        cmd.Parameters.AddWithValue("@fromdate", request.FromDate ?? "");
+                        cmd.Parameters.AddWithValue("@todate", request.ToDate ?? "");
+                        cmd.Parameters.AddWithValue("@ref_No", request.RefNo ?? "");
+
+                        cmd.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn);
+                        cmd.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+
+                        // Output Parameters
+                        var pRecordCount = cmd.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount.Direction = ParameterDirection.Output;
+                        var pQty = cmd.Parameters.Add("@Qty", SqlDbType.Int); pQty.Direction = ParameterDirection.Output;
+                        var pTtlActQty = cmd.Parameters.Add("@Ttl_Act_QTY", SqlDbType.Int); pTtlActQty.Direction = ParameterDirection.Output;
+                        var pSumScannedQty = cmd.Parameters.Add("@Sum_Scanned_Qty", SqlDbType.Int); pSumScannedQty.Direction = ParameterDirection.Output;
+                        var pDiffQty = cmd.Parameters.Add("@DIFFQTY", SqlDbType.Int); pDiffQty.Direction = ParameterDirection.Output;
+                        var pExcessQty = cmd.Parameters.Add("@Excess_Qty", SqlDbType.Int); pExcessQty.Direction = ParameterDirection.Output;
+
+                        await connection.OpenAsync();
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                var row = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                                for (int i = 0; i < reader.FieldCount; i++)
+                                {
+                                    string columnName = reader.GetName(i);
+                                    object? value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                                    row[columnName] = value;
+                                }
+                                response.Items.Add(row);
+                            }
+                        }
+
+                        response.Summary = new CycleCountDetailsSummary
+                        {
+                            PageIndex = request.PageIndex,
+                            RecordCount = pRecordCount.Value != DBNull.Value && pRecordCount.Value != null ? Convert.ToInt32(pRecordCount.Value) : 0,
+                            TotalCount = pQty.Value != DBNull.Value && pQty.Value != null ? Convert.ToInt32(pQty.Value) : 0,
+                            ActualQty = pTtlActQty.Value != DBNull.Value && pTtlActQty.Value != null ? Convert.ToInt32(pTtlActQty.Value) : 0,
+                            ScannedQty = pSumScannedQty.Value != DBNull.Value && pSumScannedQty.Value != null ? Convert.ToInt32(pSumScannedQty.Value) : 0,
+                            DiffQty = pDiffQty.Value != DBNull.Value && pDiffQty.Value != null ? Convert.ToInt32(pDiffQty.Value) : 0,
+                            ExcessQty = pExcessQty.Value != DBNull.Value && pExcessQty.Value != null ? Convert.ToInt32(pExcessQty.Value) : 0
+                        };
+                    }
+                }
                 return response;
             });
         }
