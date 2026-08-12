@@ -352,6 +352,33 @@ namespace VS_Mart_Backend.Controllers
                 return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
             }
         }
+
+        [HttpGet("GetVoidDetails")]
+        public async Task<IActionResult> GetVoidDetails([FromQuery] VoidDetailsRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetVoidDetailsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
+            }
+        }
+        [HttpGet("GetVoidReconciliationData")]
+        public async Task<IActionResult> GetVoidReconciliationData([FromQuery] VoidReconciliationRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetVoidReconciliationDataAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
+            }
+        }
     }
 }
 

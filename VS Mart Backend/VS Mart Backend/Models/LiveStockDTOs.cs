@@ -469,5 +469,60 @@ namespace VS_Mart_Backend.Models
         public SaleDataSummary Summary { get; set; } = new SaleDataSummary();
         public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
     }
+
+    public class VoidDetailsRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortColumn { get; set; } = "DATE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? ColumnName { get; set; } = string.Empty;
+        public string? StoreName { get; set; } = string.Empty;
+        public string? FromDate { get; set; } = string.Empty;
+        public string? ToDate { get; set; } = string.Empty;
+    }
+
+    public class VoidDetailsResponse
+    {
+        public object? Data { get; set; }
+
+        public int? PageIndex { get; set; }
+
+        public int? RecordCount { get; set; }
+
+        public int? VoidQty { get; set; }
+
+        public int? EncodeQty { get; set; }
+
+        public int? DifferenceQty { get; set; }
+    }
+
+    public class VoidReconciliationRequest
+    {
+        public string? SearchTerm { get; set; } = string.Empty;
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortColumn { get; set; } = "DATE";
+        public string? SortDirection { get; set; } = "asc";
+        public string? StoreName { get; set; } = string.Empty;
+        public string? FromDate { get; set; } = string.Empty;
+        public string? ToDate { get; set; } = string.Empty;
+        public string? pos { get; set; } = string.Empty;
+        public string? Ean { get; set; } = string.Empty;
+    }
+
+    public class VoidReconciliationResponse
+    {
+        public int PageIndex { get; set; }
+        public int RecordCount { get; set; }
+        public int VoidQty { get; set; }
+        public int EncodeQty { get; set; }
+        public int DifferenceQty { get; set; }
+        public object? Data { get; set; }
+
+      
+    }
+
 }
 
