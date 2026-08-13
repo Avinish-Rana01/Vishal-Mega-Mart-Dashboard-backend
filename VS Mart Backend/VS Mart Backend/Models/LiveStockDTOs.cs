@@ -524,5 +524,25 @@ namespace VS_Mart_Backend.Models
       
     }
 
+    public class POSCounterResponse
+    {
+        public string? id { get; set; }
+        public string? text { get; set; }
+    }
+
+    public class EANItem
+    {
+        public string? id { get; set; }
+        public string? text { get; set; }
+    }
+
+    public class SearchEANRequest
+    {
+        public string SearchTerm { get; set; } = "";
+        public string Store { get; set; } = "";
+        public string Pos { get; set; } = "";
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+    }
 }
 

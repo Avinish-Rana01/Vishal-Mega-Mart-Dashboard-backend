@@ -363,7 +363,7 @@ namespace VS_Mart_Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred while fetching Void details.", error = ex.Message });
             }
         }
         [HttpGet("GetVoidReconciliationData")]
@@ -376,9 +376,39 @@ namespace VS_Mart_Backend.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while fetching sale data.", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred while fetching Void reconciliation data.", error = ex.Message });
             }
         }
+
+        [HttpGet("void/pos-counters")]
+        public async Task<IActionResult> VoidBindPOSCounter([FromQuery] BindPOSCounterRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.VoidBindPOSCounter(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching POS counters.", error = ex.Message });
+            }
+        }
+        [HttpGet("void-SearchEAN")]
+        public async Task<IActionResult> SearchEAN([FromQuery] SearchEANRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.SearchEAN(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching EANs.", error = ex.Message });
+            }
+        }
+
+
+
     }
 }
 
