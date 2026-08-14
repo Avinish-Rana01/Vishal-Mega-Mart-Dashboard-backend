@@ -63,7 +63,7 @@ namespace VS_Mart_Backend.Services
 
             if (_cache.TryGetValue(cacheKey, out CacheItem<T>? cachedItem) && cachedItem != null)
             {
-                if (DateTime.UtcNow - cachedItem.CreatedAt > TimeSpan.FromSeconds(100)) // Stale after 1 min 40s
+                if (DateTime.UtcNow - cachedItem.CreatedAt > TimeSpan.FromSeconds(20)) // Stale after 20s
                 {
                     if (_refreshingKeys.TryAdd(cacheKey, true))
                     {
@@ -72,7 +72,7 @@ namespace VS_Mart_Backend.Services
                             try
                             {
                                 var freshData = await databaseQuery();
-                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(2));
+                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
                             }
                             finally
                             {
@@ -85,7 +85,7 @@ namespace VS_Mart_Backend.Services
             }
 
             var initialData = await databaseQuery();
-            _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(2));
+            _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
             return initialData;
         }
 
@@ -120,8 +120,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("[SP_New_Dashboard]", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
-
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         // Input Parameters
                         cmd.Parameters.AddWithValue("@status", "LIVE_STOCK_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
@@ -205,8 +204,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
-
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         // Input Parameters
                         cmd.Parameters.AddWithValue("@status", "TAG_CYCLE_COUNT");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
@@ -297,7 +295,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "STORE_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -349,11 +347,7 @@ namespace VS_Mart_Backend.Services
 
         public async Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request)
         {
-            string cacheKey = $"StoreGrcReport_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
-
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
-            {
-                var response = new StoreDashboardResponse();
+            var response = new StoreDashboardResponse();
                 string connectionString = _configuration.GetConnectionString("POS")
                     ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -361,7 +355,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_NEW_DASHBOARD", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "LAST7DAY_STORE_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.StoreCode ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -421,7 +415,6 @@ namespace VS_Mart_Backend.Services
                     }
                 }
                 return response;
-            });
         }
 
 
@@ -442,7 +435,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "SALE_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -519,7 +512,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "RETURN_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -582,7 +575,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "VOID_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -645,7 +638,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("SP_New_Dashboard", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@Status", "DC_VALIDATE_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -699,8 +692,7 @@ namespace VS_Mart_Backend.Services
             {
                 using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-
+                    cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                     // Input Parameters
                     cmd.Parameters.AddWithValue("@status", "CYCLE_COUNT_REPORT_VIEW");
                     cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
@@ -766,8 +758,7 @@ namespace VS_Mart_Backend.Services
                 {
                     using (var cmd = new SqlCommand("[SP_New_Dashboard]", connection))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
-
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         int userId = 0;
                         if (!string.IsNullOrEmpty(request.UserId))
                         {
@@ -821,11 +812,7 @@ namespace VS_Mart_Backend.Services
 
         public async Task<CycleCountDetailsResponse> GetCycleCountDetailsAsync(CycleCountDetailsQueryRequest request)
         {
-            string cacheKey = $"CycleCountDetails_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.RefNo}";
-
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
-            {
-                var response = new CycleCountDetailsResponse();
+            var response = new CycleCountDetailsResponse();
                 string connectionString = _configuration.GetConnectionString("POS")
                     ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
 
@@ -886,7 +873,6 @@ namespace VS_Mart_Backend.Services
                     }
                 }
                 return response;
-            });
         }
 
         public void InvalidateDashboardCache(string userId = "26")
@@ -923,7 +909,7 @@ namespace VS_Mart_Backend.Services
                     using (SqlConnection conn = new SqlConnection(connectionString))
                     using (SqlCommand cmd = new SqlCommand("SP_New_Dashboard", conn))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@Status", "HU_DISCREPANCY_VENDOR_DASHBOARD");
                         cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
                         cmd.Parameters.AddWithValue("@PageIndex", request.PageIndex);
@@ -1001,7 +987,7 @@ namespace VS_Mart_Backend.Services
                     using (SqlConnection conn = new SqlConnection(connectionString))
                     using (SqlCommand cmd = new SqlCommand("SP_NEW_REPORT", conn))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "TAG_MANAGEMENT_LOCATION");
                         cmd.Parameters.AddWithValue("@SearchTerm", "");
                         cmd.Parameters.AddWithValue("@PageIndex", 1);
@@ -1070,7 +1056,7 @@ namespace VS_Mart_Backend.Services
                     using (SqlConnection conn = new SqlConnection(connectionString))
                     using (SqlCommand cmd = new SqlCommand("SP_NEW_REPORT", conn))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@status", "SHOW_WAREHOUSE_ENCODE_DATA");
                         cmd.Parameters.AddWithValue("@fromdate", request.FromDate);
                         cmd.Parameters.AddWithValue("@todate", request.ToDate);
@@ -1163,10 +1149,6 @@ namespace VS_Mart_Backend.Services
         {
             try
             {
-                string cacheKey = $"StoreSaleReport_{request.UserId}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
-
-                return await GetOrCreateWithSWRAsync(cacheKey, async () =>
-                {
                     var response = new StoreSaleReportResponse();
 
                     string connectionString = _configuration.GetConnectionString("POS")
@@ -1271,7 +1253,6 @@ namespace VS_Mart_Backend.Services
                     };
 
                     return response;
-                });
             }
             catch (Exception ex)
             {
@@ -1290,7 +1271,7 @@ namespace VS_Mart_Backend.Services
                 using (var connection = new SqlConnection(connectionString))
                 using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                     string status = "";
                     if (request.ColumnName == "TOTAL_DPOS_SALE") status = "BIND_COUNTER_FOR_POS_SALE";
                     else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "BIND_COUNTER_FOR_RFID_DPOS_SALE";
@@ -1333,7 +1314,7 @@ namespace VS_Mart_Backend.Services
                 using (var connection = new SqlConnection(connectionString))
                 using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                     string status = "";
                     bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
 
@@ -1384,7 +1365,7 @@ namespace VS_Mart_Backend.Services
                 using (var connection = new SqlConnection(connectionString))
                 using (var cmd = new SqlCommand("[SP_NEW_REPORT]", connection))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                     string status = "";
                     bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
 
@@ -1651,8 +1632,7 @@ namespace VS_Mart_Backend.Services
                     toDate = DateTime.Parse(ToDateValue);
                 }
 
-                cmd.CommandType = CommandType.StoredProcedure;
-
+                cmd.CommandType = CommandType.StoredProcedure; cmd.CommandTimeout = 120;
                 cmd.Parameters.AddWithValue("@status", "SHOW_SUMMARY_FOR_VOID");
                 cmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
 
@@ -1880,4 +1860,6 @@ namespace VS_Mart_Backend.Services
 
     }
 }
+
+
 

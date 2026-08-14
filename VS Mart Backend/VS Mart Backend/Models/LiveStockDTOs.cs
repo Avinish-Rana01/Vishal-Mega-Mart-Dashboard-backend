@@ -538,11 +538,11 @@ namespace VS_Mart_Backend.Models
 
     public class SearchEANRequest
     {
-        public string SearchTerm { get; set; } = "";
-        public string Store { get; set; } = "";
-        public string Pos { get; set; } = "";
-        public string FromDate { get; set; } = "";
-        public string ToDate { get; set; } = "";
+        public string? SearchTerm { get; set; } = string.Empty;
+        public string? Store { get; set; } = string.Empty;
+        public string? Pos { get; set; } = string.Empty;
+        public string? FromDate { get; set; } = string.Empty;
+        public string? ToDate { get; set; } = string.Empty;
     }
 }
 

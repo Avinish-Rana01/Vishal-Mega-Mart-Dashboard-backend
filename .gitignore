@@ -7,3 +7,5 @@ obj/
 appsettings.Development.json
 TempTest/bin/
 TempTest/obj/
+
+appsettings.json

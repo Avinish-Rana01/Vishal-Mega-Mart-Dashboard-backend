@@ -36,15 +36,13 @@ namespace VS_Mart_Backend.Services
                         if (!liveStockService.IsCacheEnabled())
                         {
                             _logger.LogInformation("Cache is currently DISABLED. Skipping pre-warming iteration.");
-                            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+                            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                             continue;
                         }
 
                         string superAdminId = "26";
 
                         // Clear old caches for Super Admin
-                        liveStockService.InvalidateDashboardCache(superAdminId);
-
                         // Pre-warm Live Stock Details
                         var liveStockRequest = new LiveStockQueryRequest
                         {
@@ -53,7 +51,7 @@ namespace VS_Mart_Backend.Services
                             PageIndex = 1,
                             PageSize = 100
                         };
-                        await liveStockService.GetLiveStockDetailsAsync(liveStockRequest);
+                        await liveStockService.GetLiveStockDetailsAsync(liveStockRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Cycle Count Dashboard
                         var cycleCountRequest = new CycleCountDashboardQueryRequest
@@ -65,7 +63,7 @@ namespace VS_Mart_Backend.Services
                             SortColumn = "STORE CODE",
                             SortDirection = "ASC"
                         };
-                        await liveStockService.GetCycleCountDashboardAsync(cycleCountRequest);
+                        await liveStockService.GetCycleCountDashboardAsync(cycleCountRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Vendor HU Discrepancy
                         var vendorHuRequest = new VendorHUDiscrepancyQueryRequest
@@ -77,11 +75,11 @@ namespace VS_Mart_Backend.Services
                             SortColumn = "DIFF_TILL_DATE",
                             SortDirection = "asc"
                         };
-                        await liveStockService.GetVendorHUDiscrepancyAsync(vendorHuRequest);
+                        await liveStockService.GetVendorHUDiscrepancyAsync(vendorHuRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Tag Management
                         var tagRequest = new TagManagementQueryRequest();
-                        await liveStockService.GetTagManagementDataAsync(tagRequest);
+                        await liveStockService.GetTagManagementDataAsync(tagRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Warehouse Encoding (for today)
                         var encodeRequest = new WarehouseEncodingQueryRequest
@@ -89,7 +87,7 @@ namespace VS_Mart_Backend.Services
                             FromDate = DateTime.Now.ToString("yyyy-MM-dd"),
                             ToDate = DateTime.Now.ToString("yyyy-MM-dd")
                         };
-                        await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest);
+                        await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Store Dashboard
                         var storeDashboardRequest = new StoreDashboardQueryRequest
@@ -101,7 +99,7 @@ namespace VS_Mart_Backend.Services
                             SortColumn = "Store",
                             SortDirection = "asc"
                         };
-                        await liveStockService.GetStoreDashboardAsync(storeDashboardRequest);
+                        await liveStockService.GetStoreDashboardAsync(storeDashboardRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Sale Dashboard
                         var saleDashboardRequest = new SaleDashboardQueryRequest
@@ -111,7 +109,7 @@ namespace VS_Mart_Backend.Services
                             PageIndex = 1,
                             PageSize = 100
                         };
-                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest);
+                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Void Dashboard
                         var voidDashboardRequest = new VoidDashboardQueryRequest
@@ -121,7 +119,7 @@ namespace VS_Mart_Backend.Services
                             PageIndex = 1,
                             PageSize = 100
                         };
-                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest);
+                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Return Dashboard
                         var returnDashboardRequest = new ReturnDashboardQueryRequest
@@ -131,7 +129,7 @@ namespace VS_Mart_Backend.Services
                             PageIndex = 1,
                             PageSize = 100
                         };
-                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest);
+                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm DC Validate Dashboard
                         var dcValidateRequest = new DcValidateDashboardQueryRequest
@@ -140,7 +138,7 @@ namespace VS_Mart_Backend.Services
                             PageIndex = 1,
                             PageSize = 100
                         };
-                        await liveStockService.GetDcValidateDashboardAsync(dcValidateRequest);
+                        await liveStockService.GetDcValidateDashboardAsync(dcValidateRequest); await Task.Delay(1000, stoppingToken);
 
                         // Pre-warm Tag Cycle Count
                         var tagCycleCountRequest = new TagCycleCountQueryRequest
@@ -151,7 +149,7 @@ namespace VS_Mart_Backend.Services
                             SortColumn = "CYCLE_COUNT",
                             SortDirection = "DESC"
                         };
-                        await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest);
+                        await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest); await Task.Delay(1000, stoppingToken);
 
                         _logger.LogInformation("Cache successfully pre-warmed for Super Admin.");
                     }
@@ -162,10 +160,11 @@ namespace VS_Mart_Backend.Services
                 }
 
                 // Wait for 2 minutes before the next run
-                await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
             }
 
             _logger.LogInformation("CacheWarmerService is stopping.");
         }
     }
 }
+
