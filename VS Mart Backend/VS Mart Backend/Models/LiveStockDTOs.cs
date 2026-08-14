@@ -572,19 +572,19 @@ namespace VS_Mart_Backend.Models
 
     public class ReturnReconciliationRequest
     {
-        public string SearchTerm { get; set; } = "";
+        public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
 
-        public string FromDate { get; set; } = "";
-        public string ToDate { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
 
-        public string Ean { get; set; } = "";
-        public string StoreName { get; set; } = "";
-        public string Pos { get; set; } = "";
+        public string? Ean { get; set; } = "";
+        public string? StoreName { get; set; } = "";
+        public string? Pos { get; set; } = "";
 
-        public string SortColumn { get; set; } = "";
-        public string SortDirection { get; set; } = "";
+        public string? SortColumn { get; set; } = "";
+        public string? SortDirection { get; set; } = "";
     }
 
     public class ReturnReconciliationResponse
@@ -605,16 +605,16 @@ namespace VS_Mart_Backend.Models
 
     public class DCDetailsRequest
     {
-        public string SearchTerm { get; set; } = "";
+        public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
 
-        public string StoreName { get; set; } = "";
-        public string FromDate { get; set; } = "";
-        public string ToDate { get; set; } = "";
+        public string? StoreName { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
 
-        public string SortColumn { get; set; } = "";
-        public string SortDirection { get; set; } = "";
+        public string? SortColumn { get; set; } = "";
+        public string? SortDirection { get; set; } = "";
     }
 
     public class DCDetailsResponse
@@ -635,20 +635,20 @@ namespace VS_Mart_Backend.Models
 
     public class HUDetailsRequest
     {
-        public string SearchTerm { get; set; } = "";
+        public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
 
-        public string HUStatus { get; set; } = "";
-        public string HUNo { get; set; } = "";
+        public string? HUStatus { get; set; } = "";
+        public string? HUNo { get; set; } = "";
 
-        public string FromDate { get; set; } = "";
-        public string ToDate { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
 
-        public string ReceivingPlant { get; set; } = "";
+        public string? ReceivingPlant { get; set; } = "";
 
-        public string SortColumn { get; set; } = "";
-        public string SortDirection { get; set; } = "";
+        public string? SortColumn { get; set; } = "";
+        public string? SortDirection { get; set; } = "";
     }
 
     public class HUDetailsResponse
@@ -671,20 +671,20 @@ namespace VS_Mart_Backend.Models
 
     public class EncodingStoreDataRequest
     {
-        public string SearchTerm { get; set; } = "";
+        public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
 
-        public string FromDate { get; set; } = "";
-        public string ToDate { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
 
-        public string Ean { get; set; } = "";
-        public string ArticleNo { get; set; } = "";
-        public string StoreName { get; set; } = "";
+        public string? Ean { get; set; } = "";
+        public string? ArticleNo { get; set; } = "";
+        public string? StoreName { get; set; } = "";
         public int? UserId { get; set; } = 0;
 
-        public string SortColumn { get; set; } = "";
-        public string SortDirection { get; set; } = "";
+        public string? SortColumn { get; set; } = "";
+        public string? SortDirection { get; set; } = "";
     }
 
     public class EncodingStoreDataResponse

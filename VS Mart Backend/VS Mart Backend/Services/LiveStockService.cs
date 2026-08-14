@@ -1229,6 +1229,8 @@ namespace VS_Mart_Backend.Services
                         response.Items.Add(row);
                     }
 
+                    await reader.CloseAsync();
+
                     response.Summary = new StoreSaleReportSummary
                     {
                         RecordCount = pRecordCount.Value == DBNull.Value
@@ -2550,6 +2552,7 @@ namespace VS_Mart_Backend.Services
 
     }
 }
+
 
 
 
