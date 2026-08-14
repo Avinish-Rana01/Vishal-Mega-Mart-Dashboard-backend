@@ -969,7 +969,7 @@ namespace VS_Mart_Backend.Services
                     return response;
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new VendorHUDiscrepancyResponse();
             }
@@ -1038,7 +1038,7 @@ namespace VS_Mart_Backend.Services
                     return response;
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new TagManagementResponse();
             }
@@ -1142,7 +1142,7 @@ namespace VS_Mart_Backend.Services
                     return response;
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new WarehouseEncodingResponse();
             }
@@ -1260,7 +1260,7 @@ namespace VS_Mart_Backend.Services
 
                     return response;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new StoreSaleReportResponse();
             }
@@ -1304,7 +1304,7 @@ namespace VS_Mart_Backend.Services
                 }
                 return list;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new List<DropdownItem>();
             }
@@ -1355,7 +1355,7 @@ namespace VS_Mart_Backend.Services
                 }
                 return list;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new List<DropdownItem>();
             }
@@ -1407,7 +1407,7 @@ namespace VS_Mart_Backend.Services
                 }
                 return list;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new List<DropdownItem>();
             }
@@ -1481,7 +1481,7 @@ namespace VS_Mart_Backend.Services
                 }
                 return response;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new SaleDataResponse();
             }
@@ -1605,7 +1605,7 @@ namespace VS_Mart_Backend.Services
                     DifferenceQty = differenceCount
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new VoidDetailsResponse();
             }
@@ -1625,8 +1625,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -1711,7 +1711,7 @@ namespace VS_Mart_Backend.Services
 
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new VoidReconciliationResponse();
             }
@@ -1730,8 +1730,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -1791,7 +1791,7 @@ namespace VS_Mart_Backend.Services
 
         public async Task<List<EANItem>> SearchEAN(SearchEANRequest request)
         {
-            string sqrcon = _configuration.GetConnectionString("POS");
+            var sqrcon = _configuration.GetConnectionString("POS");
             string SP_NAME = "SP_NEW_REPORT";
             List<EANItem> list = new List<EANItem>();
 
@@ -1810,8 +1810,8 @@ namespace VS_Mart_Backend.Services
             DateTime? fromDate = null;
             DateTime? toDate = null;
 
-            string fromDateValue = request.FromDate?.Trim('"');
-            string ToDateValue = request.ToDate?.Trim('"');
+            var fromDateValue = request.FromDate?.Trim('"');
+            var ToDateValue = request.ToDate?.Trim('"');
 
             if (!string.IsNullOrWhiteSpace(fromDateValue))
             {
@@ -1877,8 +1877,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -1975,7 +1975,7 @@ namespace VS_Mart_Backend.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new ReturnDetailsResponse();
             }
@@ -1994,8 +1994,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -2149,8 +2149,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -2266,7 +2266,7 @@ namespace VS_Mart_Backend.Services
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new DCDetailsResponse();
             }
@@ -2283,8 +2283,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -2438,8 +2438,8 @@ namespace VS_Mart_Backend.Services
                 DateTime? fromDate = null;
                 DateTime? toDate = null;
 
-                string fromDateValue = request.FromDate?.Trim('"');
-                string ToDateValue = request.ToDate?.Trim('"');
+                var fromDateValue = request.FromDate?.Trim('"');
+                var ToDateValue = request.ToDate?.Trim('"');
 
                 if (!string.IsNullOrWhiteSpace(fromDateValue))
                 {
@@ -2544,7 +2544,7 @@ namespace VS_Mart_Backend.Services
                     Data = data
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new EncodingStoreDataResponse();
             }
@@ -2552,6 +2552,8 @@ namespace VS_Mart_Backend.Services
 
     }
 }
+
+
 
 
 
