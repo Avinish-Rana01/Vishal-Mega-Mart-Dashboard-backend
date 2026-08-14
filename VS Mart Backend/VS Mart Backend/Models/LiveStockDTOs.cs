@@ -28,7 +28,7 @@ namespace VS_Mart_Backend.Models
     {
         public int PageIndex { get; set; }
         public int RecordCount { get; set; }
-        public int TotalCount { get; set; }
+        public int? TotalCount { get; set; }
         public int SapQty { get; set; }
         public int RfidQty { get; set; }
         public int DiffQty { get; set; }
@@ -543,6 +543,160 @@ namespace VS_Mart_Backend.Models
         public string? Pos { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
+    }
+
+    public class ReturnDetailsRequest
+    {
+        public string? SearchTerm { get; set; } = "";
+        public int? PageIndex { get; set; }
+        public int? PageSize { get; set; }
+
+        public string? StoreName { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
+
+        public string? SortColumn { get; set; } = "";
+        public string? SortDirection { get; set; } = "";
+    }
+
+    public class ReturnDetailsResponse
+    {
+        public int? PageIndex { get; set; }
+        public int? RecordCount { get; set; }
+        public int? ReturnQty { get; set; }
+        public int? EncodeQty { get; set; }
+        public int? DifferenceQty { get; set; }
+
+        public object? Data { get; set; }
+    }
+
+    public class ReturnReconciliationRequest
+    {
+        public string SearchTerm { get; set; } = "";
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+
+        public string Ean { get; set; } = "";
+        public string StoreName { get; set; } = "";
+        public string Pos { get; set; } = "";
+
+        public string SortColumn { get; set; } = "";
+        public string SortDirection { get; set; } = "";
+    }
+
+    public class ReturnReconciliationResponse
+    {
+        public int PageIndex { get; set; }
+
+        public int RecordCount { get; set; }
+
+        public int ReturnQty { get; set; }
+
+        public int EncodeQty { get; set; }
+
+        public int DifferenceQty { get; set; }
+
+        public List<Dictionary<string, object?>> Data { get; set; }
+            = new();
+    }
+
+    public class DCDetailsRequest
+    {
+        public string SearchTerm { get; set; } = "";
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+
+        public string StoreName { get; set; } = "";
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+
+        public string SortColumn { get; set; } = "";
+        public string SortDirection { get; set; } = "";
+    }
+
+    public class DCDetailsResponse
+    {
+        public int PageIndex { get; set; }
+
+        public int RecordCount { get; set; }
+
+        public int ProcessedCount { get; set; }
+
+        public int UnprocessedCount { get; set; }
+
+        public int ValidatedCount { get; set; }
+
+        public List<Dictionary<string, object?>> Data { get; set; }
+            = new();
+    }
+
+    public class HUDetailsRequest
+    {
+        public string SearchTerm { get; set; } = "";
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+
+        public string HUStatus { get; set; } = "";
+        public string HUNo { get; set; } = "";
+
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+
+        public string ReceivingPlant { get; set; } = "";
+
+        public string SortColumn { get; set; } = "";
+        public string SortDirection { get; set; } = "";
+    }
+
+    public class HUDetailsResponse
+    {
+        public int PageIndex { get; set; }
+
+        public int RecordCount { get; set; }
+
+        public int MaterialQty { get; set; }
+
+        public int ActualQty { get; set; }
+
+        public int ScannedQty { get; set; }
+
+        public int InvalidTags { get; set; }
+
+        public List<Dictionary<string, object?>> Data { get; set; }
+            = new();
+    }
+
+    public class EncodingStoreDataRequest
+    {
+        public string SearchTerm { get; set; } = "";
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
+
+        public string FromDate { get; set; } = "";
+        public string ToDate { get; set; } = "";
+
+        public string Ean { get; set; } = "";
+        public string ArticleNo { get; set; } = "";
+        public string StoreName { get; set; } = "";
+        public int? UserId { get; set; } = 0;
+
+        public string SortColumn { get; set; } = "";
+        public string SortDirection { get; set; } = "";
+    }
+
+    public class EncodingStoreDataResponse
+    {
+        public int PageIndex { get; set; }
+
+        public int RecordCount { get; set; }
+
+        public int TotalCount { get; set; }
+
+        public List<Dictionary<string, object?>> Data { get; set; }
+            = new();
     }
 }
 

@@ -41,7 +41,11 @@ namespace VS_Mart_Backend.Services
         Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request);
         Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request);
         Task<List<EANItem>> SearchEAN(SearchEANRequest request);
-
+        Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request);
+        Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request);
+        Task<DCDetailsResponse> GetDCDetails(DCDetailsRequest request);
+        Task<HUDetailsResponse> GetHUDetails(HUDetailsRequest request);
+        Task<EncodingStoreDataResponse> GetEncodingStoreData(EncodingStoreDataRequest request);
     }
 
     public class LiveStockService : ILiveStockService
@@ -969,7 +973,7 @@ namespace VS_Mart_Backend.Services
             {
                 return new VendorHUDiscrepancyResponse();
             }
-           
+
         }
 
         public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request)
@@ -1038,7 +1042,7 @@ namespace VS_Mart_Backend.Services
             {
                 return new TagManagementResponse();
             }
-            
+
         }
 
         public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request)
@@ -1138,11 +1142,11 @@ namespace VS_Mart_Backend.Services
                     return response;
                 });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new WarehouseEncodingResponse();
             }
-           
+
         }
 
         public async Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request)
@@ -1258,7 +1262,7 @@ namespace VS_Mart_Backend.Services
             {
                 return new StoreSaleReportResponse();
             }
-            
+
         }
 
 
@@ -1298,11 +1302,11 @@ namespace VS_Mart_Backend.Services
                 }
                 return list;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new List<DropdownItem>();
             }
-            
+
         }
 
         public async Task<List<DropdownItem>> SearchArticlesSaleAsync(SearchArticlesSaleRequest request)
@@ -1353,7 +1357,7 @@ namespace VS_Mart_Backend.Services
             {
                 return new List<DropdownItem>();
             }
-            
+
         }
 
         public async Task<List<DropdownItem>> SearchEANSaleAsync(SearchEANSaleRequest request)
@@ -1401,11 +1405,11 @@ namespace VS_Mart_Backend.Services
                 }
                 return list;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new List<DropdownItem>();
             }
-            
+
         }
 
         public async Task<SaleDataResponse> GetSaleDataAsync(SaleDataQueryRequest request)
@@ -1475,11 +1479,11 @@ namespace VS_Mart_Backend.Services
                 }
                 return response;
             }
-            catch(Exception ex )
+            catch (Exception ex)
             {
                 return new SaleDataResponse();
             }
-            
+
         }
 
         public async Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request)
@@ -1603,7 +1607,7 @@ namespace VS_Mart_Backend.Services
             {
                 return new VoidDetailsResponse();
             }
-            
+
         }
 
         public async Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request)
@@ -1702,14 +1706,14 @@ namespace VS_Mart_Backend.Services
                                 : row[column]
                         ))
                     .ToList()
-                    
+
                 };
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return new VoidReconciliationResponse();
             }
-           
+
         }
 
         public async Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request)
@@ -1745,7 +1749,7 @@ namespace VS_Mart_Backend.Services
                 parameters.Add(new SqlParameter("@todate", toDate));
                 parameters.Add(new SqlParameter("@STORE_CODE", request.Store ?? ""));
 
-               
+
 
                 using (SqlConnection connection = new SqlConnection(sqlcon))
                 {
@@ -1841,7 +1845,7 @@ namespace VS_Mart_Backend.Services
                 }
             }
 
-           
+
 
             if (ds.Tables.Count > 0)
             {
@@ -1856,6 +1860,692 @@ namespace VS_Mart_Backend.Services
             }
 
             return list;
+        }
+
+        public async Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request)
+        {
+            string connectionString = _configuration.GetConnectionString("POS")!;
+
+            string spName = "SP_NEW_DASHBOARD";
+
+            DataSet ds = new DataSet();
+
+            try
+            {
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                string fromDateValue = request.FromDate?.Trim('"');
+                string ToDateValue = request.ToDate?.Trim('"');
+
+                if (!string.IsNullOrWhiteSpace(fromDateValue))
+                {
+                    fromDate = DateTime.Parse(fromDateValue);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ToDateValue))
+                {
+                    toDate = DateTime.Parse(ToDateValue);
+                }
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand command = new SqlCommand(spName, connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        command.Parameters.AddWithValue("@status", "LAST7DAY_RETURN_DASHBOARD");
+
+                        command.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+
+                        command.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+
+                        command.Parameters.AddWithValue("@PageSize", request.PageSize);
+
+                        command.Parameters.AddWithValue("@Store_Code", request.StoreName ?? "");
+
+                        command.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDate.HasValue ? fromDate.Value.Date : DBNull.Value;
+
+                        command.Parameters.Add("@todate", SqlDbType.Date).Value = toDate.HasValue ? toDate.Value.Date : DBNull.Value;
+
+                        command.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn);
+
+                        command.Parameters.AddWithValue("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection);
+
+                        // OUTPUT PARAMETERS
+
+                        SqlParameter recordCount = command.Parameters.Add("@RecordCount", SqlDbType.Int);
+
+                        recordCount.Direction = ParameterDirection.Output;
+
+                        SqlParameter qty = command.Parameters.Add("@QTY", SqlDbType.Int);
+
+                        qty.Direction = ParameterDirection.Output;
+
+                        SqlParameter encodedQty = command.Parameters.Add("@ENCODED_QTY", SqlDbType.Int);
+
+                        encodedQty.Direction = ParameterDirection.Output;
+
+                        SqlParameter diffQty = command.Parameters.Add("@DIFF_QTY", SqlDbType.Int);
+
+                        diffQty.Direction = ParameterDirection.Output;
+
+                        // Execute Stored Procedure
+
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(ds);
+                        }
+
+                        // Read OUTPUT parameters
+
+                        int recordCountValue = recordCount.Value == DBNull.Value ? 0 : Convert.ToInt32(recordCount.Value);
+
+                        int returnQtyValue = qty.Value == DBNull.Value ? 0 : Convert.ToInt32(qty.Value);
+
+                        int encodeQtyValue = encodedQty.Value == DBNull.Value ? 0 : Convert.ToInt32(encodedQty.Value);
+
+                        int differenceQtyValue = diffQty.Value == DBNull.Value ? 0 : Convert.ToInt32(diffQty.Value);
+
+                        // Prepare response
+
+                        return new ReturnDetailsResponse
+                        {
+                            PageIndex = request.PageIndex,
+
+                            RecordCount = recordCountValue,
+
+                            ReturnQty = returnQtyValue,
+
+                            EncodeQty = encodeQtyValue,
+
+                            DifferenceQty = differenceQtyValue,
+
+                            Data = ds.Tables[0].AsEnumerable()
+                                    .Select(row => ds.Tables[0].Columns.Cast<DataColumn>()
+                                        .ToDictionary(
+                                            column => column.ColumnName,
+                                            column => row[column] == DBNull.Value
+                                                ? null
+                                                : row[column]
+                                        ))
+                                    .ToList()
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return new ReturnDetailsResponse();
+            }
+        }
+
+        public async Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request)
+        {
+            string connectionString = _configuration.GetConnectionString("POS")!;
+
+            string spName = "SP_NEW_REPORT";
+
+            DataSet ds = new DataSet();
+
+            try
+            {
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                string fromDateValue = request.FromDate?.Trim('"');
+                string ToDateValue = request.ToDate?.Trim('"');
+
+                if (!string.IsNullOrWhiteSpace(fromDateValue))
+                {
+                    fromDate = DateTime.Parse(fromDateValue);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ToDateValue))
+                {
+                    toDate = DateTime.Parse(ToDateValue);
+                }
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand command = new SqlCommand(spName, connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+
+                        // Normal parameters
+
+                        command.Parameters.AddWithValue("@status", "SHOW_SUMMARY_FOR_RETURN");
+
+                        command.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+
+                        command.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+
+                        command.Parameters.AddWithValue("@PageSize", request.PageSize);
+
+                        command.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDate.HasValue ? fromDate.Value.Date : DBNull.Value;
+
+                        command.Parameters.Add("@todate", SqlDbType.Date).Value = toDate.HasValue ? toDate.Value.Date : DBNull.Value;
+
+                        command.Parameters.AddWithValue("@STORE_CODE", request.StoreName ?? "");
+
+                        command.Parameters.AddWithValue("@COUNTER_NO", request.Pos ?? "");
+
+                        command.Parameters.AddWithValue("@EAN", request.Ean ?? "");
+
+                        command.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "BILL_DATE" : request.SortColumn);
+
+                        command.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+
+                        // OUTPUT PARAMETERS
+
+                        SqlParameter recordCount = command.Parameters.Add("@RecordCount", SqlDbType.Int);
+
+                        recordCount.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter qty = command.Parameters.Add("@QTY", SqlDbType.Int);
+
+                        qty.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter encQty = command.Parameters.Add("@ENCQTY", SqlDbType.Int);
+
+                        encQty.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter diffQty = command.Parameters.Add("@DIFFQTY", SqlDbType.Int);
+
+                        diffQty.Direction = ParameterDirection.Output;
+
+
+                        // Execute stored procedure
+
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(ds, "ReturnReconciliationData");
+                        }
+
+
+                        // Read output parameters
+
+                        int recordCountValue = recordCount.Value == DBNull.Value ? 0 : Convert.ToInt32(recordCount.Value);
+
+
+                        int returnQtyValue = qty.Value == DBNull.Value ? 0 : Convert.ToInt32(qty.Value);
+
+
+                        int encodeQtyValue = encQty.Value == DBNull.Value ? 0 : Convert.ToInt32(encQty.Value);
+
+
+                        int differenceQtyValue = diffQty.Value == DBNull.Value ? 0 : Convert.ToInt32(diffQty.Value);
+
+
+                        // Convert DataTable to List
+
+                        List<Dictionary<string, object?>> data = new List<Dictionary<string, object?>>();
+
+
+                        if (ds.Tables.Count > 0)
+                        {
+                            DataTable table = ds.Tables[0];
+
+                            foreach (DataRow row in table.Rows)
+                            {
+                                Dictionary<string, object?> item =
+                                    new Dictionary<string, object?>();
+
+                                foreach (DataColumn column in table.Columns)
+                                {
+                                    item[column.ColumnName] =
+                                        row[column] == DBNull.Value
+                                            ? null
+                                            : row[column];
+                                }
+
+                                data.Add(item);
+                            }
+                        }
+
+
+                        // Return response
+
+                        return new ReturnReconciliationResponse
+                        {
+                            PageIndex = request.PageIndex,
+
+                            RecordCount = recordCountValue,
+
+                            ReturnQty = returnQtyValue,
+
+                            EncodeQty = encodeQtyValue,
+
+                            DifferenceQty = differenceQtyValue,
+
+                            Data = data
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(
+                    "Error while fetching return reconciliation data.",
+                    ex
+                );
+            }
+        }
+
+        public async Task<DCDetailsResponse> GetDCDetails(DCDetailsRequest request)
+        {
+            string connectionString = _configuration.GetConnectionString("POS")!;
+
+            string spName = "SP_NEW_DASHBOARD";
+
+            DataSet ds = new DataSet();
+
+            try
+            {
+
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                string fromDateValue = request.FromDate?.Trim('"');
+                string ToDateValue = request.ToDate?.Trim('"');
+
+                if (!string.IsNullOrWhiteSpace(fromDateValue))
+                {
+                    fromDate = DateTime.Parse(fromDateValue);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ToDateValue))
+                {
+                    toDate = DateTime.Parse(ToDateValue);
+                }
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand command = new SqlCommand(spName, connection))
+                    {
+
+                        command.CommandType = CommandType.StoredProcedure;
+                        // Normal parameters
+
+                        command.Parameters.AddWithValue("@status", "LAST7DAY_DC_VALIDATE_DASHBOARD");
+                        command.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                        command.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                        command.Parameters.AddWithValue("@PageSize", request.PageSize);
+                        command.Parameters.AddWithValue("@Store_Code", request.StoreName ?? "");
+                        command.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDate.HasValue ? fromDate.Value.Date : DBNull.Value;
+                        command.Parameters.Add("@todate", SqlDbType.Date).Value = toDate.HasValue ? toDate.Value.Date : DBNull.Value;
+                        command.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn);
+                        command.Parameters.AddWithValue("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection);
+
+
+                        // OUTPUT PARAMETERS
+
+                        SqlParameter recordCount = command.Parameters.Add("@RecordCount", SqlDbType.Int);
+
+                        recordCount.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter processedHU = command.Parameters.Add("@PROCESSED_HU", SqlDbType.Int);
+
+                        processedHU.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter unprocessedHU = command.Parameters.Add("@UNPROCESSED_HU", SqlDbType.Int);
+
+                        unprocessedHU.Direction = ParameterDirection.Output;
+
+
+                        SqlParameter processedArticleQty = command.Parameters.Add("@PROCESSED_ARTICLE_QTY", SqlDbType.Int);
+
+                        processedArticleQty.Direction = ParameterDirection.Output;
+
+
+                        // Execute Stored Procedure
+
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(ds, "DCData");
+                        }
+
+
+                        // Read OUTPUT parameters
+
+                        int recordCountValue = recordCount.Value == DBNull.Value ? 0 : Convert.ToInt32(recordCount.Value);
+
+
+                        int processedHUValue = processedHU.Value == DBNull.Value ? 0 : Convert.ToInt32(processedHU.Value);
+
+
+                        int unprocessedHUValue = unprocessedHU.Value == DBNull.Value ? 0 : Convert.ToInt32(unprocessedHU.Value);
+
+
+                        int validatedArticleQtyValue = processedArticleQty.Value == DBNull.Value ? 0 : Convert.ToInt32(processedArticleQty.Value);
+
+
+                        // Convert DataTable to List
+
+                        List<Dictionary<string, object?>> data = new List<Dictionary<string, object?>>();
+
+
+                        if (ds.Tables.Count > 0)
+                        {
+                            DataTable table = ds.Tables[0];
+                            foreach (DataRow row in table.Rows)
+                            {
+                                Dictionary<string, object?> item = new Dictionary<string, object?>();
+
+                                foreach (DataColumn column in table.Columns)
+                                {
+                                    item[column.ColumnName] = row[column] == DBNull.Value ? null
+                                            : row[column];
+                                }
+
+                                data.Add(item);
+                            }
+                        }
+
+
+                        // Return response
+
+                        return new DCDetailsResponse
+                        {
+                            PageIndex = request.PageIndex,
+
+                            RecordCount = recordCountValue,
+
+                            ProcessedCount = processedHUValue,
+
+                            UnprocessedCount = unprocessedHUValue,
+
+                            ValidatedCount = validatedArticleQtyValue,
+
+                            Data = data
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return new DCDetailsResponse();
+            }
+        }
+
+        public async Task<HUDetailsResponse> GetHUDetails(HUDetailsRequest request)
+        {
+            string connectionString = _configuration.GetConnectionString("POS")!;
+
+            string spName = "SP_NEW_REPORT";
+
+            try
+            {
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                string fromDateValue = request.FromDate?.Trim('"');
+                string ToDateValue = request.ToDate?.Trim('"');
+
+                if (!string.IsNullOrWhiteSpace(fromDateValue))
+                {
+                    fromDate = DateTime.Parse(fromDateValue);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ToDateValue))
+                {
+                    toDate = DateTime.Parse(ToDateValue);
+                }
+
+                using SqlConnection connection = new SqlConnection(connectionString);
+
+                using SqlCommand command = new SqlCommand(spName, connection);
+
+                command.CommandType =
+                    CommandType.StoredProcedure;
+
+                // Normal parameters
+
+                command.Parameters.AddWithValue("@status", "HU_REPORT");
+                command.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                command.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                command.Parameters.AddWithValue("@PageSize", request.PageSize);
+                command.Parameters.AddWithValue("@CI_STATUS", request.HUStatus ?? "");
+                command.Parameters.AddWithValue("@Reciving_Plant", request.ReceivingPlant ?? "");
+                command.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDate.HasValue ? fromDate.Value.Date : DBNull.Value;
+                command.Parameters.Add("@todate", SqlDbType.Date).Value = toDate.HasValue ? toDate.Value.Date : DBNull.Value;
+                command.Parameters.AddWithValue("@HU_NO", request.HUNo ?? "");
+                command.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn);
+                command.Parameters.AddWithValue("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection);
+
+                // OUTPUT PARAMETERS
+
+                SqlParameter recordCount = command.Parameters.Add("@RecordCount", SqlDbType.Int);
+
+                recordCount.Direction = ParameterDirection.Output;
+
+
+                SqlParameter materialCount = command.Parameters.Add("@MATERIALCOUNT", SqlDbType.Int);
+
+                materialCount.Direction = ParameterDirection.Output;
+
+
+                SqlParameter actualQty = command.Parameters.Add("@ACTUALQTY", SqlDbType.Int);
+
+                actualQty.Direction = ParameterDirection.Output;
+
+
+                SqlParameter scanQty = command.Parameters.Add("@SCANQTY", SqlDbType.Int
+                    );
+
+                scanQty.Direction = ParameterDirection.Output;
+
+
+                SqlParameter tagQty = command.Parameters.Add("@TAGQTY", SqlDbType.Int);
+
+                tagQty.Direction = ParameterDirection.Output;
+
+
+                // Open connection asynchronously
+
+                await connection.OpenAsync();
+
+                List<Dictionary<string, object?>> data =
+                    new List<Dictionary<string, object?>>();
+
+
+                // Execute SP asynchronously
+
+                using (SqlDataReader reader =
+                       await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        Dictionary<string, object?> item =
+                            new Dictionary<string, object?>();
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string columnName =
+                                reader.GetName(i);
+
+                            object value =
+                                reader.GetValue(i);
+
+                            item[columnName] =
+                                value == DBNull.Value
+                                    ? null
+                                    : value;
+                        }
+
+                        data.Add(item);
+                    }
+                }
+
+
+                // Read output parameters AFTER reader is closed
+
+                int recordCountValue = recordCount.Value == DBNull.Value ? 0 : Convert.ToInt32(recordCount.Value);
+
+
+                int materialQtyValue = materialCount.Value == DBNull.Value ? 0 : Convert.ToInt32(materialCount.Value);
+
+
+                int actualQtyValue = actualQty.Value == DBNull.Value ? 0 : Convert.ToInt32(actualQty.Value);
+
+
+                int scannedQtyValue = scanQty.Value == DBNull.Value ? 0 : Convert.ToInt32(scanQty.Value);
+
+
+                int invalidTagsValue = tagQty.Value == DBNull.Value ? 0 : Convert.ToInt32(tagQty.Value);
+
+
+                // Return response
+
+                return new HUDetailsResponse
+                {
+                    PageIndex = request.PageIndex,
+
+                    RecordCount = recordCountValue,
+
+                    MaterialQty = materialQtyValue,
+
+                    ActualQty = actualQtyValue,
+
+                    ScannedQty = scannedQtyValue,
+
+                    InvalidTags = invalidTagsValue,
+
+                    Data = data
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(
+                    "Error while fetching HU details.",
+                    ex
+                );
+            }
+        }
+
+        public async Task<EncodingStoreDataResponse> GetEncodingStoreData(EncodingStoreDataRequest request)
+        {
+            string connectionString = _configuration.GetConnectionString("POS")!;
+
+            string spName = "SP_NEW_REPORT";
+
+            try
+            {
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                string fromDateValue = request.FromDate?.Trim('"');
+                string ToDateValue = request.ToDate?.Trim('"');
+
+                if (!string.IsNullOrWhiteSpace(fromDateValue))
+                {
+                    fromDate = DateTime.Parse(fromDateValue);
+                }
+
+                if (!string.IsNullOrWhiteSpace(ToDateValue))
+                {
+                    toDate = DateTime.Parse(ToDateValue);
+                }
+
+                using SqlConnection connection = new SqlConnection(connectionString);
+
+                using SqlCommand command = new SqlCommand(spName, connection);
+
+                command.CommandType = CommandType.StoredProcedure;
+
+
+                // Normal parameters
+
+                command.Parameters.AddWithValue("@status", "ENCODING_SHOW_DATA_FOR_STORE");
+                command.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                command.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                command.Parameters.AddWithValue("@PageSize", request.PageSize);
+                command.Parameters.Add("@fromdate", SqlDbType.Date).Value = fromDate.HasValue ? fromDate.Value.Date : DBNull.Value;
+                command.Parameters.Add("@todate", SqlDbType.Date).Value = toDate.HasValue ? toDate.Value.Date : DBNull.Value;
+                command.Parameters.AddWithValue("@EAN", request.Ean ?? "");
+                command.Parameters.AddWithValue("@Material", request.ArticleNo ?? "");
+                command.Parameters.AddWithValue("@Store_Code", request.StoreName ?? "");
+                command.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "ARTICLE" : request.SortColumn);
+                command.Parameters.AddWithValue("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection);
+                command.Parameters.AddWithValue("@User_ID", request.UserId ?? 0);
+
+
+                // OUTPUT PARAMETERS
+
+                SqlParameter recordCount = command.Parameters.Add("@RecordCount", SqlDbType.Int);
+
+                recordCount.Direction = ParameterDirection.Output;
+
+
+                SqlParameter totalCount = command.Parameters.Add("@TotalCount", SqlDbType.Int);
+
+                totalCount.Direction = ParameterDirection.Output;
+
+
+                // Open SQL connection asynchronously
+
+                await connection.OpenAsync();
+
+
+                List<Dictionary<string, object?>> data = new List<Dictionary<string, object?>>();
+
+
+                // Execute stored procedure asynchronously
+
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        Dictionary<string, object?> item =
+                            new Dictionary<string, object?>();
+
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            string columnName =
+                                reader.GetName(i);
+
+                            object value =
+                                reader.GetValue(i);
+
+                            item[columnName] =
+                                value == DBNull.Value
+                                    ? null
+                                    : value;
+                        }
+
+                        data.Add(item);
+                    }
+                }
+
+
+                // Read OUTPUT parameters
+                // Reader must be closed first
+
+                int recordCountValue = recordCount.Value == DBNull.Value? 0  : Convert.ToInt32( recordCount.Value);
+
+
+                int totalCountValue = totalCount.Value == DBNull.Value ? 0: Convert.ToInt32( totalCount.Value);
+
+
+                // Return response
+
+                return new EncodingStoreDataResponse
+                {
+                    PageIndex = request.PageIndex,
+
+                    RecordCount = recordCountValue,
+
+                    TotalCount = totalCountValue,
+
+                    Data = data
+                };
+            }
+            catch (Exception ex)
+            {
+                return new EncodingStoreDataResponse();
+            }
         }
 
     }

@@ -407,7 +407,93 @@ namespace VS_Mart_Backend.Controllers
             }
         }
 
+        [HttpGet("dashboard/return-details")]
+        public async Task<IActionResult> GetReturnDetails([FromQuery] ReturnDetailsRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetReturnDetailsAsync(request);
 
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching return details.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("void/return-reconciliation")]
+        public IActionResult GetReturnReconciliationData([FromQuery] ReturnReconciliationRequest request)
+        {
+            try
+            {
+                var result = _liveStockService.GetReturnReconciliationData(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching return reconciliation data.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("GetDCDetails")]
+        public async Task<IActionResult> GetDCDetails([FromQuery] DCDetailsRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetDCDetails(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An error occurred while fetching DC details.",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("Hu-details")]
+        public async Task<IActionResult> GetHUDetails([FromQuery] HUDetailsRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetHUDetails(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An error occurred while fetching HU details.",
+                    error = ex.Message
+                });
+            }
+        }
+
+        [HttpGet("GetEncodingStoreData")]
+        public async Task<IActionResult> GetEncodingStoreData([FromQuery] EncodingStoreDataRequest request)
+        {
+            try
+            {
+                var result = await _liveStockService.GetEncodingStoreData(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message =
+                        "An error occurred while fetching encoding store data.",
+                    error = ex.Message
+                });
+            }
+        }
 
     }
 }
