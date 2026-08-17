@@ -22,6 +22,7 @@ builder.Services.AddCors(options =>
 });
 
 // Register Dependency Injection Services
+builder.Services.AddSingleton<SseNotifierService>();
 builder.Services.AddScoped<ILiveStockService, LiveStockService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker
 
