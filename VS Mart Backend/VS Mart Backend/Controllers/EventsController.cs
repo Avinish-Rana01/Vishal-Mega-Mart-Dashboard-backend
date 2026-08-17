@@ -20,9 +20,9 @@ namespace VS_Mart_Backend.Controllers
         [HttpGet("dashboard-refresh")]
         public async Task DashboardRefresh()
         {
-            Response.Headers.Add("Content-Type", "text/event-stream");
-            Response.Headers.Add("Cache-Control", "no-cache");
-            Response.Headers.Add("Connection", "keep-alive");
+            Response.Headers.Append("Content-Type", "text/event-stream");
+            Response.Headers.Append("Cache-Control", "no-cache");
+            Response.Headers.Append("Connection", "keep-alive");
 
             var clientId = _notifier.RegisterClient();
 
