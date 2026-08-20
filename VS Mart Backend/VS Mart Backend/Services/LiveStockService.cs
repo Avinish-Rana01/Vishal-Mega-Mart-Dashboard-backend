@@ -809,6 +809,87 @@ namespace VS_Mart_Backend.Services
                             RefNo = pQty.Value != DBNull.Value && pQty.Value != null ? Convert.ToInt32(pQty.Value) : 0
                         };
                     }
+
+                    // --- Second SP Call for Graph Data ---
+                    var graphDataRows = new List<Dictionary<string, object?>>();
+                    using (var cmd2 = new SqlCommand("[SP_NEW_REPORT]", connection))
+                    {
+                        cmd2.CommandType = CommandType.StoredProcedure; cmd2.CommandTimeout = 120;
+                        cmd2.Parameters.AddWithValue("@status", "CYCLE_COUNT_GRAPH_DATA");
+                        cmd2.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                        cmd2.Parameters.AddWithValue("@PageIndex", request.PageIndex);
+                        cmd2.Parameters.AddWithValue("@PageSize", request.PageSize);
+                        cmd2.Parameters.AddWithValue("@Store_code", "");
+                        cmd2.Parameters.AddWithValue("@fromdate", "");
+                        cmd2.Parameters.AddWithValue("@todate", "");
+                        cmd2.Parameters.AddWithValue("@ref_No", "");
+                        cmd2.Parameters.AddWithValue("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn);
+                        cmd2.Parameters.AddWithValue("@SortDirection", request.SortDirection ?? "asc");
+                        
+                        var pRecordCount2 = cmd2.Parameters.Add("@RecordCount", SqlDbType.Int); pRecordCount2.Direction = ParameterDirection.Output;
+                        var pQty2 = cmd2.Parameters.Add("@Qty", SqlDbType.Int); pQty2.Direction = ParameterDirection.Output;
+
+                        using (var reader2 = await cmd2.ExecuteReaderAsync())
+                        {
+                            while (await reader2.ReadAsync())
+                            {
+                                var row2 = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                                for (int i = 0; i < reader2.FieldCount; i++)
+                                {
+                                    string columnName = reader2.GetName(i);
+                                    object? value = reader2.IsDBNull(i) ? null : reader2.GetValue(i);
+                                    row2[columnName] = value;
+                                }
+                                graphDataRows.Add(row2);
+                            }
+                        }
+                    }
+
+                    // Merge datasets based on STORE_NAME and STORE
+                    foreach (var mainRow in response.Items)
+                    {
+                        if (mainRow.TryGetValue("STORE_NAME", out var storeNameObj) && storeNameObj is string storeName && 
+                            mainRow.TryGetValue("DATE", out var dateObj))
+                        {
+                            DateTime? mainDate = null;
+                            if (dateObj is DateTime dt) mainDate = dt.Date;
+                            else if (dateObj is string ds && DateTime.TryParse(ds, out var d1)) mainDate = d1.Date;
+
+                            var match = graphDataRows.FirstOrDefault(g => 
+                            {
+                                bool storeMatch = false;
+                                if (g.TryGetValue("STORE", out var gStoreObj) && gStoreObj is string gStore)
+                                    storeMatch = gStore.Equals(storeName, StringComparison.OrdinalIgnoreCase);
+                                
+                                bool dateMatch = false;
+                                if (g.TryGetValue("LAST_PI_DATE", out var gDateObj))
+                                {
+                                    DateTime? graphDate = null;
+                                    if (gDateObj is DateTime gd1) graphDate = gd1.Date;
+                                    else if (gDateObj is string gd2 && DateTime.TryParseExact(gd2, "dd-MM-yyyy", null, System.Globalization.DateTimeStyles.None, out var d2)) graphDate = d2.Date;
+                                    else if (gDateObj is string gd3 && DateTime.TryParse(gd3, out var d3)) graphDate = d3.Date;
+                                    
+                                    dateMatch = mainDate.HasValue && graphDate.HasValue && graphDate.Value.Date == mainDate.Value.Date;
+                                }
+
+                                return storeMatch && dateMatch;
+                            });
+
+                            if (match != null)
+                            {
+                                string[] keysToMerge = { "NO_OF_ARTICLE", "SYSTEM_STOCK", "SCANNED_QTY", "NET_DIFF", "SHORT_QTY", "EXCESS_QTY" };
+                                foreach (var key in keysToMerge)
+                                {
+                                    if (match.ContainsKey(key))
+                                    {
+                                        string destKey = key == "NO_OF_ARTICLE" ? "NO_OF_ARTICLES" : 
+                                                         key == "NET_DIFF" ? "NET_DIFFERENCE" : key;
+                                        mainRow[destKey] = match[key];
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 return response;
             });

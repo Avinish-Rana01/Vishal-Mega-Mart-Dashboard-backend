@@ -669,6 +669,8 @@ namespace VS_Mart_Backend.Models
             = new();
     }
 
+
+
     public class EncodingStoreDataRequest
     {
         public string? SearchTerm { get; set; } = "";
