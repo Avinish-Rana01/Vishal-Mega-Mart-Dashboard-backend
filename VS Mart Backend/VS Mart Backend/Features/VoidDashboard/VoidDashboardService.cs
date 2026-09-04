@@ -1,12 +1,12 @@
-using Dapper;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using VS_Mart_Backend.Features.Base;
 
 namespace VS_Mart_Backend.Features.VoidDashboard
@@ -211,7 +211,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     var parameters = new DynamicParameters();
 
                     string status = string.IsNullOrEmpty(request.SearchTerm) ? "BIND_EAN_FOR_VOID" : "SEARCH_BIND_EAN_FOR_VOID";
-                    
+
                     DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
                     DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
 
