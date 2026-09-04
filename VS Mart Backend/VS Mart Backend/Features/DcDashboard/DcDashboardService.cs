@@ -55,7 +55,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
-                    response.Data = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.PageIndex = request.PageIndex;
                     response.RecordCount = parameters.Get<int?>("@RecordCount") ?? 0;

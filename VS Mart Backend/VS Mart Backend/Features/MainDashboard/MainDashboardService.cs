@@ -46,7 +46,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new LiveStockSummary
                 {
@@ -85,12 +85,12 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
                 
                 var items = await multi.ReadAsync<dynamic>();
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 if (!multi.IsConsumed)
                 {
                     var distItems = await multi.ReadAsync<dynamic>();
-                    response.Distribution = distItems.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Distribution = distItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
                 }
 
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
@@ -143,7 +143,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new StoreDashboardSummary
                 {
@@ -191,7 +191,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@DIFF_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new SaleDashboardSummary
                 {
@@ -237,7 +237,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new ReturnDashboardSummary
                 {
@@ -276,7 +276,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new VoidDashboardSummary
                 {
@@ -314,7 +314,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@PROCESSED_ARTICLE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new DcValidateDashboardSummary
                 {
@@ -350,7 +350,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 response.Summary = new CycleCountDashboardSummary
                 {
@@ -374,7 +374,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters2.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var graphItems = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                var graphDataRows = graphItems.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 foreach (var mainRow in response.Items)
                 {
@@ -453,7 +453,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@HU_DIFF_TILL_DATE", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                     var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new VendorHUDiscrepancySummary
                     {
@@ -497,7 +497,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new TagManagementSummary
                     {
@@ -571,7 +571,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@T_ENC_USERS", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    response.Items = items.Select(x => new Dictionary<string, object?>((IDictionary<string, object>)x, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new WarehouseEncodingSummary
                     {
