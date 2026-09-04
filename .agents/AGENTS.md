@@ -10,10 +10,10 @@
 - **Dependency Injection**: All new Services must be registered as Scoped or Singleton in `Program.cs` (`builder.Services.AddScoped<...>`).
 - **Caching & Background Workers**: We use an aggressive caching strategy. `CacheWarmerService.cs` runs as an `IHostedService` to pre-warm the cache. In the Services, we use a custom **Stale-While-Revalidate (SWR)** pattern (`GetOrCreateWithSWRAsync`) using `IMemoryCache`. NEVER bypass the caching layer for dashboard data unless explicitly required.
 
-## 2. Database & ADO.NET Rules
-- **No Entity Framework**: This project uses raw ADO.NET (`SqlConnection`, `SqlCommand`, `SqlDataReader`) to execute legacy Stored Procedures. Do not attempt to introduce Entity Framework.
-- **Connection Management**: Always use `using` blocks for `SqlConnection`, `SqlCommand`, and `SqlDataReader` to prevent connection pool exhaustion.
-- **SQL Server Casing Bugs**: The C# ADO.NET mapping MUST use `Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)`. This is CRITICAL because the legacy SQL stored procedures (like `SP_NEW_DASHBOARD`) often return mixed-case columns (e.g., `Store_Name` instead of `STORE_NAME`). If you instantiate case-sensitive dictionaries, lookups for `row["STORE_NAME"]` will crash or return null.
+## 2. Database & Dapper Rules
+- **Dapper Micro-ORM**: This project uses Dapper (`connection.QueryAsync<dynamic>`) over raw ADO.NET loops. Never write manual `while (reader.ReadAsync())` loops or manual column mapping. Do not attempt to introduce Entity Framework.
+- **Connection Management**: Always use `using` blocks for `SqlConnection` to prevent connection pool exhaustion.
+- **Output Parameters**: Always use `DynamicParameters` with `ParameterDirection.Output` to capture output variables (e.g. `@RecordCount`) from Stored Procedures.
 
 ## 3. Frontend Integration Context
 - **Metadata Fallbacks**: The React UI heavily relies on the `Summary` block in API responses. If 0 rows are returned, the UI expects `Summary.StoreName` and `Summary.Date` to be populated so the info bar can render. The C# backend handles this by safely extracting the metadata from `request.StoreName` if the data grid is empty.
@@ -33,3 +33,10 @@ When migrating or referencing legacy ASP.NET `[WebMethod]` functions to modern .
    - **Dashboard Summary**: New initial-load API (e.g., `sale-dashboard`, `cycle-count-dashboard`) used to populate top-level widgets.
    - **Main Report**: The high-level grid API mapping to legacy list methods (e.g., `cycle-count-report`, `store-sale-report`).
    - **Drill-Down Details**: The detailed view mapping to legacy drill-down methods (e.g., `cycle-count-details`, `sale-details`) requiring specific IDs (like `ref_no` or `columnName`).
+
+## 6. Backend Optimization Workflow (Trigger: `/optimize-backend`)
+When the user types `/optimize-backend`, or asks to "optimize the backend", execute the following workflow to refactor non-compliant code written by teammates:
+1. **Dapper Migration**: Identify any service methods using manual ADO.NET `SqlDataReader` loops. Replace them entirely with Dapper (`connection.QueryAsync<dynamic>`). 
+2. **BaseDashboardService**: Ensure the service inherits from `BaseDashboardService` and uses the central `GetOrCreateWithSWRAsync` SWR caching wrapper instead of manual `MemoryCache` calls.
+3. **CS8620 Prevention**: When mapping Dapper rows to response dictionaries, always use `.ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)` to safely cast and prevent compiler warnings.
+4. **Feature-Based Structure**: Ensure the Controller, Service, and Models are grouped inside the `Features/<FeatureName>/` folder, rather than the legacy `Controllers/` or `Services/` root folders.
