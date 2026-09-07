@@ -24,13 +24,18 @@ Handles Cycle Count specific reports.
 Handles Distribution Center (DC) details.
 - `[HttpGet("api/Stock/GetDCDetails")]`
 
-### 4. `Features/LiveStockReport/`
+### 4. `Features/HUDiscrepancy/`
+Handles Vendor HU Discrepancy reporting and store/user master configurations.
+- `[HttpPost("api/HUDiscrepancy/GetVendorHUDiscrepancyData")]`
+- `[HttpPost("api/HUDiscrepancy/StoreandUserData")]`
+
+### 5. `Features/LiveStockReport/`
 Handles the core Live Stock data and filtering utilities.
 - `[HttpGet("api/report/stores")]`
 - `[HttpGet("api/report/articles/search")]`
 - `[HttpGet("api/report/live-stock")]`
 
-### 5. `Features/MainDashboard/`
+### 6. `Features/MainDashboard/`
 This is the master controller for the primary high-level dashboard summaries.
 - `[HttpGet("api/Stock/live-details")]`
 - `[HttpGet("api/Stock/tag-cycle-count")]`
@@ -43,12 +48,12 @@ This is the master controller for the primary high-level dashboard summaries.
 - `[HttpGet("api/Stock/tag-management-location")]`
 - `[HttpGet("api/Stock/warehouse-encoding")]`
 
-### 6. `Features/ReturnDashboard/`
+### 7. `Features/ReturnDashboard/`
 Handles Return tracking and reconciliation.
 - `[HttpGet("api/Stock/dashboard/return-details")]`
 - `[HttpGet("api/Stock/void/return-reconciliation")]`
 
-### 7. `Features/SaleDashboard/`
+### 8. `Features/SaleDashboard/`
 Handles Sale performance, mapping, and POS counter data.
 - `[HttpGet("/api/Stock/store-sale-report")]`
 - `[HttpGet("/api/Stock/sale/pos-counters")]`
@@ -56,7 +61,7 @@ Handles Sale performance, mapping, and POS counter data.
 - `[HttpGet("/api/Stock/sale/eans")]`
 - `[HttpGet("/api/Stock/sale-data")]`
 
-### 8. `Features/StoreGrcReport/`
+### 9. `Features/StoreGrcReport/`
 Handles Goods Receipt (GRC) and Handling Unit (HU) logic.
 - `[HttpGet("api/grc-report/hu-numbers/search")]`
 - `[HttpGet("api/grc-report/details")]`
@@ -64,16 +69,16 @@ Handles Goods Receipt (GRC) and Handling Unit (HU) logic.
 - `[HttpGet("/api/stock/store-grc-report")]`
 - `[HttpGet("/api/stock/Hu-details")]`
 
-### 9. `Features/SystemUtility/`
+### 10. `Features/SystemUtility/`
 Handles Authentication and global application caching mechanisms.
 - `[HttpPost("/api/Auth/login")]`
 - `[HttpGet("/api/Stock/cache-status")]`
 - `[HttpPost("/api/Stock/toggle-cache")]`
 - `[HttpGet("/api/Stock/GetEncodingStoreData")]`
 
-### 10. `Features/VoidDashboard/`
+### 11. `Features/VoidDashboard/`
 Handles Voided transaction data and EAN searches.
-- `[HttpGet("/api/Stock/void-dashboard")]` (Wait, MainDashboard also has a void-dashboard summary, this one is for detailed views)
+- `[HttpGet("/api/Stock/void-dashboard")]` (Detailed view metrics)
 - `[HttpGet("/api/Stock/GetVoidDetails")]`
 - `[HttpGet("/api/Stock/GetVoidReconciliationData")]`
 - `[HttpGet("/api/Stock/void/pos-counters")]`

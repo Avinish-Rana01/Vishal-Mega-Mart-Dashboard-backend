@@ -1,4 +1,4 @@
-﻿namespace VS_Mart_Backend.Features.HUDiscrepancy
+namespace VS_Mart_Backend.Features.HUDiscrepancy
 {
     public class VendorHUDiscrepancyRequest
     {
@@ -32,9 +32,9 @@
         public int Entry_By { get; set; }
         public int Modify_By { get; set; }
         public int Store_ID { get; set; }
-        public string Store_Code { get; set; }
-        public string Store_Name { get; set; }
-        public string MAIL_ID { get; set; }
+        public string? Store_Code { get; set; }
+        public string? Store_Name { get; set; }
+        public string? MAIL_ID { get; set; }
         public int State_ID { get; set; }
         public int City_ID { get; set; }
         public int SM_ID { get; set; }
@@ -42,9 +42,9 @@
         public int ZFM_ID { get; set; }
         public int LP_ID { get; set; }
         public int User_ID { get; set; }
-        public string User_Name { get; set; }
-        public string Password { get; set; }
-        public string User_Type { get; set; }
+        public string? User_Name { get; set; }
+        public string? Password { get; set; }
+        public string? User_Type { get; set; }
         public int WH_ID { get; set; }
         public int Role_ID { get; set; }
         public int Emp_ID { get; set; }

@@ -1,23 +1,25 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
-using VS_Mart_Backend.Features.LiveStockReport;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Threading.Tasks;
 
 namespace VS_Mart_Backend.Features.HUDiscrepancy
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class HUDiscrepancyController : ControllerBase
     {
-
         private readonly IHUDiscrepancyService _huDiscrepancyService;
-        private readonly ILogger<LiveStockReportController> _logger;
+        private readonly ILogger<HUDiscrepancyController> _logger;
 
-        public HUDiscrepancyController(IHUDiscrepancyService huDiscrepancyService, ILogger<LiveStockReportController> logger)
+        public HUDiscrepancyController(IHUDiscrepancyService huDiscrepancyService, ILogger<HUDiscrepancyController> logger)
         {
             _huDiscrepancyService = huDiscrepancyService;
             _logger = logger;
         }
 
         [HttpPost("GetVendorHUDiscrepancyData")]
-        public async Task<IActionResult> GetVendorHUDiscrepancyData([FromQuery] VendorHUDiscrepancyRequest request)
+        public async Task<IActionResult> GetVendorHUDiscrepancyData([FromBody] VendorHUDiscrepancyRequest request)
         {
             try
             {
@@ -44,10 +46,10 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
                 var response = await _huDiscrepancyService.StoreandUserData(request);
                 return Ok(response);
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching StoreandUserData.");
-                return StatusCode(500, new ApiResponse { Success = false, Message = "Database error: " + ex.Message });
+                _logger.LogError(ex, "Error executing StoreandUserData.");
+                return StatusCode(500, new ApiResponse { Success = false, Message = "An error occurred: " + ex.Message });
             }
         }
     }
