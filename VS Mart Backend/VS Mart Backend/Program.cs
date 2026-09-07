@@ -31,6 +31,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.SaleDashboard.ISaleDashboard
 builder.Services.AddScoped<VS_Mart_Backend.Features.HUDiscrepancy.IHUDiscrepancyService, VS_Mart_Backend.Features.HUDiscrepancy.HUDiscrepancyService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.ReturnDashboard.IReturnDashboardService, VS_Mart_Backend.Features.ReturnDashboard.ReturnDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.DcDashboard.IDcDashboardService, VS_Mart_Backend.Features.DcDashboard.DcDashboardService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboardService, VS_Mart_Backend.Features.VoidDashboard.VoidDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker
 

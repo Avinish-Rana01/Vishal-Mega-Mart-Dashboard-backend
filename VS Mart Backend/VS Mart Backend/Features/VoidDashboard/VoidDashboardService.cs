@@ -30,11 +30,14 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
 
+                    int userIdInt = 0;
+                    int.TryParse(request.UserId, out userIdInt);
+
                     parameters.Add("@status", "VOID_DASHBOARD", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@User_ID", request.UserId ?? "", DbType.String, size: 50);
+                    parameters.Add("@User_ID", userIdInt, DbType.Int32);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                     parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 20);
