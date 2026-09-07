@@ -28,7 +28,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.LiveStockReport.ILiveStockRe
 builder.Services.AddScoped<VS_Mart_Backend.Features.StoreGrcReport.IStoreGrcReportService, VS_Mart_Backend.Features.StoreGrcReport.StoreGrcReportService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.CycleCountReport.ICycleCountReportService, VS_Mart_Backend.Features.CycleCountReport.CycleCountReportService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SaleDashboard.ISaleDashboardService, VS_Mart_Backend.Features.SaleDashboard.SaleDashboardService>();
-builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboardService, VS_Mart_Backend.Features.VoidDashboard.VoidDashboardService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.HUDiscrepancy.IHUDiscrepancyService, VS_Mart_Backend.Features.HUDiscrepancy.HUDiscrepancyService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.ReturnDashboard.IReturnDashboardService, VS_Mart_Backend.Features.ReturnDashboard.ReturnDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.DcDashboard.IDcDashboardService, VS_Mart_Backend.Features.DcDashboard.DcDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
