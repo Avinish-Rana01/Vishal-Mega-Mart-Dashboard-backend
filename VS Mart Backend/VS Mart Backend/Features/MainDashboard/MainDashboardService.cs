@@ -125,11 +125,14 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
+                int userIdInt = 0;
+                int.TryParse(request.UserId, out userIdInt);
+
                 parameters.Add("@status", "STORE_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", request.UserId ?? "", DbType.String, size: 50);
+                parameters.Add("@User_ID", userIdInt, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                 parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
@@ -168,11 +171,14 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
+                int userIdInt = 0;
+                int.TryParse(request.UserId, out userIdInt);
+
                 parameters.Add("@status", "SALE_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", request.UserId ?? "", DbType.String, size: 50);
+                parameters.Add("@User_ID", userIdInt, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                 parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
@@ -221,11 +227,14 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
+                int userIdInt = 0;
+                int.TryParse(request.UserId, out userIdInt);
+
                 parameters.Add("@status", "RETURN_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", request.UserId ?? "", DbType.String, size: 50);
+                parameters.Add("@User_ID", userIdInt, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                 parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
@@ -260,11 +269,14 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
+                int userIdInt = 0;
+                int.TryParse(request.UserId, out userIdInt);
+
                 parameters.Add("@status", "VOID_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", request.UserId ?? "", DbType.String, size: 50);
+                parameters.Add("@User_ID", userIdInt, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                 parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
@@ -299,11 +311,14 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
 
+                int userIdInt = 0;
+                int.TryParse(request.UserId, out userIdInt);
+
                 parameters.Add("@Status", "DC_VALIDATE_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@USER_ID", request.UserId ?? "", DbType.String, size: 50);
+                parameters.Add("@USER_ID", userIdInt, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                 parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
@@ -528,7 +543,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@status", "SHOW_WAREHOUSE_ENCODE_DATA", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.FromDate, DbType.String, size: 20);
                     parameters.Add("@todate", request.ToDate, DbType.String, size: 20);
-                    parameters.Add("@User_ID", "", DbType.String, size: 50);
+                    parameters.Add("@User_ID", 0, DbType.Int32);
                     parameters.Add("@SearchTerm", "", DbType.String, size: 200);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "", DbType.String, size: 10);

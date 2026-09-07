@@ -33,7 +33,9 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                     var parameters = new DynamicParameters();
 
                     parameters.Add("@status", "BIND_STORE_FOR_ALL", DbType.String, size: 50);
-                    parameters.Add("@USER_ID", string.IsNullOrEmpty(userId) ? null : userId, DbType.String);
+                    int? userIdInt = null;
+                    if (int.TryParse(userId, out int parsed)) userIdInt = parsed;
+                    parameters.Add("@USER_ID", userIdInt, DbType.Int32);
                     parameters.Add("@FromDate", "", DbType.String);
                     parameters.Add("@ToDate", "", DbType.String);
 

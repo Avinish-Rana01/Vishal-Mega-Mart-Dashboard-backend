@@ -137,7 +137,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@COUNTER_NO", request.Pos ?? "");
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
-                    parameters.Add("@User_ID", "0");
+                    parameters.Add("@User_ID", 0, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -182,7 +182,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", request.ToDate ?? "");
                     parameters.Add("@Material", request.Material ?? "");
-                    parameters.Add("@User_ID", "0");
+                    parameters.Add("@User_ID", 0, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -231,7 +231,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@COUNTER_NO", request.Pos ?? "");
                     parameters.Add("@Material", request.ArticleNo ?? "");
                     parameters.Add("@EAN", request.Ean ?? "");
-                    parameters.Add("@User_ID", request.UserId ?? "0");
+                    int userIdInt = 0;
+                    int.TryParse(request.UserId, out userIdInt);
+                    parameters.Add("@User_ID", userIdInt, DbType.Int32);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "ITEM_CD" : request.SortColumn);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc");
 
