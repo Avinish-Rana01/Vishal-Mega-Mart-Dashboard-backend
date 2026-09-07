@@ -60,8 +60,9 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
                     return response;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"[CycleCountReportService ERROR]: {ex.Message}\n{ex.StackTrace}");
                     return new CycleCountReportViewResponse();
                 }
             });

@@ -13,7 +13,7 @@ namespace VS_Mart_Backend.Features.Base
         protected readonly string _connectionString;
 
         private static bool? _cacheOverride = null;
-        private readonly ConcurrentDictionary<string, bool> _refreshingKeys = new();
+        private static readonly ConcurrentDictionary<string, bool> _refreshingKeys = new();
 
         private class CacheItem<T>
         {
