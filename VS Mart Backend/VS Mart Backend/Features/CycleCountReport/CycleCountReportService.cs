@@ -115,9 +115,12 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
                     return response;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    return new CycleCountDetailsResponse();
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"[CRITICAL ERROR in GetCycleCountDetailsAsync]: {ex}");
+                    Console.ResetColor();
+                    throw;
                 }
             });
         }
