@@ -47,7 +47,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await multi.ReadAsync<dynamic>();
 
                     response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -98,7 +99,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
                     parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@Excess_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await multi.ReadAsync<dynamic>();
 
                     response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -118,9 +120,9 @@ namespace VS_Mart_Backend.Features.CycleCountReport
                 catch (Exception ex)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"[CRITICAL ERROR in GetCycleCountDetailsAsync]: {ex}");
+                    Console.WriteLine($"[CycleCountDetails ERROR]: {ex.Message}");
                     Console.ResetColor();
-                    throw;
+                    return new CycleCountDetailsResponse();
                 }
             });
         }

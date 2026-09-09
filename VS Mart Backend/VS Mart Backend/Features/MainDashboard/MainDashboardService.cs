@@ -375,64 +375,63 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
 
                 var parameters2 = new DynamicParameters();
-                parameters2.Add("@status", "CYCLE_COUNT_GRAPH_DATA", DbType.String, size: 50);
+                parameters2.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
                 parameters2.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters2.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters2.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters2.Add("@PageIndex", 1, DbType.Int32);
+                parameters2.Add("@PageSize", Math.Max(100, request.PageSize * 2), DbType.Int32);
                 parameters2.Add("@Store_code", "", DbType.String, size: 50);
                 parameters2.Add("@fromdate", "", DbType.String, size: 20);
                 parameters2.Add("@todate", "", DbType.String, size: 20);
                 parameters2.Add("@ref_No", "", DbType.String, size: 50);
-                parameters2.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn, DbType.String, size: 50);
-                parameters2.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+                parameters2.Add("@SortColumn", "DATE", DbType.String, size: 50);
+                parameters2.Add("@SortDirection", "desc", DbType.String, size: 10);
                 parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters2.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                var graphItems = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var graphItems = await multi.ReadAsync<dynamic>();
                 var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                 foreach (var mainRow in response.Items)
                 {
-                    if (mainRow.TryGetValue("STORE_NAME", out var storeNameObj) && storeNameObj is string storeName && 
-                        mainRow.TryGetValue("DATE", out var dateObj))
+                    var mainRefNo = mainRow.TryGetValue("REF_NO", out var refObj) ? refObj?.ToString() : null;
+                    var mainStoreCode = mainRow.TryGetValue("STORE_CODE", out var scObj) ? scObj?.ToString() : null;
+
+                    var match = graphDataRows.FirstOrDefault(g =>
                     {
-                        DateTime? mainDate = null;
-                        if (dateObj is DateTime dt) mainDate = dt.Date;
-                        else if (dateObj is string ds && DateTime.TryParse(ds, out var d1)) mainDate = d1.Date;
-
-                        var match = graphDataRows.Find(g => 
+                        if (!string.IsNullOrEmpty(mainRefNo) && g.TryGetValue("Ref_ID", out var gRef) && gRef != null)
                         {
-                            bool storeMatch = false;
-                            if (g.TryGetValue("STORE", out var gStoreObj) && gStoreObj is string gStore)
-                                storeMatch = gStore.Equals(storeName, StringComparison.OrdinalIgnoreCase);
-                            
-                            bool dateMatch = false;
-                            if (g.TryGetValue("LAST_PI_DATE", out var gDateObj))
-                            {
-                                DateTime? graphDate = null;
-                                if (gDateObj is DateTime gd1) graphDate = gd1.Date;
-                                else if (gDateObj is string gd2 && DateTime.TryParseExact(gd2, "dd-MM-yyyy", null, System.Globalization.DateTimeStyles.None, out var d2)) graphDate = d2.Date;
-                                else if (gDateObj is string gd3 && DateTime.TryParse(gd3, out var d3)) graphDate = d3.Date;
-                                
-                                dateMatch = mainDate.HasValue && graphDate.HasValue && graphDate.Value.Date == mainDate.Value.Date;
-                            }
-                            return storeMatch && dateMatch;
-                        });
-
-                        if (match != null)
+                            if (string.Equals(mainRefNo, gRef.ToString(), StringComparison.OrdinalIgnoreCase))
+                                return true;
+                        }
+                        if (!string.IsNullOrEmpty(mainStoreCode) && g.TryGetValue("STORE_CODE", out var gStore) && gStore != null)
                         {
-                            string[] keysToMerge = { "NO_OF_ARTICLE", "SYSTEM_STOCK", "SCANNED_QTY", "NET_DIFF", "SHORT_QTY", "EXCESS_QTY" };
-                            foreach (var key in keysToMerge)
+                            return string.Equals(mainStoreCode, gStore.ToString(), StringComparison.OrdinalIgnoreCase);
+                        }
+                        return false;
+                    });
+
+                    if (match != null)
+                    {
+                        string[] keysToMerge = { "NO_OF_ARTICLE", "SYSTEM_STOCK", "SCANNED_QTY", "NET_DIFF", "SHORT_QTY", "EXCESS_QTY" };
+                        foreach (var key in keysToMerge)
+                        {
+                            if (match.TryGetValue(key, out var val))
                             {
-                                if (match.ContainsKey(key))
-                                {
-                                    string destKey = key == "NO_OF_ARTICLE" ? "NO_OF_ARTICLES" : 
-                                                     key == "NET_DIFF" ? "NET_DIFFERENCE" : key;
-                                    mainRow[destKey] = match[key];
-                                }
+                                string destKey = key == "NO_OF_ARTICLE" ? "NO_OF_ARTICLES" :
+                                                 key == "NET_DIFF" ? "NET_DIFFERENCE" : key;
+                                mainRow[destKey] = val;
                             }
                         }
                     }
+
+                    // Default to 0 if missing so the frontend charts never receive undefined/null
+                    if (!mainRow.ContainsKey("NO_OF_ARTICLES")) mainRow["NO_OF_ARTICLES"] = 0;
+                    if (!mainRow.ContainsKey("SYSTEM_STOCK")) mainRow["SYSTEM_STOCK"] = 0;
+                    if (!mainRow.ContainsKey("SCANNED_QTY")) mainRow["SCANNED_QTY"] = 0;
+                    if (!mainRow.ContainsKey("NET_DIFFERENCE")) mainRow["NET_DIFFERENCE"] = 0;
+                    if (!mainRow.ContainsKey("SHORT_QTY")) mainRow["SHORT_QTY"] = 0;
+                    if (!mainRow.ContainsKey("EXCESS_QTY")) mainRow["EXCESS_QTY"] = 0;
                 }
                 return response;
             });
