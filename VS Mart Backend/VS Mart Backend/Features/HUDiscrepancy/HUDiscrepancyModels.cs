@@ -26,68 +26,14 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
         public int HUCount { get; set; }
     }
 
-    //public class StoreUserRequest
-    //{
-    //    public string? Status { get; set; }
-    //    public int Entry_By { get; set; }
-    //    public int Modify_By { get; set; }
-    //    public int Store_ID { get; set; }
-    //    public string? Store_Code { get; set; }
-    //    public string? Store_Name { get; set; }
-    //    public string? MAIL_ID { get; set; }
-    //    public int State_ID { get; set; }
-    //    public int City_ID { get; set; }
-    //    public int SM_ID { get; set; }
-    //    public int AM_ID { get; set; }
-    //    public int ZFM_ID { get; set; }
-    //    public int LP_ID { get; set; }
-    //    public int User_ID { get; set; }
-    //    public string? User_Name { get; set; }
-    //    public string? Password { get; set; }
-    //    public string? User_Type { get; set; }
-    //    public int WH_ID { get; set; }
-    //    public int Role_ID { get; set; }
-    //    public int Emp_ID { get; set; }
-    //    public int Reader_Config_ID { get; set; }
-    //}
-
     public class StoreUserRequest
     {
         public string? Status { get; set; }
-
-        // Store
+        public int Entry_By { get; set; }
+        public int Modify_By { get; set; }
         public int Store_ID { get; set; }
         public string? Store_Code { get; set; }
         public string? Store_Name { get; set; }
-
-        // Common
-        public int Entry_By { get; set; }
-        public int Modify_By { get; set; }
-        public int Is_Status { get; set; }
-
-        // Reader
-        public int Reader_Id { get; set; }
-        public string? Reader_Name { get; set; }
-        public string? Reader_MAC { get; set; }
-        public int Antena { get; set; }
-
-        // User
-        public int User_ID { get; set; }
-        public string? User_Name { get; set; }
-        public string? Password { get; set; }
-        public string? User_Type { get; set; }
-        public int Role_ID { get; set; }
-
-        // Reader Configuration
-        public int Reader_Config_ID { get; set; }
-
-        // Warehouse
-        public int WH_ID { get; set; }
-        public string? Wh_Code { get; set; }
-        public string? Wh_Name { get; set; }
-        public string? Wh_Address { get; set; }
-
-        // Store hierarchy
         public string? MAIL_ID { get; set; }
         public int State_ID { get; set; }
         public int City_ID { get; set; }
@@ -95,20 +41,14 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
         public int AM_ID { get; set; }
         public int ZFM_ID { get; set; }
         public int LP_ID { get; set; }
-
-        // Other
-        public string? Device_ESN { get; set; }
-        public string? Encode_DateTime { get; set; }
-        public string? State_Name { get; set; }
-
-        public int Email_Required_Flag { get; set; }
-
-        // Counter
-        public int CounterRoleid { get; set; }
-        public int CounterEmpID { get; set; }
-
+        public int User_ID { get; set; }
+        public string? User_Name { get; set; }
+        public string? Password { get; set; }
+        public string? User_Type { get; set; }
+        public int WH_ID { get; set; }
+        public int Role_ID { get; set; }
         public int Emp_ID { get; set; }
-
+        public int Reader_Config_ID { get; set; }
     }
 
     public class ApiResponse

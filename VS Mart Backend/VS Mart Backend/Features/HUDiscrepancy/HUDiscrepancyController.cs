@@ -52,31 +52,5 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
                 return StatusCode(500, new ApiResponse { Success = false, Message = "An error occurred: " + ex.Message });
             }
         }
-
-        [HttpPost("StoreAndUserDataCache")]
-        public async Task<IActionResult> StoreAndUserDataCache([FromBody] StoreUserRequest req)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(req.Status))
-                {
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "Status is required."
-                    });
-                }
-
-                var response = await _huDiscrepancyService.StoreandUserDataCache(req);
-
-                return Ok(response);
-            }
-            catch(Exception ex)
-            {
-                _logger.LogError(ex, "Error executing StoreandUserDataCache.");
-                return StatusCode(500, new ApiResponse { Success = false, Message = "An error occurred: " + ex.Message });
-            }
-            
-        }
     }
 }

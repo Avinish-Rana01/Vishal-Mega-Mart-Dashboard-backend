@@ -7,6 +7,5 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
     {
         Task<VendorWiseHUDiscrepancyResponse> GetVendorHUDiscrepancyDataAsync(VendorHUDiscrepancyRequest request);
         Task<ApiResponse> StoreandUserData(StoreUserRequest req);
-        Task<ApiResponse> StoreandUserDataCache(StoreUserRequest req);
     }
 }
