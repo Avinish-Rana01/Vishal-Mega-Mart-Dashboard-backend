@@ -17,28 +17,6 @@ namespace VS_Mart_Backend.Features.SystemUtility
             _logger = logger;
         }
 
-        [HttpPost("/api/Auth/login")]
-        public IActionResult Login(LoginRequest request)
-        {
-            try
-            {
-                var response = _systemUtilityService.Login(request);
-                if (response.Success == false)
-                {
-                    return Unauthorized(response);
-                }
-                return Ok(response);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching stores.");
-                return StatusCode(500, "An error occurred while loading stores.");
-            }
-        }
 
         [HttpGet("/api/Stock/cache-status")]
         public IActionResult GetCacheStatus()
