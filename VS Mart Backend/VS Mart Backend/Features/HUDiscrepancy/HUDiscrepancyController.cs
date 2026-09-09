@@ -18,8 +18,8 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
             _logger = logger;
         }
 
-        [HttpPost("GetVendorHUDiscrepancyData")]
-        public async Task<IActionResult> GetVendorHUDiscrepancyData([FromBody] VendorHUDiscrepancyRequest request)
+        [HttpGet("GetVendorHUDiscrepancyData")]
+        public async Task<IActionResult> GetVendorHUDiscrepancyData([FromQuery] VendorHUDiscrepancyRequest request)
         {
             try
             {

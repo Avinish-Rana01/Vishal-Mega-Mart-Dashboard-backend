@@ -35,13 +35,17 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
 
+                    string fromDate = string.IsNullOrWhiteSpace(request.FromDate) ? "2000-01-01" : request.FromDate;
+                    string toDate = string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Today.ToString("yyyy-MM-dd") : request.ToDate;
+                    string vendorCode = string.IsNullOrWhiteSpace(request.VendorCode) ? "0" : request.VendorCode;
+
                     parameters.Add("@status", "VIEW_PARK_HU_VENDOR_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@Vendor_Code", request.VendorCode ?? "", DbType.String, size: 50);
+                    parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
+                    parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
+                    parameters.Add("@fromdate", fromDate, DbType.String, size: 20);
+                    parameters.Add("@todate", toDate, DbType.String, size: 20);
+                    parameters.Add("@Vendor_Code", vendorCode, DbType.String, size: 50);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
 
@@ -54,7 +58,8 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
                     parameters.Add("@Excess_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@HUCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    using var multi = await connection.QueryMultipleAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await multi.ReadAsync<dynamic>();
 
                     response.Data = items
                         .Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase))
