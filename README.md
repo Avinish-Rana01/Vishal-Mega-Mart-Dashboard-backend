@@ -84,39 +84,18 @@ Handles Voided transaction data and EAN searches.
 - `[HttpGet("/api/Stock/void/pos-counters")]`
 - `[HttpGet("/api/Stock/void-SearchEAN")]`
 
-### 12. `Features/Registration/`
-Handles administrative master management (Store, Warehouse, and User registration) powered by `SP_Master`.
+### 12. `Features/Master/`
+Universal execution endpoint powered by `SP_Master` supporting all 27 administrative actions:
+- `[HttpPost("/api/Master/Execute")]`
 
-15 API endpoints in total, organized across 3 controllers:
-
-#### 🏪 Store Registration (5 APIs)
-| # | Method | Route | Purpose |
-|---|---|---|---|
-| 1 | `GET` | `/api/Registration/Store` | List all stores with their Active/Inactive status |
-| 2 | `GET` | `/api/Registration/Store/dropdown` | Get active stores for form dropdown menus |
-| 3 | `POST` | `/api/Registration/Store` | Create a new store (validates code & name uniqueness) |
-| 4 | `PUT` | `/api/Registration/Store` | Update an existing store's code & name |
-| 5 | `PATCH` | `/api/Registration/Store/{storeId}/status` | Toggle store status (Active $\leftrightarrow$ Inactive) |
-
-#### 🏭 Warehouse Registration (5 APIs)
-| # | Method | Route | Purpose |
-|---|---|---|---|
-| 6 | `GET` | `/api/Registration/Warehouse` | List all warehouses with their Active/Inactive status |
-| 7 | `GET` | `/api/Registration/Warehouse/dropdown` | Get active warehouses for form dropdown menus |
-| 8 | `POST` | `/api/Registration/Warehouse` | Create a new warehouse (code, name, address) |
-| 9 | `PUT` | `/api/Registration/Warehouse` | Update an existing warehouse |
-| 10 | `PATCH` | `/api/Registration/Warehouse/{whId}/status` | Toggle warehouse status (Active $\leftrightarrow$ Inactive) |
-
-#### 👤 User Registration (5 APIs)
-| # | Method | Route | Purpose |
-|---|---|---|---|
-| 11 | `GET` | `/api/Registration/User` | List users (filtered by role/store/warehouse) |
-| 12 | `GET` | `/api/Registration/User/roles` | Get list of user roles (Super Admin, Store Admin, etc.) |
-| 13 | `POST` | `/api/Registration/User` | Create a new user with store/warehouse association |
-| 14 | `PUT` | `/api/Registration/User` | Update user credentials, role, or store/warehouse assignment |
-| 15 | `PATCH` | `/api/Registration/User/{userId}/status` | Toggle user status (Active $\leftrightarrow$ Inactive) |
-
-*Total: 15 complete RESTful APIs covering all CRUD operations, dropdown population, duplicate checking, and status toggles.*
+Supports operations across 7 key functional domains:
+1. **Store Master (5 actions)**: `SP_Bind_StoreMaster`, `SP_DDL_StoreID`, `Insert_tbl_Store_Master`, `Update_tbl_Store_Master`, `Delete_tbl_Store_Master`
+2. **Warehouse Master (5 actions)**: `SP_Bind_warehouseMaster`, `SP_DDL_WarehouseID`, `Insert_tbl_Warehouse_Master`, `Update_tbl_warehouse_Master`, `Delete_tbl_warehouse_Master`
+3. **User Registration (5 actions)**: `SP_Bind_User_Master`, `BIND_USER_TYPE`, `Insert_user_registration`, `Update_user_registration`, `Delete_user_registration`
+4. **RFID Reader Master (5 actions)**: `SP_Bind_tbl_Reader_Mst`, `SP_DDL_ReaderID`, `Insert_tbl_Reader_Mst`, `Update_tbl_Reader_Mst`, `Delete_tbl_Reader_Mst`
+5. **Reader Configuration (4 actions)**: `SP_Bind_Config_Master`, `Insert_Reader_configuration_master`, `Update_Reader_configuration_master`, `Delete_Reader_configuration_master`
+6. **Cash Counter Monitoring (2 actions)**: `STORENAME_FOR_COUNTER_STATUS`, `COUNTER_STATUS_DETAILS`
+7. **Authentication (1 action)**: `SP_Login`
 
 ---
 

@@ -34,9 +34,6 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.DcDashboard.IDcDashboardServ
 builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboardService, VS_Mart_Backend.Features.VoidDashboard.VoidDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Auth.IAuthService, VS_Mart_Backend.Features.Auth.AuthService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
-builder.Services.AddScoped<VS_Mart_Backend.Features.Registration.StoreRegistration.IStoreRegistrationService, VS_Mart_Backend.Features.Registration.StoreRegistration.StoreRegistrationService>();
-builder.Services.AddScoped<VS_Mart_Backend.Features.Registration.WarehouseRegistration.IWarehouseRegistrationService, VS_Mart_Backend.Features.Registration.WarehouseRegistration.WarehouseRegistrationService>();
-builder.Services.AddScoped<VS_Mart_Backend.Features.Registration.UserRegistration.IUserRegistrationService, VS_Mart_Backend.Features.Registration.UserRegistration.UserRegistrationService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Mart_Backend.Features.Master.MasterService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker
 
