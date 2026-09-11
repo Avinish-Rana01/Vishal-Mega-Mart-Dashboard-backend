@@ -36,8 +36,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                     int? userIdInt = null;
                     if (int.TryParse(userId, out int parsed)) userIdInt = parsed;
                     parameters.Add("@USER_ID", userIdInt, DbType.Int32);
-                    parameters.Add("@FromDate", "", DbType.String);
-                    parameters.Add("@ToDate", "", DbType.String);
+                    //parameters.Add("@FromDate", "", DbType.String);
+                    //parameters.Add("@ToDate", "", DbType.String);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -102,8 +102,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
                     parameters.Add("@status", "LIVE_STOCK_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                  //  parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.StockDate ?? "", DbType.String, size: 20);
                     parameters.Add("@todate", request.StockDate ?? "", DbType.String, size: 20);

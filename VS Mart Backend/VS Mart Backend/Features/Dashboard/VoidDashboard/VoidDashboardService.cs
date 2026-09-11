@@ -38,6 +38,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@User_ID", userIdInt, DbType.Int32);
+                    parameters.Add("@Role_id", request.RoleId, DbType.Int32);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
                     parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 20);
@@ -136,8 +137,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
                     parameters.Add("@status", "SHOW_SUMMARY_FOR_VOID", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                   // parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@STORE_CODE", request.StoreName ?? "", DbType.String, size: 50);

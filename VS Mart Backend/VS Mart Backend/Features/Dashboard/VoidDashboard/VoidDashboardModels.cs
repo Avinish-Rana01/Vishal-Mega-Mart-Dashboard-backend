@@ -9,6 +9,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 100;
         public string? UserId { get; set; } = string.Empty;
+        public int? RoleId { get; set; } = 0;
         public string? SortColumn { get; set; } = "STORE";
         public string? SortDirection { get; set; } = "asc";
         public string? SortType { get; set; } = "string";

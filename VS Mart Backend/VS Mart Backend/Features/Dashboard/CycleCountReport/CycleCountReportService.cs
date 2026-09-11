@@ -83,8 +83,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
                     parameters.Add("@status", "CYCLE_COUNT_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                    //parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                    //parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_code", request.StoreCode ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
                     parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);

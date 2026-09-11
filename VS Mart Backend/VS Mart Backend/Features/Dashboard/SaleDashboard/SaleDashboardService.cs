@@ -223,8 +223,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     if (!string.IsNullOrEmpty(status)) parameters.Add("@status", status);
 
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "");
-                    parameters.Add("@PageIndex", request.PageIndex);
-                    parameters.Add("@PageSize", request.PageSize);
+                   // parameters.Add("@PageIndex", request.PageIndex);
+                   // parameters.Add("@PageSize", request.PageSize);
                     parameters.Add("@store_code", request.StoreName ?? "");
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", request.ToDate ?? "");
