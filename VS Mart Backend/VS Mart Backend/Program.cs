@@ -10,16 +10,19 @@ builder.Services.AddMemoryCache();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure CORS for frontend access
+// Configure CORS for frontend access (supporting WebSockets and SignalR credentials)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
+
+builder.Services.AddSignalR();
 
 // Register Dependency Injection Services
 builder.Services.AddSingleton<SseNotifierService>();
@@ -36,6 +39,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.Auth.IAuthService, VS_Mart_B
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Mart_Backend.Features.Master.MasterService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker
+builder.Services.AddHostedService<VS_Mart_Backend.Services.LiveStockPollerService>(); // 2-second background poller for real-time Live Stock
 
 var app = builder.Build();
 
@@ -48,5 +52,6 @@ app.UseCors("AllowAll");
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<VS_Mart_Backend.Features.Dashboard.Hubs.LiveStockHub>("/hubs/livestock");
 
 app.Run();
