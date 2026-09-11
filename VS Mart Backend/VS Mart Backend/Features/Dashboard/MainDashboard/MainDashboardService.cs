@@ -74,8 +74,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                 parameters.Add("@status", "TAG_CYCLE_COUNT", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                //parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                //parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "CYCLE_COUNT" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "DESC", DbType.String, size: 10);
 
@@ -377,8 +377,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 var parameters2 = new DynamicParameters();
                 parameters2.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
                 parameters2.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters2.Add("@PageIndex", 1, DbType.Int32);
-                parameters2.Add("@PageSize", Math.Max(100, request.PageSize * 2), DbType.Int32);
+                //parameters2.Add("@PageIndex", 1, DbType.Int32);
+                //parameters2.Add("@PageSize", Math.Max(100, request.PageSize * 2), DbType.Int32);
                 parameters2.Add("@Store_code", "", DbType.String, size: 50);
                 parameters2.Add("@fromdate", "", DbType.String, size: 20);
                 parameters2.Add("@todate", "", DbType.String, size: 20);
@@ -500,8 +500,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     parameters.Add("@status", "TAG_MANAGEMENT_LOCATION", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", 1, DbType.Int32);
-                    parameters.Add("@PageSize", 100, DbType.Int32);
+                   // parameters.Add("@PageIndex", 1, DbType.Int32);
+                    //parameters.Add("@PageSize", 100, DbType.Int32);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "asc", DbType.String, size: 10);
 

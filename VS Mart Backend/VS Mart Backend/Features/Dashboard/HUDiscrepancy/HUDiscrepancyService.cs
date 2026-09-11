@@ -41,8 +41,8 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
 
                     parameters.Add("@status", "VIEW_PARK_HU_VENDOR_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
+                    //parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
+                    //parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
                     parameters.Add("@fromdate", fromDate, DbType.String, size: 20);
                     parameters.Add("@todate", toDate, DbType.String, size: 20);
                     parameters.Add("@Vendor_Code", vendorCode, DbType.String, size: 50);

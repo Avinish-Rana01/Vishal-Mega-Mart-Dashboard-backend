@@ -44,6 +44,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         public string? ColumnName { get; set; } = string.Empty;
         public string? Store { get; set; } = string.Empty;
     }
+   
 
     public class SearchArticlesSaleRequest
     {

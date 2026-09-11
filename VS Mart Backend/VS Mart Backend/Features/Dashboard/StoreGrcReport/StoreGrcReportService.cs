@@ -121,8 +121,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                     }
 
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                   // parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
                     parameters.Add("@FromDate", request.FromDate ?? "", DbType.String, size: 20);
                     parameters.Add("@ToDate", request.ToDate ?? "", DbType.String, size: 20);
@@ -298,8 +298,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
                     parameters.Add("@status", "HU_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                   //parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@CI_STATUS", request.HUStatus ?? "", DbType.String, size: 50);
                     parameters.Add("@Reciving_Plant", request.ReceivingPlant ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);

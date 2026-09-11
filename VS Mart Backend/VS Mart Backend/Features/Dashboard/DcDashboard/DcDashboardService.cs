@@ -40,8 +40,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
                     parameters.Add("@status", "LAST7DAY_DC_VALIDATE_DASHBOARD", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                   // parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
