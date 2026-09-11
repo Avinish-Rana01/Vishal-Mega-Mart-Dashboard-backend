@@ -32,6 +32,7 @@ namespace VS_Mart_Backend.Services
         private readonly ConcurrentDictionary<string, int> _dcSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, VendorSnapshot> _vendorSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private TagManagementSnapshot? _lastTagSnapshot;
+        private static readonly SemaphoreSlim _pollerDbGate = new(1, 1);
 
         // Telemetry counters
         public static long TotalTicksExecuted { get; private set; } = 0;
@@ -131,37 +132,55 @@ namespace VS_Mart_Backend.Services
                     if (await timer.WaitForNextTickAsync(stoppingToken))
                     {
                         cycleTick++;
+
+                        // Hub occupancy check: If no clients are connected and initial priming is done,
+                        // do not poll frequently. Only run a gentle baseline refresh every 60s (30 ticks).
+                        bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
+                        if (!hasSubscribers && cycleTick > 1 && cycleTick % 30 != 0)
+                        {
+                            continue;
+                        }
+
                         TotalTicksExecuted++;
                         LastPollTime = DateTime.UtcNow;
 
-                        // 1. Cycle Count: Every 4 seconds (every 2 ticks)
-                        if (cycleTick % 2 == 0)
+                        // Acquire gate so poller never consumes more than 1 DB connection at a time
+                        await _pollerDbGate.WaitAsync(stoppingToken);
+                        try
                         {
-                            await PollCycleCountAsync(stoppingToken);
-                        }
+                            // 1. Cycle Count: Every 4 seconds (every 2 ticks)
+                            if (cycleTick % 2 == 0)
+                            {
+                                await PollCycleCountAsync(stoppingToken);
+                            }
 
-                        // 2. Tag Management: Every 6 seconds (every 3 ticks)
-                        if (cycleTick % 3 == 0)
-                        {
-                            await PollTagManagementAsync(stoppingToken);
-                        }
+                            // 2. Tag Management: Every 6 seconds (every 3 ticks)
+                            if (cycleTick % 3 == 0)
+                            {
+                                await PollTagManagementAsync(stoppingToken);
+                            }
 
-                        // 3. DC Encoding: Every 6 seconds (every 3 ticks)
-                        if (cycleTick % 3 == 1)
-                        {
-                            await PollDcEncodingAsync(stoppingToken);
-                        }
+                            // 3. DC Encoding: Every 6 seconds (every 3 ticks)
+                            if (cycleTick % 3 == 1)
+                            {
+                                await PollDcEncodingAsync(stoppingToken);
+                            }
 
-                        // 4. Store Validation: Every 12 seconds (every 6 ticks)
-                        if (cycleTick % 6 == 0)
-                        {
-                            await PollStoreValidationAsync(stoppingToken);
-                        }
+                            // 4. Store Validation: Every 12 seconds (every 6 ticks)
+                            if (cycleTick % 6 == 0)
+                            {
+                                await PollStoreValidationAsync(stoppingToken);
+                            }
 
-                        // 5. Vendor Discrepancy: Every 14 seconds (every 7 ticks)
-                        if (cycleTick % 7 == 0)
+                            // 5. Vendor Discrepancy: Every 14 seconds (every 7 ticks)
+                            if (cycleTick % 7 == 0)
+                            {
+                                await PollVendorDiscrepancyAsync(stoppingToken);
+                            }
+                        }
+                        finally
                         {
-                            await PollVendorDiscrepancyAsync(stoppingToken);
+                            _pollerDbGate.Release();
                         }
                     }
                 }
@@ -184,7 +203,7 @@ namespace VS_Mart_Backend.Services
             if (string.IsNullOrEmpty(_connectionString)) return;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             try
             {
@@ -317,7 +336,7 @@ namespace VS_Mart_Backend.Services
             if (string.IsNullOrEmpty(_connectionString)) return;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(18));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             try
             {
@@ -436,7 +455,7 @@ namespace VS_Mart_Backend.Services
             if (string.IsNullOrEmpty(_connectionString)) return;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             try
             {
@@ -539,7 +558,7 @@ namespace VS_Mart_Backend.Services
             if (string.IsNullOrEmpty(_connectionString)) return;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(3));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             try
             {
@@ -611,7 +630,7 @@ namespace VS_Mart_Backend.Services
             if (string.IsNullOrEmpty(_connectionString)) return;
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
 
             try
             {

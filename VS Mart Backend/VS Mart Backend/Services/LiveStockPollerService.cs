@@ -40,6 +40,7 @@ namespace VS_Mart_Backend.Services
         public static LiveStockDeltaPatch? LastDetectedDelta { get; private set; }
         public static string LastStatusMessage { get; private set; } = "Starting...";
         private static readonly ConcurrentDictionary<string, object> _currentStoreMetrics = new();
+        private static readonly SemaphoreSlim _liveStockDbGate = new(1, 1);
 
         public static object GetPollerTelemetry()
         {
@@ -104,7 +105,22 @@ namespace VS_Mart_Backend.Services
                 {
                     if (await timer.WaitForNextTickAsync(stoppingToken))
                     {
-                        await PollLiveStockAsync(stoppingToken);
+                        // Skip frequent polling if no clients are connected (only refresh once every 60s)
+                        bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
+                        if (!hasSubscribers && TotalTicksExecuted > 1 && TotalTicksExecuted % 30 != 0)
+                        {
+                            continue;
+                        }
+
+                        await _liveStockDbGate.WaitAsync(stoppingToken);
+                        try
+                        {
+                            await PollLiveStockAsync(stoppingToken);
+                        }
+                        finally
+                        {
+                            _liveStockDbGate.Release();
+                        }
                     }
                 }
                 catch (OperationCanceledException)
@@ -124,9 +140,9 @@ namespace VS_Mart_Backend.Services
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
 
-            // Strict 1.5s cancellation timeout on SQL query to prevent thread pool starvation
+            // Generous cancellation timeout of 60s to guarantee query completion under any load
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromMilliseconds(1500));
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             try

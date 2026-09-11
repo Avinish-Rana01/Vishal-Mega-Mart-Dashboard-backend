@@ -9,6 +9,21 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
     /// </summary>
     public class DashboardHub : Hub
     {
+        private static int _connectedClients = 0;
+        public static int ConnectedClientsCount => Math.Max(0, Volatile.Read(ref _connectedClients));
+
+        public override async Task OnConnectedAsync()
+        {
+            Interlocked.Increment(ref _connectedClients);
+            await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            Interlocked.Decrement(ref _connectedClients);
+            await base.OnDisconnectedAsync(exception);
+        }
+
         // 1. Live Stock
         public async Task BroadcastLiveStockPatch(LiveStockDeltaPatch patch)
         {

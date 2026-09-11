@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace VS_Mart_Backend.Features.Base
@@ -14,6 +15,7 @@ namespace VS_Mart_Backend.Features.Base
 
         private static bool? _cacheOverride = null;
         private static readonly ConcurrentDictionary<string, bool> _refreshingKeys = new();
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _keyLocks = new();
 
         private class CacheItem<T>
         {
@@ -67,9 +69,25 @@ namespace VS_Mart_Backend.Features.Base
                 return cachedItem.Data;
             }
 
-            var initialData = await databaseQuery();
-            _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
-            return initialData;
+            // Single-flight stampede protection: Coalesce concurrent requests for the same cacheKey
+            var keyLock = _keyLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+            await keyLock.WaitAsync();
+            try
+            {
+                // Double-check cache inside lock
+                if (_cache.TryGetValue(cacheKey, out CacheItem<T>? doubleCheckItem) && doubleCheckItem != null)
+                {
+                    return doubleCheckItem.Data;
+                }
+
+                var initialData = await databaseQuery();
+                _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
+                return initialData;
+            }
+            finally
+            {
+                keyLock.Release();
+            }
         }
     }
 }

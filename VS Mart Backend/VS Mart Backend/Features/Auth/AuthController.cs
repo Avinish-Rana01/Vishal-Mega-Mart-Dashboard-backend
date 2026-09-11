@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace VS_Mart_Backend.Features.Auth
 {
@@ -17,16 +19,20 @@ namespace VS_Mart_Backend.Features.Auth
         }
 
         [HttpPost("/api/Auth/login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var response = _authService.Login(request);
+                var response = await _authService.LoginAsync(request, cancellationToken);
                 if (response.Success == false)
                 {
                     return Unauthorized(response);
                 }
                 return Ok(response);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, "Client Closed Request");
             }
             catch (UnauthorizedAccessException)
             {

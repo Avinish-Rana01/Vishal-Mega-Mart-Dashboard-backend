@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace VS_Mart_Backend.Features.Auth
 {
@@ -20,6 +22,11 @@ namespace VS_Mart_Backend.Features.Auth
 
         public LoginResponse Login(LoginRequest request)
         {
+            return LoginAsync(request).GetAwaiter().GetResult();
+        }
+
+        public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+        {
             try
             {
                 using var connection = new SqlConnection(_connectionString);
@@ -30,7 +37,9 @@ namespace VS_Mart_Backend.Features.Auth
                 parameters.Add("@Status", "SP_Login");
                 parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
-                var items = connection.Query<dynamic>("SP_Master", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120).ToList();
+                var cmd = new CommandDefinition("SP_Master", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                var rawItems = await connection.QueryAsync<dynamic>(cmd);
+                var items = rawItems.ToList();
 
                 string dbMessage = parameters.Get<string>("@Message") ?? string.Empty;
 
