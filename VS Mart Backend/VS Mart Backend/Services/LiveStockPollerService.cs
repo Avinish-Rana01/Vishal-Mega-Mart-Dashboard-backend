@@ -21,7 +21,7 @@ namespace VS_Mart_Backend.Services
     {
         private readonly IConfiguration _configuration;
         private readonly IMemoryCache _cache;
-        private readonly IHubContext<LiveStockHub> _hubContext;
+        private readonly IHubContext<DashboardHub> _hubContext;
         private readonly ILogger<LiveStockPollerService> _logger;
         private readonly string _connectionString;
 
@@ -67,7 +67,7 @@ namespace VS_Mart_Backend.Services
         public LiveStockPollerService(
             IConfiguration configuration,
             IMemoryCache cache,
-            IHubContext<LiveStockHub> hubContext,
+            IHubContext<DashboardHub> hubContext,
             ILogger<LiveStockPollerService> logger)
         {
             _configuration = configuration;
