@@ -31,6 +31,7 @@ namespace VS_Mart_Backend.Services
         private readonly ConcurrentDictionary<string, StoreValidationSnapshot> _storeSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, int> _dcSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, VendorSnapshot> _vendorSnapshots = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, DcValidationSnapshot> _dcValidationSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private TagManagementSnapshot? _lastTagSnapshot;
         private static readonly SemaphoreSlim _pollerDbGate = new(1, 1);
 
@@ -42,6 +43,7 @@ namespace VS_Mart_Backend.Services
         public static object? LastDcPatch { get; private set; }
         public static object? LastTagPatch { get; private set; }
         public static object? LastVendorPatch { get; private set; }
+        public static object? LastDcValidationPatch { get; private set; }
 
         public static object GetTelemetry()
         {
@@ -54,7 +56,8 @@ namespace VS_Mart_Backend.Services
                 lastStorePatch = LastStorePatch,
                 lastDcPatch = LastDcPatch,
                 lastTagPatch = LastTagPatch,
-                lastVendorPatch = LastVendorPatch
+                lastVendorPatch = LastVendorPatch,
+                lastDcValidationPatch = LastDcValidationPatch
             };
         }
 
@@ -90,6 +93,13 @@ namespace VS_Mart_Backend.Services
             public int ScannedQty { get; set; }
             public int DiffQty { get; set; }
             public int DiffTillDate { get; set; }
+        }
+
+        private class DcValidationSnapshot
+        {
+            public int ProcessedHu { get; set; }
+            public int UnprocessedHu { get; set; }
+            public int ProcessedArticleQty { get; set; }
         }
 
         public DashboardSectionsPollerService(
@@ -176,6 +186,12 @@ namespace VS_Mart_Backend.Services
                             if (cycleTick % 7 == 0)
                             {
                                 await PollVendorDiscrepancyAsync(stoppingToken);
+                            }
+
+                            // 6. DC Validation: Every 14 seconds (every 7 ticks, offset by 1)
+                            if (cycleTick % 7 == 1)
+                            {
+                                await PollDcValidationAsync(stoppingToken);
                             }
                         }
                         finally
@@ -725,6 +741,107 @@ namespace VS_Mart_Backend.Services
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollVendorDiscrepancyAsync warning: {Msg}", ex.Message);
+            }
+        }
+
+        // =========================================================================
+        // 6. DC Validation Poller & Diff Engine
+        // =========================================================================
+        private async Task PollDcValidationAsync(CancellationToken stoppingToken)
+        {
+            if (string.IsNullOrEmpty(_connectionString)) return;
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(60));
+
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+                parameters.Add("@status", "DC_VALIDATE_DASHBOARD", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", 1, DbType.Int32);
+                parameters.Add("@PageSize", 100, DbType.Int32);
+                parameters.Add("@USER_ID", 26, DbType.Int32);
+                parameters.Add("@SortColumn", "Store", DbType.String, size: 50);
+                parameters.Add("@SortDirection", "asc", DbType.String, size: 10);
+                parameters.Add("@SortType", "string", DbType.String, size: 50);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@PROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@UNPROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@PROCESSED_ARTICLE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var cmd = new CommandDefinition("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 60, cancellationToken: cts.Token);
+                var rawItems = (await connection.QueryAsync<dynamic>(cmd)).ToList();
+
+                var rows = rawItems
+                    .Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+
+                int totalProcessed = parameters.Get<int?>("@PROCESSED_HU") ?? 0;
+                int totalUnprocessed = parameters.Get<int?>("@UNPROCESSED_HU") ?? 0;
+                int totalArticleQty = parameters.Get<int?>("@PROCESSED_ARTICLE_QTY") ?? 0;
+                int recordCount = parameters.Get<int?>("@RecordCount") ?? rows.Count;
+
+                foreach (var row in rows)
+                {
+                    string plant = GetString(row, "Reciving_Plant");
+                    if (string.IsNullOrEmpty(plant)) continue;
+
+                    string storeName = GetString(row, "STORE_NAME");
+                    int processedHu = GetInt(row, "PROCESSED_HU");
+                    int unprocessedHu = GetInt(row, "UNPROCESSED_HU");
+                    int articleQty = GetInt(row, "PROCESSED_ARTICLE_QTY");
+
+                    if (_dcValidationSnapshots.TryGetValue(plant, out var oldSnap))
+                    {
+                        if (oldSnap.ProcessedHu != processedHu || oldSnap.UnprocessedHu != unprocessedHu || oldSnap.ProcessedArticleQty != articleQty)
+                        {
+                            var patch = new DcValidationDeltaPatch
+                            {
+                                Type = "DC_VALIDATION_DELTA",
+                                Timestamp = DateTime.UtcNow,
+                                RecivingPlant = plant,
+                                StoreName = storeName,
+                                DeltaProcessedHu = processedHu - oldSnap.ProcessedHu,
+                                DeltaUnprocessedHu = unprocessedHu - oldSnap.UnprocessedHu,
+                                DeltaProcessedArticleQty = articleQty - oldSnap.ProcessedArticleQty,
+                                NewProcessedHu = processedHu,
+                                NewUnprocessedHu = unprocessedHu,
+                                NewProcessedArticleQty = articleQty,
+                                SummaryDelta = new DcValidationSummaryDelta
+                                {
+                                    RecordCount = recordCount,
+                                    TotalProcessedHu = totalProcessed,
+                                    TotalUnprocessedHu = totalUnprocessed,
+                                    TotalProcessedArticleQty = totalArticleQty
+                                }
+                            };
+
+                            LastDcValidationPatch = patch;
+                            oldSnap.ProcessedHu = processedHu;
+                            oldSnap.UnprocessedHu = unprocessedHu;
+                            oldSnap.ProcessedArticleQty = articleQty;
+
+                            LogDelta("DC VALIDATION", $"Plant: {plant} | Processed: {processedHu} (Δ {patch.DeltaProcessedHu:+0;-#}), Unprocessed: {unprocessedHu} (Δ {patch.DeltaUnprocessedHu:+0;-#})");
+                            await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", patch, stoppingToken);
+                        }
+                    }
+                    else
+                    {
+                        _dcValidationSnapshots[plant] = new DcValidationSnapshot
+                        {
+                            ProcessedHu = processedHu,
+                            UnprocessedHu = unprocessedHu,
+                            ProcessedArticleQty = articleQty
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("DashboardSectionsPollerService: PollDcValidationAsync warning: {Msg}", ex.Message);
             }
         }
 

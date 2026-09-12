@@ -142,4 +142,30 @@
             public int NewDifferenceQtyTillDate { get; set; }
             public VendorDiscrepancySummaryDelta? SummaryDelta { get; set; }
         }
+
+        // ==========================================
+        // 7. DC Validation Patch Models
+        // ==========================================
+        public class DcValidationSummaryDelta
+        {
+            public int RecordCount { get; set; }
+            public int TotalProcessedHu { get; set; }
+            public int TotalUnprocessedHu { get; set; }
+            public int TotalProcessedArticleQty { get; set; }
+        }
+
+        public class DcValidationDeltaPatch
+        {
+            public string Type { get; set; } = "DC_VALIDATION_DELTA";
+            public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+            public string RecivingPlant { get; set; } = string.Empty;
+            public string StoreName { get; set; } = string.Empty;
+            public int DeltaProcessedHu { get; set; }
+            public int DeltaUnprocessedHu { get; set; }
+            public int DeltaProcessedArticleQty { get; set; }
+            public int NewProcessedHu { get; set; }
+            public int NewUnprocessedHu { get; set; }
+            public int NewProcessedArticleQty { get; set; }
+            public DcValidationSummaryDelta? SummaryDelta { get; set; }
+        }
     }
