@@ -18,5 +18,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
         Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
         Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
+
+        Task<int> GetActiveSuperAdminIdAsync();
+        Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId);
     }
 }

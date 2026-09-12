@@ -18,49 +18,122 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
         }
 
+        private async Task<LiveStockResponse> QueryLiveStockFromDbAsync(LiveStockQueryRequest request, int userIdInt)
+        {
+            var response = new LiveStockResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+            
+            parameters.Add("@status", "LIVE_STOCK_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@User_ID", userIdInt, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new LiveStockSummary
+            {
+                PageIndex = request.PageIndex,
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
+                SapQty = parameters.Get<int?>("@QTY") ?? 0,
+                RfidQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
+                DiffQty = parameters.Get<int?>("@DIFF_QTY") ?? 0,
+                StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : null,
+                Date = null
+            };
+            return response;
+        }
+
         public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request)
         {
-            string cacheKey = $"LiveStockDetails_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            // Universal Master Cache Key: holds company-wide data for all stores in RAM
+            string masterCacheKey = $"LiveStockDetails_Master_{request.SearchTerm}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new LiveStockResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-                
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@status", "LIVE_STOCK_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new LiveStockSummary
+                var masterRequest = new LiveStockQueryRequest
                 {
-                    PageIndex = request.PageIndex,
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-                    SapQty = parameters.Get<int?>("@QTY") ?? 0,
-                    RfidQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
-                    DiffQty = parameters.Get<int?>("@DIFF_QTY") ?? 0,
-                    StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : null,
-                    Date = null
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId);
             });
+
+            // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
+            if (profile.IsSuperAdmin)
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new LiveStockResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            // 2. Store Admin: serve sliced in-memory data strictly if user has Store Admin role
+            if (string.Equals(profile.UserType, "Store Admin", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items
+                    .Where(x => string.Equals(x.TryGetValue("STORE_CODE", out var sc) ? sc?.ToString() : null, profile.StoreCode, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (storeItems.Count > 0)
+                {
+                    int sapQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("SAP_STOCK", out var s) && s != null ? s : 0));
+                    int rfidQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_STOCK", out var r) && r != null ? r : 0));
+                    int diffQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE", out var d) && d != null ? d : 0));
+                    string? storeName = storeItems.FirstOrDefault()?.TryGetValue("STORE_NAME", out var sn) == true ? sn?.ToString() : profile.StoreName;
+
+                    return new LiveStockResponse
+                    {
+                        Items = storeItems,
+                        Summary = new LiveStockSummary
+                        {
+                            PageIndex = 1,
+                            RecordCount = storeItems.Count,
+                            TotalCount = storeItems.Count,
+                            SapQty = sapQty,
+                            RfidQty = rfidQty,
+                            DiffQty = diffQty,
+                            StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
+                            Date = null
+                        }
+                    };
+                }
+            }
+
+            // 3. Fallback for unmapped users or specific store queries not found in master snapshot
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryLiveStockFromDbAsync(request, userIdInt);
         }
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)

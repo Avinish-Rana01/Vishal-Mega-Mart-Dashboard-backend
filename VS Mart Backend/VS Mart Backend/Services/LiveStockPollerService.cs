@@ -199,8 +199,9 @@ namespace VS_Mart_Backend.Services
                     }
                 };
 
-                string defaultCacheKey = "LiveStockDetails_26__1_100_STORE_asc_string";
-                _cache.Set(defaultCacheKey, responseObj, TimeSpan.FromSeconds(30));
+                // Keep the universal Master Cache pre-warmed so all users hit memory in < 5ms
+                string masterCacheKey = "LiveStockDetails_Master__STORE_asc_string";
+                VS_Mart_Backend.Features.Base.BaseDashboardService.SetCacheItem(_cache, masterCacheKey, responseObj, TimeSpan.FromSeconds(60));
 
                 // 2. Initial baseline population
                 if (!_isInitialized)
