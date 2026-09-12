@@ -66,6 +66,29 @@ namespace VS_Mart_Backend.Features.Auth
                 else if (userType == "Tag Admin")
                     redirectPage = "Tag_Cycle_Count";
 
+                var allowedSections = new List<string>();
+                switch (userType)
+                {
+                    case "Super Admin":
+                        allowedSections.AddRange(new[] {
+                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy"
+                        });
+                        break;
+
+                    case "Store Admin":
+                        allowedSections.AddRange(new[] {
+                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return"
+                        });
+                        break;
+
+                    case "Warehouse Admin":
+                        allowedSections.AddRange(new[] {
+                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy"
+                        });
+                        break;
+                }
+
                 return new LoginResponse
                 {
                     Success = true,
@@ -77,6 +100,7 @@ namespace VS_Mart_Backend.Features.Auth
                     WarehouseName = row.ContainsKey("WH_NAME") ? row["WH_NAME"]?.ToString() ?? "" : "",
                     StoreCode = row.ContainsKey("Store_Code") ? row["Store_Code"]?.ToString() ?? "" : "",
                     WarehouseCode = row.ContainsKey("WH_Code") ? row["WH_Code"]?.ToString() ?? "" : "",
+                    AllowedSections = allowedSections,
                     RedirectPage = redirectPage
                 };
             }

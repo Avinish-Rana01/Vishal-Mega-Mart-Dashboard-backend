@@ -19,5 +19,6 @@ namespace VS_Mart_Backend.Features.Auth
         public string? WarehouseName { get; set; }
         public string? StoreCode { get; set; }
         public string? WarehouseCode { get; set; }
+        public List<string> AllowedSections { get; set; } = new();
     }
 }
