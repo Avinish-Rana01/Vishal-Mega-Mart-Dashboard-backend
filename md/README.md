@@ -47,26 +47,27 @@ public LoginResponse Login(LoginRequest request)
 
 ---
 
-### 3. No JWT Authentication — Any Anonymous Request Gets Full Data
+### 3. No JWT Authentication — Any Anonymous Request Gets Full Data (Step 1 RBAC ✅ FIXED)
 
-**Files**: [AuthController.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Auth/AuthController.cs) · [AuthService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Auth/AuthService.cs)
+**Files**: [AuthController.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Auth/AuthController.cs) · [AuthService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Auth/AuthService.cs) · [AuthModels.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Auth/AuthModels.cs)
+
+> [!NOTE]
+> **Progress Update**: Step 1 (Role-Based Access Control) is **✅ FIXED**. `LoginResponse` now dynamically delivers `AllowedSections` per user role (Super Admin: 10, Store Admin: 6, Warehouse Admin: 4), restricting widget access and eliminating unnecessary data calls. Step 2 (Backend JWT token issuance & `[Authorize]` attributes) is scheduled next.
 
 > [!WARNING]
-> Login validates credentials against `SP_Master` but **returns zero tokens**. Every dashboard endpoint is completely unauthenticated. Any client can hit `/api/Stock/live-details?userId=26` to get Super Admin data without logging in. The `app.UseAuthorization()` middleware is present but **no `[Authorize]` attributes** exist on any controller.
+> Login validates credentials against `SP_Master` but returns session payloads without JWT bearer tokens. The `app.UseAuthorization()` middleware is present but no `[Authorize]` attributes exist yet on controller endpoints.
 
 - **Impact**: Full data exposure, no row-level security  
 - **Fix**: Implement JWT issuance in `AuthService.LoginAsync`, add `[Authorize]` to all controllers, use claim-based `StoreCode` interception per the RBAC plan.
 
 ---
 
-### 4. Hardcoded Super Admin User ID `26` Everywhere
+### 4. Hardcoded Super Admin User ID `26` Everywhere — ✅ FIXED
 
-**Files**: [CacheWarmerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/CacheWarmerService.cs#L43) · [LiveStockPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/LiveStockPollerService.cs#L156) · [DashboardSectionsPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/DashboardSectionsPollerService.cs#L213)
+**Files**: [CacheWarmerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/CacheWarmerService.cs#L43) · [BaseDashboardService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Dashboard/Base/BaseDashboardService.cs#L110) · [MainDashboardService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Dashboard/MainDashboard/MainDashboardService.cs#L78)
 
-> [!WARNING]
-> The pollers and cache warmer use `@User_ID = 26` (Super Admin) hardcoded. If this user is deleted or their permissions change, all real-time updates and cache warming silently return wrong data or zero rows.
-
-- **Fix**: Move `SuperAdminUserId` to `appsettings.json` as a configuration key.
+> [!NOTE]
+> **✅ FIXED**: Implemented `GetActiveSuperAdminIdAsync()` in `BaseDashboardService.cs` which dynamically discovers the active Super Admin from `dbo.User_Registration` with in-memory caching and self-healing. Updated `CacheWarmerService.cs` and all 8 master dashboard queries in `MainDashboardService.cs` to use this dynamic discovery instead of hardcoded 26.
 
 ---
 
@@ -91,14 +92,12 @@ File.AppendAllText(Path.Combine(logDir, "livestock_deltas.txt"), ...);
 
 ## 🟠 High Priority Optimizations
 
-### 6. CycleCount Poller Fires **2 SQL Queries Per Tick**
+### 6. CycleCount Poller Fires **2 SQL Queries Per Tick** — ✅ FIXED
 
-**File**: [DashboardSectionsPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/DashboardSectionsPollerService.cs#L201-L329)
+**File**: [DashboardSectionsPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/DashboardSectionsPollerService.cs#L223-L261)
 
-`PollCycleCountAsync` opens **two separate SQL connections** — one for `SP_New_Dashboard` (`CYCLE_COUNT_DASHBOARD`) and one for `SP_NEW_REPORT` (`CYCLE_COUNT_REPORT_VIEW`) — every 4 seconds.
-
-- **Impact**: 2x connection overhead, 2x SQL Server load  
-- **Fix**: Use a **single connection** with `QueryMultipleAsync`, or merge the lookup into a dictionary from `graphRows` before the `foreach` loop (avoid `O(n×m)` `FirstOrDefault`).
+> [!NOTE]
+> **✅ FIXED**: Refactored `PollCycleCountAsync` in `DashboardSectionsPollerService.cs` to reuse a single open `SqlConnection` with `QueryMultipleAsync` across both stored procedures (`SP_New_Dashboard` and `SP_NEW_REPORT`), eliminating double connection overhead.
 
 ---
 
@@ -161,37 +160,21 @@ Every unique cache key creates a new `SemaphoreSlim` that is **never removed**. 
 
 ---
 
-### 11. Cache Key Includes Mutable Default Values
+### 11. Cache Key Includes Mutable Default Values — ✅ FIXED
 
 **Files**: Every service method in [MainDashboardService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Features/Dashboard/MainDashboard/MainDashboardService.cs)
 
-```csharp
-string cacheKey = $"LiveStockDetails_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_...";
-```
-
-If the frontend sends `SortColumn=null` vs `SortColumn=""` vs `SortColumn=STORE`, these generate **different cache keys** for the same SQL query (because the service defaults `null` → `"STORE"` inside the method). This causes cache misses and redundant SQL calls.
-
-- **Fix**: Normalize inputs _before_ building the cache key:
-```csharp
-string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn;
-string cacheKey = $"LiveStockDetails_{request.UserId}_{request.SearchTerm ?? ""}_{request.PageIndex}_{sortCol}...";
-```
+> [!NOTE]
+> **✅ FIXED**: Implemented input normalization (`Trim()`, `ToLowerInvariant()`, fallback defaults) before building cache keys across all endpoints (`SaleDashboard`, `ReturnDashboard`, `VoidDashboard`, `StoreDashboard`, `TagCycleCount`, etc.) in `MainDashboardService.cs`, ensuring deterministic cache hits.
 
 ---
 
-### 12. Poller Directly Writes to API Cache with Hardcoded Key
+### 12. Poller Directly Writes to API Cache with Hardcoded Key — ✅ FIXED
 
-**File**: [LiveStockPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/LiveStockPollerService.cs#L202-L203)
+**File**: [LiveStockPollerService.cs](../VS%20Mart%20Backend/VS%20Mart%20Backend/Services/LiveStockPollerService.cs#L202-L205)
 
-```csharp
-string defaultCacheKey = "LiveStockDetails_26__1_100_STORE_asc_string";
-_cache.Set(defaultCacheKey, responseObj, TimeSpan.FromSeconds(30));
-```
-
-> [!WARNING]
-> This hardcoded cache key **must exactly match** the key generated by `MainDashboardService.GetLiveStockDetailsAsync`. If anyone changes the key format in the service, the poller silently writes to a different key and the optimization breaks. Also, the poller sets TTL=30s but the service sets TTL=90s — inconsistent.
-
-- **Fix**: Extract a shared `CacheKeyBuilder.LiveStock(userId, search, page, size, sort, dir, type)` method. Use it in both the poller and the service.
+> [!NOTE]
+> **✅ FIXED**: Aligned `LiveStockPollerService.cs` with the Universal Master Cache pattern (`LiveStockDetails_Master__STORE_asc_string`) using `BaseDashboardService.SetCacheItem` with consistent 60s TTL, guaranteeing that real-time poller updates populate the exact memory key served to clients.
 
 ---
 
@@ -387,11 +370,12 @@ Allowing any origin with credentials is the most permissive CORS configuration p
 
 ---
 
-### 28. `RollForward=Major` in `.csproj`
+### 28. `RollForward=Major` in `.csproj` — ✅ FIXED
 
 **File**: [VS Mart Backend.csproj](../VS%20Mart%20Backend/VS%20Mart%20Backend/VS%20Mart%20Backend.csproj#L5)
 
-Allows the app to silently run on .NET 9+ even though it targets `net8.0`. Better to be explicit to avoid unexpected runtime behaviors.
+> [!NOTE]
+> **✅ FIXED**: Commented out `<RollForward>Major</RollForward>` in `VS Mart Backend.csproj` to enforce strict runtime matching on `net8.0`.
 
 ---
 
@@ -431,20 +415,20 @@ The `sa` password is committed to Git in plaintext.
 
 ## 📊 Priority & Effort Matrix
 
-| # | Issue | Effort | Impact | Priority |
+| # | Issue | Effort | Impact | Status / Priority |
 |---|---|---|---|:---:|
 | 1 | Delete SSE dead code | 5 min | High | 🔴 |
 | 2 | Delete sync `Login()` | 2 min | High | 🔴 |
-| 3 | JWT Authentication & RBAC | 2–3 days | Critical | 🔴 |
-| 4 | Move User ID 26 to config | 10 min | Medium | 🔴 |
+| 3 | JWT Authentication & RBAC | 2–3 days | Critical | 🔴 (Step 1 UI RBAC ✅ FIXED) |
+| 4 | Move User ID 26 to config (Dynamic Discovery) | 10 min | Medium | ✅ FIXED |
 | 5 | Replace `File.AppendAllText` | 15 min | High | 🔴 |
-| 6 | Single connection for CycleCount | 30 min | High | 🟠 |
+| 6 | Single connection for CycleCount | 30 min | High | ✅ FIXED |
 | 7 | Fix O(n²) joins | 20 min | Medium | 🟠 |
 | 8 | Reduce poller timeout | 5 min | Medium | 🟠 |
 | 9 | Remove duplicate hub mapping | 5 min | Medium | 🟠 |
 | 10 | Fix `_keyLocks` memory leak | 30 min | Medium | 🟠 |
-| 11 | Normalize cache keys | 30 min | Medium | 🟡 |
-| 12 | Shared cache key builder | 1 hr | Medium | 🟡 |
+| 11 | Normalize cache keys | 30 min | Medium | ✅ FIXED |
+| 12 | Shared cache key builder / Master Cache | 1 hr | Medium | ✅ FIXED |
 | 13 | Tiered command timeouts | 15 min | Low | 🟡 |
 | 14 | Remove `Newtonsoft.Json` | 5 min | Low | 🟡 |
 | 15 | Add exception logging | 30 min | Medium | 🟡 |
@@ -459,9 +443,13 @@ The `sa` password is committed to Git in plaintext.
 | 24 | Rate limiting | 30 min | Medium | 🟢 |
 | 25 | Guard Swagger for dev only | 5 min | Low | 🟢 |
 | 26 | Tighten CORS | 10 min | Low | 🟢 |
+| 27 | Remove Connection Lifetime=300 | 5 min | Low | 🟢 |
+| 28 | RollForward=Major in .csproj | 2 min | Low | ✅ FIXED |
+| 29 | Remove test_api.json | 2 min | Low | 🟢 |
+| 30 | Move DB credentials to User Secrets | 15 min | Medium | 🔴 |
 
 ---
 
 > [!TIP]
-> **Recommended Quick Wins (< 30 minutes total)**:
-> Items **1, 2, 4, 8, 9, 14, 17, 25** can all be completed in a single commit with immediate performance and hygiene gains!
+> **Recommended Quick Wins**:
+> Items **1, 2, 8, 9, 14, 17, 25** can all be completed in a single commit with immediate performance and hygiene gains! (Items **4, 6, 11, 12, 28** are already ✅ FIXED).
