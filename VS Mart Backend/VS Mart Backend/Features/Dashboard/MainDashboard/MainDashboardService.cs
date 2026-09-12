@@ -18,6 +18,22 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
         }
 
+        private static bool MatchStore(IDictionary<string, object?> row, string storeCode)
+        {
+            if (string.IsNullOrEmpty(storeCode)) return false;
+
+            if (row.TryGetValue("STORE_CODE", out var sc) && sc != null && string.Equals(sc.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (row.TryGetValue("STORE", out var st) && st != null && string.Equals(st.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (row.TryGetValue("Store_Code", out var sc2) && sc2 != null && string.Equals(sc2.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (row.TryGetValue("Reciving_Plant", out var rp) && rp != null && string.Equals(rp.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }
+
         private async Task<LiveStockResponse> QueryLiveStockFromDbAsync(LiveStockQueryRequest request, int userIdInt)
         {
             var response = new LiveStockResponse();
@@ -78,8 +94,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId);
             });
 
-            // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
-            if (profile.IsSuperAdmin)
+            // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -98,11 +114,11 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            // 2. Store Admin: serve sliced in-memory data strictly if user has Store Admin role
-            if (string.Equals(profile.UserType, "Store Admin", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(profile.StoreCode))
+            // 2. User assigned to a specific store: serve sliced in-memory data instantly from RAM
+            if (!string.IsNullOrEmpty(profile.StoreCode))
             {
                 var storeItems = masterData.Items
-                    .Where(x => string.Equals(x.TryGetValue("STORE_CODE", out var sc) ? sc?.ToString() : null, profile.StoreCode, StringComparison.OrdinalIgnoreCase))
+                    .Where(x => MatchStore(x, profile.StoreCode))
                     .ToList();
 
                 if (storeItems.Count > 0)
@@ -138,7 +154,13 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)
         {
-            string cacheKey = $"TagCycleCount_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+            int pageIndex = request.PageIndex > 0 ? request.PageIndex : 1;
+            int pageSize = request.PageSize > 0 ? request.PageSize : 100;
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "CYCLE_COUNT" : request.SortColumn;
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "DESC" : request.SortDirection;
+            string searchTerm = request.SearchTerm ?? "";
+
+            string cacheKey = $"TagCycleCount_{searchTerm.Trim().ToLowerInvariant()}_{pageIndex}_{pageSize}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 var response = new TagCycleCountResponse();
@@ -146,11 +168,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 var parameters = new DynamicParameters();
 
                 parameters.Add("@status", "TAG_CYCLE_COUNT", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                //parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                //parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "CYCLE_COUNT" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "DESC", DbType.String, size: 10);
+                parameters.Add("@SearchTerm", searchTerm, DbType.String, size: 200);
+                parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
+                parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -189,332 +209,732 @@ namespace VS_Mart_Backend.Features.MainDashboard
             });
         }
 
+        private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)
+        {
+            var response = new StoreDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+
+            parameters.Add("@status", "STORE_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@User_ID", userId, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@HU_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@HU_WRONG_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@HHT_VALIDATE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new StoreDashboardSummary
+            {
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
+                HuReceivedQty = parameters.Get<int?>("@QTY") ?? 0,
+                HuValidatedQty = parameters.Get<int?>("@HU_VALIDATED_QTY") ?? 0,
+                HuWrongQty = parameters.Get<int?>("@HU_WRONG_QTY") ?? 0,
+                HhtValidateQty = parameters.Get<int?>("@HHT_VALIDATE_QTY") ?? 0,
+                EncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0
+            };
+            return response;
+        }
+
         public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request)
         {
-            string cacheKey = $"StoreDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+            string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"StoreDashboard_Master_{searchTerm}_{sortCol}_{sortDir}_{sortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new StoreDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@status", "STORE_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@HU_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@HU_WRONG_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@HHT_VALIDATE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new StoreDashboardSummary
+                var masterRequest = new StoreDashboardQueryRequest
                 {
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-                    HuReceivedQty = parameters.Get<int?>("@QTY") ?? 0,
-                    HuValidatedQty = parameters.Get<int?>("@HU_VALIDATED_QTY") ?? 0,
-                    HuWrongQty = parameters.Get<int?>("@HU_WRONG_QTY") ?? 0,
-                    HhtValidateQty = parameters.Get<int?>("@HHT_VALIDATE_QTY") ?? 0,
-                    EncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QueryStoreDashboardFromDbAsync(masterRequest, masterAdminId);
             });
+
+            // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new StoreDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            // 2. User assigned to a specific store: serve sliced in-memory data instantly from RAM
+            if (!string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    int huReceived = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_RECEIVED_QTY", out var v) && v != null ? v : 0));
+                    int huValidated = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_VALIDATED_QTY", out var v) && v != null ? v : 0));
+                    int huWrong = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_WRONG_QTY", out var v) && v != null ? v : 0));
+                    int hhtValidate = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HHT_VALIDATE_QTY", out var v) && v != null ? v : 0));
+                    string? storeName = storeItems.FirstOrDefault()?.TryGetValue("STORE_NAME", out var sn) == true ? sn?.ToString() : profile.StoreName;
+
+                    return new StoreDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new StoreDashboardSummary
+                        {
+                            RecordCount = storeItems.Count,
+                            TotalCount = storeItems.Count,
+                            HuReceivedQty = huReceived,
+                            HuValidatedQty = huValidated,
+                            HuWrongQty = huWrong,
+                            HhtValidateQty = hhtValidate,
+                            EncodedQty = 0,
+                            StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
+                            Date = null
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryStoreDashboardFromDbAsync(request, userIdInt);
+        }
+
+        private async Task<SaleDashboardResponse> QuerySaleDashboardFromDbAsync(SaleDashboardQueryRequest request, int userId)
+        {
+            var response = new SaleDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+
+            parameters.Add("@status", "SALE_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@User_ID", userId, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@RFID_CHECKOUT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@RFID_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@MATCHING_WITH_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@NOT_MATCHING_WITH_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@NOT_MATCHING_WITH_RFID_CHECKOUT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@TAFFETA_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@MANUAL_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DPOS_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@RFID_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DIFF_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new SaleDashboardSummary
+            {
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                TotalDposSale = parameters.Get<int?>("@DPOS_SALE") ?? 0,
+                TotalRfidCheckout = parameters.Get<int?>("@RFID_CHECKOUT") ?? 0,
+                TotalDposRfidSale = parameters.Get<int?>("@RFID_DPOS_SALE") ?? 0,
+                TotalRfidCheckoutMatch = parameters.Get<int?>("@MATCHING_WITH_DPOS_SALE") ?? 0,
+                TotalRfidCheckoutNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_DPOS_SALE") ?? 0,
+                TotalPosSaleNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_RFID_CHECKOUT") ?? 0,
+                TotalTaffetaSale = parameters.Get<int?>("@TAFFETA_SALE") ?? 0,
+                TotalManualSale = parameters.Get<int?>("@MANUAL_SALE") ?? 0,
+                TotalVoid = parameters.Get<int?>("@DPOS_VOID") ?? 0,
+                TotalRfidCheckoutMatchDpos = parameters.Get<int?>("@RFID_VOID") ?? 0,
+                TotalDiffVoid = parameters.Get<int?>("@DIFF_VOID") ?? 0
+            };
+            return response;
         }
 
         public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
         {
-            string cacheKey = $"SaleDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+            string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"SaleDashboard_Master_{searchTerm}_{sortCol}_{sortDir}_{sortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new SaleDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@status", "SALE_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@RFID_CHECKOUT", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@RFID_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@MATCHING_WITH_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@NOT_MATCHING_WITH_DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@NOT_MATCHING_WITH_RFID_CHECKOUT", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@TAFFETA_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@MANUAL_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DPOS_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@RFID_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DIFF_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new SaleDashboardSummary
+                var masterRequest = new SaleDashboardQueryRequest
                 {
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    TotalDposSale = parameters.Get<int?>("@DPOS_SALE") ?? 0,
-                    TotalRfidCheckout = parameters.Get<int?>("@RFID_CHECKOUT") ?? 0,
-                    TotalDposRfidSale = parameters.Get<int?>("@RFID_DPOS_SALE") ?? 0,
-                    TotalRfidCheckoutMatch = parameters.Get<int?>("@MATCHING_WITH_DPOS_SALE") ?? 0,
-                    TotalRfidCheckoutNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_DPOS_SALE") ?? 0,
-                    TotalPosSaleNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_RFID_CHECKOUT") ?? 0,
-                    TotalTaffetaSale = parameters.Get<int?>("@TAFFETA_SALE") ?? 0,
-                    TotalManualSale = parameters.Get<int?>("@MANUAL_SALE") ?? 0,
-                    TotalVoid = parameters.Get<int?>("@DPOS_VOID") ?? 0,
-                    TotalRfidCheckoutMatchDpos = parameters.Get<int?>("@RFID_VOID") ?? 0,
-                    TotalDiffVoid = parameters.Get<int?>("@DIFF_VOID") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId);
             });
+
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new SaleDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            if (!string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    return new SaleDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new SaleDashboardSummary
+                        {
+                            RecordCount = storeItems.Count,
+                            TotalDposSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DPOS_SALE", out var v) && v != null ? v : 0)),
+                            TotalRfidCheckout = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
+                            TotalDposRfidSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_DPOS_SALE", out var v) && v != null ? v : 0)),
+                            TotalRfidCheckoutMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
+                            TotalRfidCheckoutNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
+                            TotalPosSaleNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
+                            TotalTaffetaSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_TAFFETA_SALE", out var v) && v != null ? v : 0)),
+                            TotalManualSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_MANUAL_SALE", out var v) && v != null ? v : 0)),
+                            TotalVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_VOID", out var v) && v != null ? v : 0)),
+                            TotalRfidCheckoutMatchDpos = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID", out var v) && v != null ? v : 0)),
+                            TotalDiffVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DIFF_VOID", out var v) && v != null ? v : 0))
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QuerySaleDashboardFromDbAsync(request, userIdInt);
+        }
+
+        private async Task<ReturnDashboardResponse> QueryReturnDashboardFromDbAsync(ReturnDashboardQueryRequest request, int userId)
+        {
+            var response = new ReturnDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+
+            parameters.Add("@status", "RETURN_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@User_ID", userId, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new ReturnDashboardSummary
+            {
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
+                ReturnQty = parameters.Get<int?>("@QTY") ?? 0,
+                ReturnEncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
+                PendingQty = parameters.Get<int?>("@DIFF_QTY") ?? 0
+            };
+            return response;
         }
 
         public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request)
         {
-            string cacheKey = $"ReturnDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+            string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"ReturnDashboard_Master_{searchTerm}_{sortCol}_{sortDir}_{sortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new ReturnDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@status", "RETURN_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new ReturnDashboardSummary
+                var masterRequest = new ReturnDashboardQueryRequest
                 {
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-                    ReturnQty = parameters.Get<int?>("@QTY") ?? 0,
-                    ReturnEncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
-                    PendingQty = parameters.Get<int?>("@DIFF_QTY") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId);
             });
+
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new ReturnDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            if (!string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    return new ReturnDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new ReturnDashboardSummary
+                        {
+                            RecordCount = storeItems.Count,
+                            TotalCount = storeItems.Count,
+                            ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RETURN_QTY", out var v) && v != null ? v : 0)),
+                            ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
+                            PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryReturnDashboardFromDbAsync(request, userIdInt);
+        }
+
+        private async Task<VoidDashboardResponse> QueryVoidDashboardFromDbAsync(VoidDashboardQueryRequest request, int userId)
+        {
+            var response = new VoidDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+
+            parameters.Add("@status", "VOID_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@User_ID", userId, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new VoidDashboardSummary
+            {
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
+                ReturnQty = parameters.Get<int?>("@QTY") ?? 0,
+                ReturnEncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
+                PendingQty = parameters.Get<int?>("@DIFF_QTY") ?? 0
+            };
+            return response;
         }
 
         public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
         {
-            string cacheKey = $"VoidDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+            string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"VoidDashboard_Master_{searchTerm}_{sortCol}_{sortDir}_{sortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new VoidDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@status", "VOID_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new VoidDashboardSummary
+                var masterRequest = new VoidDashboardQueryRequest
                 {
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-                    ReturnQty = parameters.Get<int?>("@QTY") ?? 0,
-                    ReturnEncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
-                    PendingQty = parameters.Get<int?>("@DIFF_QTY") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId);
             });
+
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new VoidDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            if (!string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    return new VoidDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new VoidDashboardSummary
+                        {
+                            RecordCount = storeItems.Count,
+                            TotalCount = storeItems.Count,
+                            ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("VOID_QTY", out var v) && v != null ? v : 0)),
+                            ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
+                            PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryVoidDashboardFromDbAsync(request, userIdInt);
+        }
+
+        private async Task<DcValidateDashboardResponse> QueryDcValidateFromDbAsync(DcValidateDashboardQueryRequest request, int userId)
+        {
+            var response = new DcValidateDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+            var parameters = new DynamicParameters();
+
+            parameters.Add("@Status", "DC_VALIDATE_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@USER_ID", userId, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+            parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@PROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@UNPROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@PROCESSED_ARTICLE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new DcValidateDashboardSummary
+            {
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                ProcessedHu = parameters.Get<int?>("@PROCESSED_HU") ?? 0,
+                UnprocessedHu = parameters.Get<int?>("@UNPROCESSED_HU") ?? 0,
+                ArticleQty = parameters.Get<int?>("@PROCESSED_ARTICLE_QTY") ?? 0
+            };
+            return response;
         }
 
         public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request)
         {
-            string cacheKey = $"DcValidation_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+            string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"DcValidation_Master_{searchTerm}_{sortCol}_{sortDir}_{sortType}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new DcValidateDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
-
-                int userIdInt = 0;
-                int.TryParse(request.UserId, out userIdInt);
-
-                parameters.Add("@Status", "DC_VALIDATE_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@USER_ID", userIdInt, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "Store" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
-
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@PROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@UNPROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@PROCESSED_ARTICLE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new DcValidateDashboardSummary
+                var masterRequest = new DcValidateDashboardQueryRequest
                 {
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    ProcessedHu = parameters.Get<int?>("@PROCESSED_HU") ?? 0,
-                    UnprocessedHu = parameters.Get<int?>("@UNPROCESSED_HU") ?? 0,
-                    ArticleQty = parameters.Get<int?>("@PROCESSED_ARTICLE_QTY") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    SortType = request.SortType
                 };
-                return response;
+                return await QueryDcValidateFromDbAsync(masterRequest, masterAdminId);
             });
+
+            // 1. Super Admin or Warehouse Admin: both see company-wide master dataset instantly from RAM!
+            if (profile.IsSuperAdmin || string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new DcValidateDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            // 2. User assigned to a specific store: serve sliced in-memory data if store is assigned
+            if (!string.IsNullOrEmpty(profile.StoreCode) && !profile.IsSuperAdmin && !string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    return new DcValidateDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new DcValidateDashboardSummary
+                        {
+                            RecordCount = storeItems.Count,
+                            ProcessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_HU", out var v) && v != null ? v : 0)),
+                            UnprocessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("UNPROCESSED_HU", out var v) && v != null ? v : 0)),
+                            ArticleQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_ARTICLE_QTY", out var v) && v != null ? v : 0))
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryDcValidateFromDbAsync(request, userIdInt);
+        }
+
+        private async Task<CycleCountDashboardResponse> QueryCycleCountFromDbAsync(CycleCountDashboardQueryRequest request, int userId)
+        {
+            var response = new CycleCountDashboardResponse();
+            using var connection = new SqlConnection(_connectionString);
+
+            var parameters = new DynamicParameters();
+            parameters.Add("@status", "CYCLE_COUNT_DASHBOARD", DbType.String, size: 50);
+            parameters.Add("@USER_ID", userId, DbType.Int32);
+            parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+            parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+            parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE CODE" : request.SortColumn, DbType.String, size: 50);
+            parameters.Add("@SortDirection", request.SortDirection ?? "ASC", DbType.String, size: 10);
+            parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            response.Summary = new CycleCountDashboardSummary
+            {
+                PageIndex = request.PageIndex,
+                RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                RefNo = parameters.Get<int?>("@QTY") ?? 0
+            };
+
+            var parameters2 = new DynamicParameters();
+            parameters2.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
+            parameters2.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+            parameters2.Add("@Store_code", "", DbType.String, size: 50);
+            parameters2.Add("@fromdate", "", DbType.String, size: 20);
+            parameters2.Add("@todate", "", DbType.String, size: 20);
+            parameters2.Add("@ref_No", "", DbType.String, size: 50);
+            parameters2.Add("@SortColumn", "DATE", DbType.String, size: 50);
+            parameters2.Add("@SortDirection", "desc", DbType.String, size: 10);
+            parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+            parameters2.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var graphItems = await multi.ReadAsync<dynamic>();
+            var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+            foreach (var mainRow in response.Items)
+            {
+                var mainRefNo = mainRow.TryGetValue("REF_NO", out var refObj) ? refObj?.ToString() : null;
+                var mainStoreCode = mainRow.TryGetValue("STORE_CODE", out var scObj) ? scObj?.ToString() : null;
+
+                var match = graphDataRows.FirstOrDefault(g =>
+                {
+                    if (!string.IsNullOrEmpty(mainRefNo) && g.TryGetValue("Ref_ID", out var gRef) && gRef != null)
+                    {
+                        if (string.Equals(mainRefNo, gRef.ToString(), StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                    if (!string.IsNullOrEmpty(mainStoreCode) && g.TryGetValue("STORE_CODE", out var gStore) && gStore != null)
+                    {
+                        return string.Equals(mainStoreCode, gStore.ToString(), StringComparison.OrdinalIgnoreCase);
+                    }
+                    return false;
+                });
+
+                if (match != null)
+                {
+                    string[] keysToMerge = { "NO_OF_ARTICLE", "SYSTEM_STOCK", "SCANNED_QTY", "NET_DIFF", "SHORT_QTY", "EXCESS_QTY" };
+                    foreach (var key in keysToMerge)
+                    {
+                        if (match.TryGetValue(key, out var val))
+                        {
+                            string destKey = key == "NO_OF_ARTICLE" ? "NO_OF_ARTICLES" :
+                                             key == "NET_DIFF" ? "NET_DIFFERENCE" : key;
+                            mainRow[destKey] = val;
+                        }
+                    }
+                }
+
+                if (!mainRow.ContainsKey("NO_OF_ARTICLES")) mainRow["NO_OF_ARTICLES"] = 0;
+                if (!mainRow.ContainsKey("SYSTEM_STOCK")) mainRow["SYSTEM_STOCK"] = 0;
+                if (!mainRow.ContainsKey("SCANNED_QTY")) mainRow["SCANNED_QTY"] = 0;
+                if (!mainRow.ContainsKey("NET_DIFFERENCE")) mainRow["NET_DIFFERENCE"] = 0;
+                if (!mainRow.ContainsKey("SHORT_QTY")) mainRow["SHORT_QTY"] = 0;
+                if (!mainRow.ContainsKey("EXCESS_QTY")) mainRow["EXCESS_QTY"] = 0;
+            }
+
+            return response;
         }
 
         public async Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request)
         {
-            string cacheKey = $"CycleCountDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var profile = await GetUserProfileAsync(request.UserId);
+            int masterAdminId = await GetActiveSuperAdminIdAsync();
+
+            string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
+            string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "store code" : request.SortColumn.Trim().ToLowerInvariant();
+            string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection.Trim().ToLowerInvariant();
+
+            string masterCacheKey = $"CycleCountDashboard_Master_{searchTerm}_{sortCol}_{sortDir}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                var response = new CycleCountDashboardResponse();
-                using var connection = new SqlConnection(_connectionString);
-                
-                int userId = 0;
-                int.TryParse(request.UserId, out userId);
-
-                var parameters = new DynamicParameters();
-                parameters.Add("@status", "CYCLE_COUNT_DASHBOARD", DbType.String, size: 50);
-                parameters.Add("@USER_ID", userId, DbType.Int32);
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE CODE" : request.SortColumn, DbType.String, size: 50);
-                parameters.Add("@SortDirection", request.SortDirection ?? "ASC", DbType.String, size: 10);
-                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                response.Summary = new CycleCountDashboardSummary
+                var masterRequest = new CycleCountDashboardQueryRequest
                 {
-                    PageIndex = request.PageIndex,
-                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                    RefNo = parameters.Get<int?>("@QTY") ?? 0
+                    UserId = masterAdminId.ToString(),
+                    SearchTerm = request.SearchTerm,
+                    PageIndex = 1,
+                    PageSize = 1000,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection
                 };
-
-                var parameters2 = new DynamicParameters();
-                parameters2.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
-                parameters2.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                //parameters2.Add("@PageIndex", 1, DbType.Int32);
-                //parameters2.Add("@PageSize", Math.Max(100, request.PageSize * 2), DbType.Int32);
-                parameters2.Add("@Store_code", "", DbType.String, size: 50);
-                parameters2.Add("@fromdate", "", DbType.String, size: 20);
-                parameters2.Add("@todate", "", DbType.String, size: 20);
-                parameters2.Add("@ref_No", "", DbType.String, size: 50);
-                parameters2.Add("@SortColumn", "DATE", DbType.String, size: 50);
-                parameters2.Add("@SortDirection", "desc", DbType.String, size: 10);
-                parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                parameters2.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                var graphItems = await multi.ReadAsync<dynamic>();
-                var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                foreach (var mainRow in response.Items)
-                {
-                    var mainRefNo = mainRow.TryGetValue("REF_NO", out var refObj) ? refObj?.ToString() : null;
-                    var mainStoreCode = mainRow.TryGetValue("STORE_CODE", out var scObj) ? scObj?.ToString() : null;
-
-                    var match = graphDataRows.FirstOrDefault(g =>
-                    {
-                        if (!string.IsNullOrEmpty(mainRefNo) && g.TryGetValue("Ref_ID", out var gRef) && gRef != null)
-                        {
-                            if (string.Equals(mainRefNo, gRef.ToString(), StringComparison.OrdinalIgnoreCase))
-                                return true;
-                        }
-                        if (!string.IsNullOrEmpty(mainStoreCode) && g.TryGetValue("STORE_CODE", out var gStore) && gStore != null)
-                        {
-                            return string.Equals(mainStoreCode, gStore.ToString(), StringComparison.OrdinalIgnoreCase);
-                        }
-                        return false;
-                    });
-
-                    if (match != null)
-                    {
-                        string[] keysToMerge = { "NO_OF_ARTICLE", "SYSTEM_STOCK", "SCANNED_QTY", "NET_DIFF", "SHORT_QTY", "EXCESS_QTY" };
-                        foreach (var key in keysToMerge)
-                        {
-                            if (match.TryGetValue(key, out var val))
-                            {
-                                string destKey = key == "NO_OF_ARTICLE" ? "NO_OF_ARTICLES" :
-                                                 key == "NET_DIFF" ? "NET_DIFFERENCE" : key;
-                                mainRow[destKey] = val;
-                            }
-                        }
-                    }
-
-                    // Default to 0 if missing so the frontend charts never receive undefined/null
-                    if (!mainRow.ContainsKey("NO_OF_ARTICLES")) mainRow["NO_OF_ARTICLES"] = 0;
-                    if (!mainRow.ContainsKey("SYSTEM_STOCK")) mainRow["SYSTEM_STOCK"] = 0;
-                    if (!mainRow.ContainsKey("SCANNED_QTY")) mainRow["SCANNED_QTY"] = 0;
-                    if (!mainRow.ContainsKey("NET_DIFFERENCE")) mainRow["NET_DIFFERENCE"] = 0;
-                    if (!mainRow.ContainsKey("SHORT_QTY")) mainRow["SHORT_QTY"] = 0;
-                    if (!mainRow.ContainsKey("EXCESS_QTY")) mainRow["EXCESS_QTY"] = 0;
-                }
-                return response;
+                return await QueryCycleCountFromDbAsync(masterRequest, masterAdminId);
             });
+
+            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            {
+                if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((request.PageIndex - 1) * request.PageSize)
+                    .Take(request.PageSize)
+                    .ToList();
+
+                return new CycleCountDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            if (!string.IsNullOrEmpty(profile.StoreCode))
+            {
+                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
+                if (storeItems.Count > 0)
+                {
+                    return new CycleCountDashboardResponse
+                    {
+                        Items = storeItems,
+                        Summary = new CycleCountDashboardSummary
+                        {
+                            PageIndex = 1,
+                            RecordCount = storeItems.Count,
+                            RefNo = storeItems.Count
+                        }
+                    };
+                }
+            }
+
+            int userIdInt = 0;
+            int.TryParse(request.UserId, out userIdInt);
+            return await QueryCycleCountFromDbAsync(request, userIdInt);
         }
 
         public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request)
         {
             try
             {
-                string cacheKey = $"VendorHUDiscrepancy_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
+                int pageIndex = request.PageIndex > 0 ? request.PageIndex : 1;
+                int pageSize = request.PageSize > 0 ? request.PageSize : 100;
+                string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "DIFF_TILL_DATE" : request.SortColumn;
+                string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection;
+                string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType;
+                string searchTerm = request.SearchTerm ?? "";
+
+                // Shared master cache key across all roles (Vendor discrepancy is company-wide by vendor)
+                string cacheKey = $"VendorHUDiscrepancy_Master_{searchTerm.Trim().ToLowerInvariant()}_{pageIndex}_{pageSize}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}_{sortType.Trim().ToLowerInvariant()}";
                 return await GetOrCreateWithSWRAsync(cacheKey, async () =>
                 {
                     var response = new VendorHUDiscrepancyResponse();
@@ -525,13 +945,13 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     int.TryParse(request.UserId, out userId);
 
                     parameters.Add("@Status", "HU_DISCREPANCY_VENDOR_DASHBOARD", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                    parameters.Add("@SearchTerm", searchTerm, DbType.String, size: 200);
+                    parameters.Add("@PageIndex", pageIndex, DbType.Int32);
+                    parameters.Add("@PageSize", pageSize, DbType.Int32);
                     parameters.Add("@USER_ID", userId, DbType.Int32);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DIFF_TILL_DATE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                    parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 50);
+                    parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
+                    parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
+                    parameters.Add("@SortType", sortType, DbType.String, size: 50);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@HU_DIS_ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -544,7 +964,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     response.Summary = new VendorHUDiscrepancySummary
                     {
-                        PageIndex = request.PageIndex,
+                        PageIndex = pageIndex,
                         RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
                         ActualQty = parameters.Get<int?>("@HU_DIS_ACTUALQTY") ?? 0,
                         ScannedQty = parameters.Get<int?>("@HU_DIS_SCANNEDQTY") ?? 0,

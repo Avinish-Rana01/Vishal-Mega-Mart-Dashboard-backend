@@ -36,7 +36,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
     {
         public string? SearchTerm { get; set; } = string.Empty;
         public int PageIndex { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
+        public int PageSize { get; set; } = 100;
         public string? SortColumn { get; set; } = "CYCLE_COUNT";
         public string? SortDirection { get; set; } = "DESC";
     }
@@ -200,7 +200,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
     {
         public string? SearchTerm { get; set; } = string.Empty;
         public int PageIndex { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
+        public int PageSize { get; set; } = 100;
         public string? UserId { get; set; } = string.Empty;
         public string? SortColumn { get; set; } = "STORE CODE";
         public string? SortDirection { get; set; } = "ASC";
@@ -223,7 +223,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
     {
         public string? SearchTerm { get; set; } = string.Empty;
         public int PageIndex { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
+        public int PageSize { get; set; } = 100;
         public string? SortColumn { get; set; } = "DIFF_TILL_DATE";
         public string? SortDirection { get; set; } = "asc";
         public string? SortType { get; set; } = "string";
