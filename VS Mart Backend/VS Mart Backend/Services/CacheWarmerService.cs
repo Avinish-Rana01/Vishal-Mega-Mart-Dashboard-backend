@@ -40,7 +40,7 @@ namespace VS_Mart_Backend.Services
                             continue;
                         }
 
-                        string superAdminId = "26";
+                        string superAdminId = "30";
 
                         var liveStockRequest = new LiveStockQueryRequest { UserId = superAdminId, SearchTerm = "", PageIndex = 1, PageSize = 100 };
                         await liveStockService.GetLiveStockDetailsAsync(liveStockRequest); await Task.Delay(1000, stoppingToken);

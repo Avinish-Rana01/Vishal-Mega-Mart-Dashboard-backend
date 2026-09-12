@@ -133,7 +133,7 @@ namespace VS_Mart_Backend.Services
             }
 
             int cycleTick = 0;
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -144,9 +144,9 @@ namespace VS_Mart_Backend.Services
                         cycleTick++;
 
                         // Hub occupancy check: If no clients are connected and initial priming is done,
-                        // do not poll frequently. Only run a gentle baseline refresh every 60s (30 ticks).
+                        // do not poll frequently. Only run a gentle baseline refresh every 60s (60 ticks).
                         bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
-                        if (!hasSubscribers && cycleTick > 1 && cycleTick % 30 != 0)
+                        if (!hasSubscribers && cycleTick > 1 && cycleTick % 60 != 0)
                         {
                             continue;
                         }
@@ -158,40 +158,37 @@ namespace VS_Mart_Backend.Services
                         await _pollerDbGate.WaitAsync(stoppingToken);
                         try
                         {
-                            // 1. Cycle Count: Every 4 seconds (every 2 ticks)
-                            if (cycleTick % 2 == 0)
+                            // 1. DC Validation: Every 1 second (Ultra-fast 37ms query)
+                            await PollDcValidationAsync(stoppingToken);
+
+                            // 2. Cycle Count: Every 4 seconds
+                            if (cycleTick % 4 == 0)
                             {
                                 await PollCycleCountAsync(stoppingToken);
                             }
 
-                            // 2. Tag Management: Every 6 seconds (every 3 ticks)
-                            if (cycleTick % 3 == 0)
+                            // 3. Tag Management: Every 6 seconds (offset 2)
+                            if (cycleTick % 6 == 2)
                             {
                                 await PollTagManagementAsync(stoppingToken);
                             }
 
-                            // 3. DC Encoding: Every 6 seconds (every 3 ticks)
-                            if (cycleTick % 3 == 1)
+                            // 4. DC Encoding: Every 6 seconds (offset 4)
+                            if (cycleTick % 6 == 4)
                             {
                                 await PollDcEncodingAsync(stoppingToken);
                             }
 
-                            // 4. Store Validation: Every 12 seconds (every 6 ticks)
-                            if (cycleTick % 6 == 0)
+                            // 5. Store Validation: Every 12 seconds (offset 6)
+                            if (cycleTick % 12 == 6)
                             {
                                 await PollStoreValidationAsync(stoppingToken);
                             }
 
-                            // 5. Vendor Discrepancy: Every 14 seconds (every 7 ticks)
-                            if (cycleTick % 7 == 0)
+                            // 6. Vendor Discrepancy: Every 14 seconds (offset 10)
+                            if (cycleTick % 14 == 10)
                             {
                                 await PollVendorDiscrepancyAsync(stoppingToken);
-                            }
-
-                            // 6. DC Validation: Every 14 seconds (every 7 ticks, offset by 1)
-                            if (cycleTick % 7 == 1)
-                            {
-                                await PollDcValidationAsync(stoppingToken);
                             }
                         }
                         finally
