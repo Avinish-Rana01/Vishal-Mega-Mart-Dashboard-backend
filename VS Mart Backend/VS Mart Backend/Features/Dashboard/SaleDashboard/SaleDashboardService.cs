@@ -20,7 +20,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request)
         {
-            string cacheKey = $"StoreSaleReport_{request.StoreCode}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+            string cacheKey = $"StoreSaleReport_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
 
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
@@ -85,18 +85,17 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
                     
-                    string status = "";
-                    if (request.ColumnName == "TOTAL_DPOS_SALE") status = "BIND_COUNTER_FOR_POS_SALE";
-                    else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "BIND_COUNTER_FOR_RFID_DPOS_SALE";
+                    string status = "BIND_COUNTER_FOR_POS_SALE";
+                    if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "BIND_COUNTER_FOR_RFID_DPOS_SALE";
                     else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID") status = "BIND_COUNTER_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
 
-                    if (!string.IsNullOrEmpty(status)) parameters.Add("@status", status);
+                    parameters.Add("@status", status);
 
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
                     parameters.Add("@store_code", request.Store ?? "");
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
                     
                     var list = items
                         .Select(x => (IDictionary<string, object>)x)
@@ -123,18 +122,15 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                 {
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
-
-                    string status = "";
                     bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
 
-                    if (request.ColumnName == "TOTAL_DPOS_SALE")
-                        status = isSearch ? "SEARCH_BIND_ARTICLE_FOR_POS_SALE" : "BIND_ARTICLE_FOR_POS_SALE";
-                    else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
+                    string status = isSearch ? "SEARCH_BIND_ARTICLE_FOR_POS_SALE" : "BIND_ARTICLE_FOR_POS_SALE";
+                    if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
                         status = isSearch ? "SEARCH_BIND_ARTICLE_FOR_RFID_DPOS_SALE" : "BIND_ARTICLE_FOR_RFID_DPOS_SALE";
                     else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID")
                         status = isSearch ? "SEARCH_BIND_MATERIAL_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" : "BIND_MATERIAL_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
 
-                    if (!string.IsNullOrEmpty(status)) parameters.Add("@status", status);
+                    parameters.Add("@status", status);
 
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "");
                     parameters.Add("@store_code", request.Store ?? "");
@@ -143,7 +139,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
                     parameters.Add("@User_ID", 0, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -167,28 +163,25 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                 {
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
-                    
-                    string status = "";
                     bool isSearch = !string.IsNullOrEmpty(request.SearchTerm);
-
-                    if (request.ColumnName == "TOTAL_DPOS_SALE")
-                        status = isSearch ? "SEARCH_BIND_EAN_FOR_POS_SALE" : "BIND_EAN_FOR_POS_SALE";
-                    else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
+                    
+                    string status = isSearch ? "SEARCH_BIND_EAN_FOR_POS_SALE" : "BIND_EAN_FOR_POS_SALE";
+                    if (request.ColumnName == "TOTAL_RFID_DPOS_SALE")
                         status = isSearch ? "SEARCH_BIND_EAN_FOR_RFID_DPOS_SALE" : "BIND_EAN_FOR_RFID_DPOS_SALE";
                     else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID")
                         status = isSearch ? "SEARCH_BIND_EAN_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" : "BIND_EAN_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
 
-                    if (!string.IsNullOrEmpty(status)) parameters.Add("@status", status);
+                    parameters.Add("@status", status);
 
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "");
                     parameters.Add("@store_code", request.Store ?? "");
                     parameters.Add("@COUNTER_NO", request.Pos ?? "");
                     parameters.Add("@fromdate", request.FromDate ?? "");
-                    parameters.Add("@todate", request.ToDate ?? "");
+                    parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
                     parameters.Add("@Material", request.Material ?? "");
                     parameters.Add("@User_ID", 0, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -205,7 +198,14 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<SaleDataResponse> GetSaleDataAsync(SaleDataQueryRequest request)
         {
-            string cacheKey = $"SaleData_{request.ColumnName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.Pos}_{request.ArticleNo}_{request.Ean}_{request.UserId}_{request.SortColumn}_{request.SortDirection}";
+            string effectiveStore = !string.IsNullOrWhiteSpace(request.StoreCode) ? request.StoreCode
+                : !string.IsNullOrWhiteSpace(request.Store) ? request.Store
+                : (request.StoreName ?? "");
+
+            string effectiveFromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? request.FromDate : "";
+            string effectiveToDate = !string.IsNullOrWhiteSpace(request.ToDate) ? request.ToDate : effectiveFromDate;
+
+            string cacheKey = $"SaleData_{request.ColumnName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{effectiveStore}_{effectiveFromDate}_{effectiveToDate}_{request.Pos}_{request.ArticleNo}_{request.Ean}_{request.UserId}_{request.SortColumn}_{request.SortDirection}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -214,9 +214,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     using var connection = new SqlConnection(_connectionString);
                     var parameters = new DynamicParameters();
 
-                    string status = "";
-                    if (request.ColumnName == "TOTAL_DPOS_SALE") status = "SHOW_POS_SALE_DATA";
-                    else if (request.ColumnName == "TOTAL_RFID_CHECKOUT") status = "SHOW_RFID_CHECKOUT_DATA";
+                    string status = "SHOW_POS_SALE_DATA";
+                    if (request.ColumnName == "TOTAL_RFID_CHECKOUT") status = "SHOW_RFID_CHECKOUT_DATA";
                     else if (request.ColumnName == "TOTAL_RFID_DPOS_SALE") status = "SHOW_RFID_DPOS_SALE_DATA";
                     else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE") status = "SHOW_RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE_DATA";
                     else if (request.ColumnName == "RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE") status = "SHOW_RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE_DATA";
@@ -224,14 +223,14 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     else if (request.ColumnName == "TOTAL_MANUAL_SALE") status = "SHOW_MANUAL_SALE_DATA";
                     else if (request.ColumnName == "RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID" || request.ColumnName == "TOTAL_VOID") status = "BIND_DATA_FOR_RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID";
 
-                    if (!string.IsNullOrEmpty(status)) parameters.Add("@status", status);
+                    parameters.Add("@status", status);
 
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "");
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@store_code", request.StoreName ?? "");
-                    parameters.Add("@fromdate", request.FromDate ?? "");
-                    parameters.Add("@todate", request.ToDate ?? "");
+                    parameters.Add("@store_code", effectiveStore);
+                    parameters.Add("@fromdate", effectiveFromDate);
+                    parameters.Add("@todate", effectiveToDate);
                     parameters.Add("@COUNTER_NO", request.Pos ?? "");
                     parameters.Add("@Material", request.ArticleNo ?? "");
                     parameters.Add("@EAN", request.Ean ?? "");
@@ -245,7 +244,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
                     response.Items = items.Select(x =>
                     {

@@ -169,6 +169,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                 parameters.Add("@status", "TAG_CYCLE_COUNT", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", searchTerm, DbType.String, size: 200);
+                parameters.Add("@PageIndex", pageIndex, DbType.Int32);
+                parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
                 parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
 

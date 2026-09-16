@@ -70,6 +70,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         public string? SortDirection { get; set; } = "asc";
         public string? ColumnName { get; set; } = string.Empty;
         public string? StoreName { get; set; } = string.Empty;
+        public string? Store { get; set; } = string.Empty;
+        public string? StoreCode { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
         public string? Pos { get; set; } = string.Empty;
