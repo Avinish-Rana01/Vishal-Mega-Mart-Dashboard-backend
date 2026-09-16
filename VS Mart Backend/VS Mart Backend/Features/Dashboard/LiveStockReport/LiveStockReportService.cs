@@ -102,8 +102,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
                     parameters.Add("@status", "LIVE_STOCK_REPORT", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                  //  parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                   // parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.StockDate ?? "", DbType.String, size: 20);
                     parameters.Add("@todate", request.StockDate ?? "", DbType.String, size: 20);

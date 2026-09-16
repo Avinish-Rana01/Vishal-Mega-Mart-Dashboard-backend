@@ -361,6 +361,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
             var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
+            // Clamp negative values for Taffeta Sale across rows
+            foreach (var row in response.Items)
+            {
+                if (row.TryGetValue("TOTAL_TAFFETA_SALE", out var taffVal) && taffVal != null)
+                {
+                    int tVal = Convert.ToInt32(taffVal);
+                    if (tVal < 0) row["TOTAL_TAFFETA_SALE"] = 0;
+                }
+            }
+
             response.Summary = new SaleDashboardSummary
             {
                 RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
@@ -370,7 +380,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 TotalRfidCheckoutMatch = parameters.Get<int?>("@MATCHING_WITH_DPOS_SALE") ?? 0,
                 TotalRfidCheckoutNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_DPOS_SALE") ?? 0,
                 TotalPosSaleNotMatch = parameters.Get<int?>("@NOT_MATCHING_WITH_RFID_CHECKOUT") ?? 0,
-                TotalTaffetaSale = parameters.Get<int?>("@TAFFETA_SALE") ?? 0,
+                TotalTaffetaSale = Math.Max(0, parameters.Get<int?>("@TAFFETA_SALE") ?? 0),
                 TotalManualSale = parameters.Get<int?>("@MANUAL_SALE") ?? 0,
                 TotalVoid = parameters.Get<int?>("@DPOS_VOID") ?? 0,
                 TotalRfidCheckoutMatchDpos = parameters.Get<int?>("@RFID_VOID") ?? 0,
@@ -441,7 +451,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                             TotalRfidCheckoutMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
                             TotalRfidCheckoutNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
                             TotalPosSaleNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
-                            TotalTaffetaSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_TAFFETA_SALE", out var v) && v != null ? v : 0)),
+                            TotalTaffetaSale = Math.Max(0, storeItems.Sum(x => Math.Max(0, Convert.ToInt32(x.TryGetValue("TOTAL_TAFFETA_SALE", out var v) && v != null ? v : 0)))),
                             TotalManualSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_MANUAL_SALE", out var v) && v != null ? v : 0)),
                             TotalVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_VOID", out var v) && v != null ? v : 0)),
                             TotalRfidCheckoutMatchDpos = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID", out var v) && v != null ? v : 0)),
@@ -993,8 +1003,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     parameters.Add("@status", "TAG_MANAGEMENT_LOCATION", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", "", DbType.String, size: 200);
-                   // parameters.Add("@PageIndex", 1, DbType.Int32);
-                    //parameters.Add("@PageSize", 100, DbType.Int32);
+                    parameters.Add("@PageIndex", 1, DbType.Int32);
+                    parameters.Add("@PageSize", 100, DbType.Int32);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "asc", DbType.String, size: 10);
 
