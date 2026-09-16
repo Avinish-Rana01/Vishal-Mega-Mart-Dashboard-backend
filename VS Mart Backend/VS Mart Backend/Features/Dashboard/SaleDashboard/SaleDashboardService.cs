@@ -49,7 +49,10 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(
+                        kvp => kvp.Key, 
+                        kvp => kvp.Value is DateTime dt ? (object)dt.ToString("yyyy-MM-dd") : (object?)kvp.Value, 
+                        StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new StoreSaleReportSummary
                     {
@@ -103,8 +106,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                     return list;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"[BindPOSCounterAsync ERROR]: {ex.Message} \n {ex.StackTrace}");
                     return new List<DropdownItem>();
                 }
             });
@@ -243,7 +247,25 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                     var items = await connection.QueryAsync<dynamic>("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+                    response.Items = items.Select(x =>
+                    {
+                        var dict = ((IDictionary<string, object>)x).ToDictionary(
+                            kvp => kvp.Key,
+                            kvp => kvp.Value is DateTime dt ? (object)dt.ToString("yyyy-MM-dd") : (object?)kvp.Value,
+                            StringComparer.OrdinalIgnoreCase);
+
+                        // Ensure both CHECKOUT_DATE and BILL_DATE are populated consistently
+                        if (dict.TryGetValue("CHECKOUT_DATE", out var checkoutDate) && checkoutDate != null && !dict.ContainsKey("BILL_DATE"))
+                        {
+                            dict["BILL_DATE"] = checkoutDate;
+                        }
+                        else if (dict.TryGetValue("BILL_DATE", out var billDate) && billDate != null && !dict.ContainsKey("CHECKOUT_DATE"))
+                        {
+                            dict["CHECKOUT_DATE"] = billDate;
+                        }
+
+                        return dict;
+                    }).ToList();
 
                     response.Summary = new SaleDataSummary
                     {
@@ -255,8 +277,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                     return response;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"[GetSaleDataAsync ERROR]: {ex.Message} \n {ex.StackTrace}");
                     return new SaleDataResponse();
                 }
             });
