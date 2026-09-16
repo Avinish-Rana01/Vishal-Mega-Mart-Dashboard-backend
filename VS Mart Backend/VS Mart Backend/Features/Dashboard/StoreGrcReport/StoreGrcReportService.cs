@@ -184,7 +184,10 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                         parameters.Add("@status", "VIEW_SHOW_GRC_DATA");
                     }
 
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                    string effectiveSearch = !string.IsNullOrEmpty(request.SearchTerm) 
+                        ? request.SearchTerm 
+                        : (request.Article ?? "");
+                    parameters.Add("@SearchTerm", effectiveSearch, DbType.String, size: 200);
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
                     parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
@@ -192,15 +195,15 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                     parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
 
-                    if (DateTime.TryParse(request.Date, out DateTime parsedDate))
+                    if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out DateTime parsedDate))
                     {
-                        parameters.Add("@FromDate", parsedDate, DbType.DateTime);
-                        parameters.Add("@ToDate", parsedDate, DbType.DateTime);
+                        parameters.Add("@FromDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
+                        parameters.Add("@ToDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
                     }
                     else
                     {
-                        parameters.Add("@FromDate", null, DbType.DateTime);
-                        parameters.Add("@ToDate", null, DbType.DateTime);
+                        parameters.Add("@FromDate", "", DbType.String);
+                        parameters.Add("@ToDate", "", DbType.String);
                     }
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

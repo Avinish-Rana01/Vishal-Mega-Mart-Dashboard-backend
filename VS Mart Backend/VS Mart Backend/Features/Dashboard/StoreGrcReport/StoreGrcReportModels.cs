@@ -49,6 +49,12 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
         public string? StoreCode { get; set; }
         public string? HuNumber { get; set; }
         public string? GrcStatus { get; set; }
+
+        // Aliases to seamlessly support user's curl parameters:
+        // /api/grc-report/modal-details?huNo=HU001&article=ART001&scanTime=2026-08-14
+        public string? HuNo { set => HuNumber = value; }
+        public string? ScanTime { set => Date = value; }
+        public string? Article { get; set; }
     }
 
     public class GrcModalDetailsResponse
