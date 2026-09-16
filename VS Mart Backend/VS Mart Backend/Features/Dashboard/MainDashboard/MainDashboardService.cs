@@ -824,24 +824,39 @@ namespace VS_Mart_Backend.Features.MainDashboard
             var graphItems = await multi.ReadAsync<dynamic>();
             var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
+            var refIndex = new Dictionary<string, Dictionary<string, object?>>(StringComparer.OrdinalIgnoreCase);
+            var storeIndex = new Dictionary<string, Dictionary<string, object?>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var g in graphDataRows)
+            {
+                if (g.TryGetValue("Ref_ID", out var gRef) && gRef != null)
+                {
+                    string refKey = gRef.ToString()!;
+                    if (!string.IsNullOrEmpty(refKey))
+                        refIndex.TryAdd(refKey, g);
+                }
+                if (g.TryGetValue("STORE_CODE", out var gStore) && gStore != null)
+                {
+                    string storeKey = gStore.ToString()!;
+                    if (!string.IsNullOrEmpty(storeKey))
+                        storeIndex.TryAdd(storeKey, g);
+                }
+            }
+
             foreach (var mainRow in response.Items)
             {
                 var mainRefNo = mainRow.TryGetValue("REF_NO", out var refObj) ? refObj?.ToString() : null;
                 var mainStoreCode = mainRow.TryGetValue("STORE_CODE", out var scObj) ? scObj?.ToString() : null;
 
-                var match = graphDataRows.FirstOrDefault(g =>
+                Dictionary<string, object?>? match = null;
+                if (!string.IsNullOrEmpty(mainRefNo) && refIndex.TryGetValue(mainRefNo, out var byRef))
                 {
-                    if (!string.IsNullOrEmpty(mainRefNo) && g.TryGetValue("Ref_ID", out var gRef) && gRef != null)
-                    {
-                        if (string.Equals(mainRefNo, gRef.ToString(), StringComparison.OrdinalIgnoreCase))
-                            return true;
-                    }
-                    if (!string.IsNullOrEmpty(mainStoreCode) && g.TryGetValue("STORE_CODE", out var gStore) && gStore != null)
-                    {
-                        return string.Equals(mainStoreCode, gStore.ToString(), StringComparison.OrdinalIgnoreCase);
-                    }
-                    return false;
-                });
+                    match = byRef;
+                }
+                else if (!string.IsNullOrEmpty(mainStoreCode) && storeIndex.TryGetValue(mainStoreCode, out var byStore))
+                {
+                    match = byStore;
+                }
 
                 if (match != null)
                 {

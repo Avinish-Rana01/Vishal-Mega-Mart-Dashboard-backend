@@ -85,256 +85,391 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
         public async Task<GrcDetailsResponse> GetGrcDetailsAsync(GrcDetailsRequest request)
         {
-            string cacheKey = $"GrcDetails_{request.GrcStatus}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.HuNo}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"GrcDetails_Master_{request.GrcStatus}_{request.SearchTerm}_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.HuNo}_{request.SortColumn}_{request.SortDirection}";
+
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new GrcDetailsRequest
                 {
-                    var response = new GrcDetailsResponse { PageIndex = request.PageIndex };
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    string grcStatus = request.GrcStatus ?? "";
-                    
-                    if (grcStatus == "" || grcStatus == "1")
-                    {
-                        parameters.Add("@status", "SHOW_GRC_DATA");
-                        parameters.Add("@GRC_STATUS", grcStatus);
-                    }
-                    else if (grcStatus == "0")
-                    {
-                        parameters.Add("@status", "SHOW_HHTGRC_DATA");
-                        parameters.Add("@GRC_STATUS", "2");
-                    }
-                    else if (grcStatus == "2")
-                    {
-                        parameters.Add("@status", "SHOW_HHTGRC_DATA");
-                        parameters.Add("@GRC_STATUS", "1");
-                    }
-                    else if (grcStatus == "3")
-                    {
-                        parameters.Add("@status", "SHOW_STORE_PENDING_GRC_DATA");
-                    }
-                    else if (grcStatus == "4")
-                    {
-                        parameters.Add("@status", "SHOW_GRC_DATA");
-                    }
-
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
-                    parameters.Add("@FromDate", request.FromDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@ToDate", request.ToDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@HU_NO", request.HuNo ?? "", DbType.String, size: 50);
-                    parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-                    response.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching GRC details");
-                    return new GrcDetailsResponse();
-                }
+                    GrcStatus = request.GrcStatus,
+                    SearchTerm = request.SearchTerm,
+                    StoreName = request.StoreName,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    HuNo = request.HuNo,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryGrcDetailsFromDbAsync(masterReq);
             });
+
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.TotalRecords))
+            {
+                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
+                return new GrcDetailsResponse
+                {
+                    Data = pagedItems,
+                    PageIndex = request.PageIndex,
+                    TotalRecords = masterData.TotalRecords
+                };
+            }
+
+            return await QueryGrcDetailsFromDbAsync(request);
+        }
+
+        private async Task<GrcDetailsResponse> QueryGrcDetailsFromDbAsync(GrcDetailsRequest request)
+        {
+            try
+            {
+                var response = new GrcDetailsResponse { PageIndex = request.PageIndex };
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                string grcStatus = request.GrcStatus ?? "";
+                
+                if (grcStatus == "" || grcStatus == "1")
+                {
+                    parameters.Add("@status", "SHOW_GRC_DATA");
+                    parameters.Add("@GRC_STATUS", grcStatus);
+                }
+                else if (grcStatus == "0")
+                {
+                    parameters.Add("@status", "SHOW_HHTGRC_DATA");
+                    parameters.Add("@GRC_STATUS", "2");
+                }
+                else if (grcStatus == "2")
+                {
+                    parameters.Add("@status", "SHOW_HHTGRC_DATA");
+                    parameters.Add("@GRC_STATUS", "1");
+                }
+                else if (grcStatus == "3")
+                {
+                    parameters.Add("@status", "SHOW_STORE_PENDING_GRC_DATA");
+                }
+                else if (grcStatus == "4")
+                {
+                    parameters.Add("@status", "SHOW_GRC_DATA");
+                }
+
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
+                parameters.Add("@FromDate", request.FromDate ?? "", DbType.String, size: 20);
+                parameters.Add("@ToDate", request.ToDate ?? "", DbType.String, size: 20);
+                parameters.Add("@HU_NO", request.HuNo ?? "", DbType.String, size: 50);
+                parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
+                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+                response.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching GRC details");
+                return new GrcDetailsResponse();
+            }
         }
 
         public async Task<GrcModalDetailsResponse> GetGrcModalDetailsAsync(GrcModalDetailsRequest request)
         {
-            string cacheKey = $"GrcModalDetails_{request.GrcStatus}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.StoreCode}_{request.HuNumber}_{request.Date}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"GrcModalDetails_Master_{request.GrcStatus}_{request.SearchTerm}_{request.StoreCode}_{request.HuNumber}_{request.Date}_{request.SortColumn}_{request.SortDirection}";
+
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new GrcModalDetailsRequest
                 {
-                    var response = new GrcModalDetailsResponse { PageIndex = request.PageIndex };
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    string grcStatus = request.GrcStatus ?? "";
-                    
-                    if (grcStatus == "" || grcStatus == "1")
-                    {
-                        parameters.Add("@status", "VIEW_SHOW_GRC_DATA");
-                        parameters.Add("@GRC_STATUS", grcStatus);
-                    }
-                    else if (grcStatus == "0")
-                    {
-                        parameters.Add("@status", "VIEW_SHOW_HHTGRC_DATA");
-                        parameters.Add("@GRC_STATUS", "2");
-                    }
-                    else if (grcStatus == "2")
-                    {
-                        parameters.Add("@status", "VIEW_SHOW_HHTGRC_DATA");
-                        parameters.Add("@GRC_STATUS", "1");
-                    }
-                    else if (grcStatus == "3")
-                    {
-                        parameters.Add("@status", "VIEW_SHOW_STORE_PENDING_GRC_DATA");
-                    }
-                    else if (grcStatus == "4")
-                    {
-                        parameters.Add("@status", "VIEW_SHOW_GRC_DATA");
-                    }
-
-                    string effectiveSearch = !string.IsNullOrEmpty(request.SearchTerm) 
-                        ? request.SearchTerm 
-                        : (request.Article ?? "");
-                    parameters.Add("@SearchTerm", effectiveSearch, DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
-                    parameters.Add("@HU_NO", request.HuNumber ?? "", DbType.String, size: 50);
-                    parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-
-                    if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out DateTime parsedDate))
-                    {
-                        parameters.Add("@FromDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
-                        parameters.Add("@ToDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
-                    }
-                    else
-                    {
-                        parameters.Add("@FromDate", "", DbType.String);
-                        parameters.Add("@ToDate", "", DbType.String);
-                    }
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@MATERIALCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
-                    response.Qty = parameters.Get<int?>("@QTY") ?? 0;
-                    response.MaterialCount = parameters.Get<int?>("@MATERIALCOUNT") ?? 0;
-                    response.ActualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching GRC modal details");
-                    return new GrcModalDetailsResponse();
-                }
+                    GrcStatus = request.GrcStatus,
+                    SearchTerm = request.SearchTerm,
+                    Article = request.Article,
+                    StoreCode = request.StoreCode,
+                    HuNumber = request.HuNumber,
+                    Date = request.Date,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryGrcModalDetailsFromDbAsync(masterReq);
             });
+
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.TotalRecords))
+            {
+                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
+                return new GrcModalDetailsResponse
+                {
+                    Data = pagedItems,
+                    PageIndex = request.PageIndex,
+                    TotalRecords = masterData.TotalRecords,
+                    Qty = masterData.Qty,
+                    MaterialCount = masterData.MaterialCount,
+                    ActualQty = masterData.ActualQty
+                };
+            }
+
+            return await QueryGrcModalDetailsFromDbAsync(request);
+        }
+
+        private async Task<GrcModalDetailsResponse> QueryGrcModalDetailsFromDbAsync(GrcModalDetailsRequest request)
+        {
+            try
+            {
+                var response = new GrcModalDetailsResponse { PageIndex = request.PageIndex };
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                string grcStatus = request.GrcStatus ?? "";
+                
+                if (grcStatus == "" || grcStatus == "1")
+                {
+                    parameters.Add("@status", "VIEW_SHOW_GRC_DATA");
+                    parameters.Add("@GRC_STATUS", grcStatus);
+                }
+                else if (grcStatus == "0")
+                {
+                    parameters.Add("@status", "VIEW_SHOW_HHTGRC_DATA");
+                    parameters.Add("@GRC_STATUS", "2");
+                }
+                else if (grcStatus == "2")
+                {
+                    parameters.Add("@status", "VIEW_SHOW_HHTGRC_DATA");
+                    parameters.Add("@GRC_STATUS", "1");
+                }
+                else if (grcStatus == "3")
+                {
+                    parameters.Add("@status", "VIEW_SHOW_STORE_PENDING_GRC_DATA");
+                }
+                else if (grcStatus == "4")
+                {
+                    parameters.Add("@status", "VIEW_SHOW_GRC_DATA");
+                }
+
+                string effectiveSearch = !string.IsNullOrEmpty(request.SearchTerm) 
+                    ? request.SearchTerm 
+                    : (request.Article ?? "");
+                parameters.Add("@SearchTerm", effectiveSearch, DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
+                parameters.Add("@HU_NO", request.HuNumber ?? "", DbType.String, size: 50);
+                parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
+                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+
+                if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out DateTime parsedDate))
+                {
+                    parameters.Add("@FromDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
+                    parameters.Add("@ToDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
+                }
+                else
+                {
+                    parameters.Add("@FromDate", "", DbType.String);
+                    parameters.Add("@ToDate", "", DbType.String);
+                }
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@MATERIALCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
+                response.Qty = parameters.Get<int?>("@QTY") ?? 0;
+                response.MaterialCount = parameters.Get<int?>("@MATERIALCOUNT") ?? 0;
+                response.ActualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching GRC modal details");
+                return new GrcModalDetailsResponse();
+            }
         }
 
         public async Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request)
         {
-            string cacheKey = $"StoreGrcReport_{request.StoreCode}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"StoreGrcReport_Master_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
+
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new StoreGrcReportQueryRequest
                 {
-                    var response = new StoreDashboardResponse();
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    parameters.Add("@status", "LAST7DAY_STORE_DASHBOARD", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.StoreCode ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
-                    parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "GRC_DATE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@HU_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@HU_WRONG_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@HHT_VALIDATE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.Summary = new StoreDashboardSummary
-                    {
-                        RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                        TotalCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                        HuReceivedQty = parameters.Get<int?>("@QTY") ?? 0,
-                        HuValidatedQty = parameters.Get<int?>("@HU_VALIDATED_QTY") ?? 0,
-                        HuWrongQty = parameters.Get<int?>("@HU_WRONG_QTY") ?? 0,
-                        HhtValidateQty = parameters.Get<int?>("@HHT_VALIDATE_QTY") ?? 0,
-                        EncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
-                        StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : request.StoreCode,
-                        Date = request.FromDate
-                    };
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching store GRC report");
-                    return new StoreDashboardResponse();
-                }
+                    StoreCode = request.StoreCode,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryStoreGrcReportFromDbAsync(masterReq);
             });
+
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
+            {
+                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
+                return new StoreDashboardResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
+            }
+
+            return await QueryStoreGrcReportFromDbAsync(request);
+        }
+
+        private async Task<StoreDashboardResponse> QueryStoreGrcReportFromDbAsync(StoreGrcReportQueryRequest request)
+        {
+            try
+            {
+                var response = new StoreDashboardResponse();
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "LAST7DAY_STORE_DASHBOARD", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.StoreCode ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
+                parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
+                parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "GRC_DATE" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@HU_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@HU_WRONG_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@HHT_VALIDATE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.Summary = new StoreDashboardSummary
+                {
+                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                    TotalCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                    HuReceivedQty = parameters.Get<int?>("@QTY") ?? 0,
+                    HuValidatedQty = parameters.Get<int?>("@HU_VALIDATED_QTY") ?? 0,
+                    HuWrongQty = parameters.Get<int?>("@HU_WRONG_QTY") ?? 0,
+                    HhtValidateQty = parameters.Get<int?>("@HHT_VALIDATE_QTY") ?? 0,
+                    EncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
+                    StoreName = response.Items.Count > 0 && response.Items[0].ContainsKey("STORE_NAME") ? response.Items[0]["STORE_NAME"]?.ToString() : request.StoreCode,
+                    Date = request.FromDate
+                };
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching store GRC report");
+                return new StoreDashboardResponse();
+            }
         }
 
         public async Task<HUDetailsResponse> GetHUDetailsAsync(HUDetailsRequest request)
         {
-            string cacheKey = $"HUDetails_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.HUStatus}_{request.ReceivingPlant}_{request.FromDate}_{request.ToDate}_{request.HUNo}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"HUDetails_Master_{request.SearchTerm}_{request.HUStatus}_{request.ReceivingPlant}_{request.FromDate}_{request.ToDate}_{request.HUNo}_{request.SortColumn}_{request.SortDirection}";
+
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new HUDetailsRequest
                 {
-                    var response = new HUDetailsResponse { PageIndex = request.PageIndex };
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
-                    DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
-
-                    parameters.Add("@status", "HU_REPORT", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@CI_STATUS", request.HUStatus ?? "", DbType.String, size: 50);
-                    parameters.Add("@Reciving_Plant", request.ReceivingPlant ?? "", DbType.String, size: 50);
-                    parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
-                    parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
-                    parameters.Add("@HU_NO", request.HUNo ?? "", DbType.String, size: 50);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@MATERIALCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@TAGQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.RecordCount = parameters.Get<int?>("@RecordCount") ?? 0;
-                    response.MaterialQty = parameters.Get<int?>("@MATERIALCOUNT") ?? 0;
-                    response.ActualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
-                    response.ScannedQty = parameters.Get<int?>("@SCANQTY") ?? 0;
-                    response.InvalidTags = parameters.Get<int?>("@TAGQTY") ?? 0;
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching HU details");
-                    return new HUDetailsResponse();
-                }
+                    SearchTerm = request.SearchTerm,
+                    HUStatus = request.HUStatus,
+                    ReceivingPlant = request.ReceivingPlant,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    HUNo = request.HUNo,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryHUDetailsFromDbAsync(masterReq);
             });
+
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.RecordCount))
+            {
+                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
+                return new HUDetailsResponse
+                {
+                    Data = pagedItems,
+                    PageIndex = request.PageIndex,
+                    RecordCount = masterData.RecordCount,
+                    MaterialQty = masterData.MaterialQty,
+                    ActualQty = masterData.ActualQty,
+                    ScannedQty = masterData.ScannedQty,
+                    InvalidTags = masterData.InvalidTags
+                };
+            }
+
+            return await QueryHUDetailsFromDbAsync(request);
+        }
+
+        private async Task<HUDetailsResponse> QueryHUDetailsFromDbAsync(HUDetailsRequest request)
+        {
+            try
+            {
+                var response = new HUDetailsResponse { PageIndex = request.PageIndex };
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
+                DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
+
+                parameters.Add("@status", "HU_REPORT", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@CI_STATUS", request.HUStatus ?? "", DbType.String, size: 50);
+                parameters.Add("@Reciving_Plant", request.ReceivingPlant ?? "", DbType.String, size: 50);
+                parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
+                parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
+                parameters.Add("@HU_NO", request.HUNo ?? "", DbType.String, size: 50);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@MATERIALCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@TAGQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.RecordCount = parameters.Get<int?>("@RecordCount") ?? 0;
+                response.MaterialQty = parameters.Get<int?>("@MATERIALCOUNT") ?? 0;
+                response.ActualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
+                response.ScannedQty = parameters.Get<int?>("@SCANQTY") ?? 0;
+                response.InvalidTags = parameters.Get<int?>("@TAGQTY") ?? 0;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching HU details");
+                return new HUDetailsResponse();
+            }
         }
     }
 }

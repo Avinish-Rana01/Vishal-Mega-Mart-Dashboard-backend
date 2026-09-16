@@ -91,51 +91,90 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
         public async Task<LiveStockReportResponse> GetLiveStockDetailsAsync(LiveStockReportRequest request)
         {
-            string cacheKey = $"LiveStockReportDetails_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.StoreName}_{request.StockDate}_{request.ArticleNo}_{request.SortColumn}_{request.SortDirection}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"LiveStockReportDetails_Master_{request.SearchTerm}_{request.StoreName}_{request.StockDate}_{request.ArticleNo}_{request.SortColumn}_{request.SortDirection}";
+
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new LiveStockReportRequest
                 {
-                    var response = new LiveStockReportResponse();
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    parameters.Add("@status", "LIVE_STOCK_REPORT", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
-                    parameters.Add("@fromdate", request.StockDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@todate", request.StockDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@Material", request.ArticleNo ?? "", DbType.String, size: 50);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STOCK_DATE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.Summary.PageIndex = request.PageIndex;
-                    response.Summary.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
-                    response.Summary.SapStockCount = parameters.Get<int?>("@QTY") ?? 0;
-                    response.Summary.RfidStockCount = parameters.Get<int?>("@ENCQTY") ?? 0;
-                    response.Summary.DifferenceCount = parameters.Get<int?>("@DIFFQTY") ?? 0;
-                    response.Summary.StoreName = response.Data.Count > 0 && response.Data[0].ContainsKey("STORE_NAME") ? response.Data[0]["STORE_NAME"]?.ToString() : request.StoreName;
-                    response.Summary.Date = request.StockDate;
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching live stock report");
-                    return new LiveStockReportResponse();
-                }
+                    SearchTerm = request.SearchTerm,
+                    StoreName = request.StoreName,
+                    StockDate = request.StockDate,
+                    ArticleNo = request.ArticleNo,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryLiveStockDetailsFromDbAsync(masterReq);
             });
+
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.Summary.TotalRecords))
+            {
+                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
+                return new LiveStockReportResponse
+                {
+                    Data = pagedItems,
+                    Summary = new ReportSummary
+                    {
+                        PageIndex = request.PageIndex,
+                        TotalRecords = masterData.Summary.TotalRecords,
+                        SapStockCount = masterData.Summary.SapStockCount,
+                        RfidStockCount = masterData.Summary.RfidStockCount,
+                        DifferenceCount = masterData.Summary.DifferenceCount,
+                        StoreName = masterData.Summary.StoreName,
+                        Date = masterData.Summary.Date
+                    }
+                };
+            }
+
+            return await QueryLiveStockDetailsFromDbAsync(request);
+        }
+
+        private async Task<LiveStockReportResponse> QueryLiveStockDetailsFromDbAsync(LiveStockReportRequest request)
+        {
+            try
+            {
+                var response = new LiveStockReportResponse();
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "LIVE_STOCK_REPORT", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
+                parameters.Add("@fromdate", request.StockDate ?? "", DbType.String, size: 20);
+                parameters.Add("@todate", request.StockDate ?? "", DbType.String, size: 20);
+                parameters.Add("@Material", request.ArticleNo ?? "", DbType.String, size: 50);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STOCK_DATE" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.Summary.PageIndex = request.PageIndex;
+                response.Summary.TotalRecords = parameters.Get<int?>("@RecordCount") ?? 0;
+                response.Summary.SapStockCount = parameters.Get<int?>("@QTY") ?? 0;
+                response.Summary.RfidStockCount = parameters.Get<int?>("@ENCQTY") ?? 0;
+                response.Summary.DifferenceCount = parameters.Get<int?>("@DIFFQTY") ?? 0;
+                response.Summary.StoreName = response.Data.Count > 0 && response.Data[0].ContainsKey("STORE_NAME") ? response.Data[0]["STORE_NAME"]?.ToString() : request.StoreName;
+                response.Summary.Date = request.StockDate;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching live stock report");
+                return new LiveStockReportResponse();
+            }
         }
     }
 }

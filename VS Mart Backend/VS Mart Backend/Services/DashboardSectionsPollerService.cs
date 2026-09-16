@@ -118,6 +118,13 @@ namespace VS_Mart_Backend.Services
                 ?? string.Empty;
         }
 
+        private static volatile bool _storeValidationPending = false;
+
+        public static void TriggerStoreValidationPoll()
+        {
+            _storeValidationPending = true;
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("DashboardSectionsPollerService: Starting background synchronization engine.");
@@ -146,7 +153,7 @@ namespace VS_Mart_Backend.Services
                         // Hub occupancy check: If no clients are connected and initial priming is done,
                         // do not poll frequently. Only run a gentle baseline refresh every 60s (60 ticks).
                         bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
-                        if (!hasSubscribers && cycleTick > 1 && cycleTick % 60 != 0)
+                        if (!hasSubscribers && cycleTick > 1 && cycleTick % 60 != 0 && !_storeValidationPending)
                         {
                             continue;
                         }
@@ -179,9 +186,10 @@ namespace VS_Mart_Backend.Services
                                 await PollDcEncodingAsync(stoppingToken);
                             }
 
-                            // 5. Store Validation: Every 12 seconds (offset 6)
-                            if (cycleTick % 12 == 6)
+                            // 5. Store Validation: Immediate on Service Broker event, OR gentle 30s baseline (offset 6)
+                            if (_storeValidationPending || cycleTick % 30 == 6)
                             {
+                                _storeValidationPending = false;
                                 await PollStoreValidationAsync(stoppingToken);
                             }
 
