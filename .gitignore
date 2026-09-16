@@ -5,7 +5,6 @@ obj/
 *.user
 *.suo
 appsettings.Development.json
-TempTest/bin/
-TempTest/obj/
+TempTest/
 
 appsettings.json
