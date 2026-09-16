@@ -34,6 +34,9 @@ namespace VS_Mart_Backend.Services
         private readonly ConcurrentDictionary<string, DcValidationSnapshot> _dcValidationSnapshots = new(StringComparer.OrdinalIgnoreCase);
         private TagManagementSnapshot? _lastTagSnapshot;
         private static readonly SemaphoreSlim _pollerDbGate = new(1, 1);
+        // Tracks which sections have completed their initial SP baseline run.
+        // The outbox gate is bypassed until a section is initialized so the cache is always primed.
+        private readonly HashSet<string> _initializedSections = new(StringComparer.OrdinalIgnoreCase);
 
         // Telemetry counters
         public static long TotalTicksExecuted { get; private set; } = 0;
@@ -215,6 +218,12 @@ namespace VS_Mart_Backend.Services
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
 
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("CYCLE_COUNT") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "CYCLE_COUNT", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
+
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
 
@@ -335,6 +344,11 @@ namespace VS_Mart_Backend.Services
                     }
                 }
             }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "CYCLE_COUNT", stoppingToken);
+                _initializedSections.Add("CYCLE_COUNT");
+                // ────────────────────────────────────────────────────────────────
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollCycleCountAsync warning: {Msg}", ex.Message);
@@ -347,6 +361,12 @@ namespace VS_Mart_Backend.Services
         private async Task PollStoreValidationAsync(CancellationToken stoppingToken)
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
+
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("STORE_VALIDATION") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "STORE_VALIDATION", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -454,6 +474,11 @@ namespace VS_Mart_Backend.Services
                     }
                 }
             }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "STORE_VALIDATION", stoppingToken);
+                _initializedSections.Add("STORE_VALIDATION");
+                // ────────────────────────────────────────────────────────────────
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollStoreValidationAsync warning: {Msg}", ex.Message);
@@ -466,6 +491,12 @@ namespace VS_Mart_Backend.Services
         private async Task PollDcEncodingAsync(CancellationToken stoppingToken)
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
+
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("DC_ENCODING") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "DC_ENCODING", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -557,6 +588,11 @@ namespace VS_Mart_Backend.Services
                     await _hubContext.Clients.All.SendAsync("ReceiveDcEncodingPatch", patch, stoppingToken);
                 }
             }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "DC_ENCODING", stoppingToken);
+                _initializedSections.Add("DC_ENCODING");
+                // ────────────────────────────────────────────────────────────────
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollDcEncodingAsync warning: {Msg}", ex.Message);
@@ -569,6 +605,12 @@ namespace VS_Mart_Backend.Services
         private async Task PollTagManagementAsync(CancellationToken stoppingToken)
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
+
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("TAG_MANAGEMENT") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "TAG_MANAGEMENT", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -629,6 +671,11 @@ namespace VS_Mart_Backend.Services
                     };
                 }
             }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "TAG_MANAGEMENT", stoppingToken);
+                _initializedSections.Add("TAG_MANAGEMENT");
+                // ────────────────────────────────────────────────────────────────
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollTagManagementAsync warning: {Msg}", ex.Message);
@@ -641,6 +688,12 @@ namespace VS_Mart_Backend.Services
         private async Task PollVendorDiscrepancyAsync(CancellationToken stoppingToken)
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
+
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("VENDOR_DISCREPANCY") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "VENDOR_DISCREPANCY", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -735,6 +788,11 @@ namespace VS_Mart_Backend.Services
                     }
                 }
             }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "VENDOR_DISCREPANCY", stoppingToken);
+                _initializedSections.Add("VENDOR_DISCREPANCY");
+                // ────────────────────────────────────────────────────────────────
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning("DashboardSectionsPollerService: PollVendorDiscrepancyAsync warning: {Msg}", ex.Message);
@@ -747,6 +805,12 @@ namespace VS_Mart_Backend.Services
         private async Task PollDcValidationAsync(CancellationToken stoppingToken)
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
+
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            if (_initializedSections.Contains("DC_VALIDATION") &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "DC_VALIDATION", stoppingToken))
+                return;
+            // ───────────────────────────────────────────────────────────────────
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -835,6 +899,11 @@ namespace VS_Mart_Backend.Services
                         };
                     }
                 }
+            }
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "DC_VALIDATION", stoppingToken);
+                _initializedSections.Add("DC_VALIDATION");
+                // ────────────────────────────────────────────────────────────────
             }
             catch (Exception ex)
             {

@@ -140,6 +140,17 @@ namespace VS_Mart_Backend.Services
         {
             if (string.IsNullOrEmpty(_connectionString)) return;
 
+            // ── OUTBOX GATE ──────────────────────────────────────────────────────────
+            // Skip expensive SP_New_Dashboard call if tbl_ZCURR_STOCK has not changed.
+            // Always runs on first tick (_isInitialized = false) to prime cache & snapshot.
+            if (_isInitialized &&
+                !await ChangeNotificationChecker.HasPendingAsync(_connectionString, "LIVE_STOCK", stoppingToken))
+            {
+                LastStatusMessage = $"No DB change detected. Skipping tick #{TotalTicksExecuted + 1}.";
+                return;
+            }
+            // ─────────────────────────────────────────────────────────────────────────
+
             // Generous cancellation timeout of 60s to guarantee query completion under any load
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
             cts.CancelAfter(TimeSpan.FromSeconds(60));
@@ -316,6 +327,10 @@ namespace VS_Mart_Backend.Services
 
                 _lastTotalRfid = currentTotalRfid;
                 _lastTotalDiff = currentTotalDiff;
+
+                // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
+                await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "LIVE_STOCK", stoppingToken);
+                // ─────────────────────────────────────────────────────────────────────
             }
             catch (OperationCanceledException)
             {
