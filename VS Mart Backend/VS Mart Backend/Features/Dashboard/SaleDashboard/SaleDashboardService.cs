@@ -20,45 +20,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<StoreSaleReportResponse> GetStoreSaleReportAsync(StoreSaleReportQueryRequest request)
         {
-            string masterCacheKey = $"StoreSaleReport_Master_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new StoreSaleReportQueryRequest
-                {
-                    StoreCode = request.StoreCode,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    SearchTerm = request.SearchTerm,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryStoreSaleReportFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
-            {
-                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
-                return new StoreSaleReportResponse
-                {
-                    Items = pagedItems,
-                    Summary = new StoreSaleReportSummary
-                    {
-                        RecordCount = masterData.Summary.RecordCount,
-                        POSSaleQty = masterData.Summary.POSSaleQty,
-                        RFIDCheckoutQty = masterData.Summary.RFIDCheckoutQty,
-                        TaffetaSaleQty = masterData.Summary.TaffetaSaleQty,
-                        ManualSaleQty = masterData.Summary.ManualSaleQty,
-                        StoreCode = masterData.Summary.StoreCode,
-                        FromDate = masterData.Summary.FromDate,
-                        ToDate = masterData.Summary.ToDate
-                    }
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryStoreSaleReportFromDbAsync(request);
         }
 
@@ -237,55 +200,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<SaleDataResponse> GetSaleDataAsync(SaleDataQueryRequest request)
         {
-            string effectiveStore = !string.IsNullOrWhiteSpace(request.StoreCode) ? request.StoreCode
-                : !string.IsNullOrWhiteSpace(request.Store) ? request.Store
-                : (request.StoreName ?? "");
-
-            string effectiveFromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? request.FromDate : "";
-            string effectiveToDate = !string.IsNullOrWhiteSpace(request.ToDate) ? request.ToDate : effectiveFromDate;
-
-            string masterCacheKey = $"SaleData_Master_{request.ColumnName}_{request.SearchTerm}_{effectiveStore}_{effectiveFromDate}_{effectiveToDate}_{request.Pos}_{request.ArticleNo}_{request.Ean}_{request.UserId}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new SaleDataQueryRequest
-                {
-                    ColumnName = request.ColumnName,
-                    SearchTerm = request.SearchTerm,
-                    StoreCode = request.StoreCode,
-                    Store = request.Store,
-                    StoreName = request.StoreName,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    Pos = request.Pos,
-                    ArticleNo = request.ArticleNo,
-                    Ean = request.Ean,
-                    UserId = request.UserId,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QuerySaleDataFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
-            {
-                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
-                return new SaleDataResponse
-                {
-                    Items = pagedItems,
-                    Summary = new SaleDataSummary
-                    {
-                        PageIndex = request.PageIndex,
-                        RecordCount = masterData.Summary.RecordCount,
-                        TotalCount = masterData.Summary.TotalCount,
-                        Qty = masterData.Summary.Qty
-                    }
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QuerySaleDataFromDbAsync(request);
         }
 

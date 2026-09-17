@@ -10,6 +10,10 @@ namespace VS_Mart_Backend.Services
 {
     public class CacheWarmerService : BackgroundService
     {
+        public static int TotalRuns { get; private set; } = 0;
+        public static DateTime? LastRunTime { get; private set; }
+        public static string LastStatus { get; private set; } = "Initializing";
+
         private readonly ILogger<CacheWarmerService> _logger;
         private readonly IServiceProvider _serviceProvider;
 
@@ -25,6 +29,8 @@ namespace VS_Mart_Backend.Services
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                LastRunTime = DateTime.Now;
+                LastStatus = "Running warmup pass";
                 _logger.LogInformation("CacheWarmerService running at: {time}", DateTimeOffset.Now);
 
                 try
@@ -77,15 +83,26 @@ namespace VS_Mart_Backend.Services
                         var tagCycleCountRequest = new TagCycleCountQueryRequest { SearchTerm = "", PageIndex = 1, PageSize = 100, SortColumn = "CYCLE_COUNT", SortDirection = "DESC" };
                         await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest); await Task.Delay(1000, stoppingToken);
 
-                        _logger.LogInformation("Cache successfully pre-warmed for Super Admin.");
+                        TotalRuns++;
+                        LastRunTime = DateTime.Now;
+                        LastStatus = $"Pre-warmed successfully (Iteration #{TotalRuns})";
+                        _logger.LogInformation("Cache successfully pre-warmed for Super Admin. Total runs: {runs}", TotalRuns);
+
+                        try
+                        {
+                            System.IO.Directory.CreateDirectory("logs");
+                            System.IO.File.AppendAllText("logs/cache_warmer.log", $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Cache pre-warmed successfully. Iteration #{TotalRuns}\n");
+                        }
+                        catch { /* non-blocking file append */ }
                     }
                 }
                 catch (Exception ex)
                 {
+                    LastStatus = $"Error: {ex.Message}";
                     _logger.LogError(ex, "Error occurred while pre-warming the cache.");
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(120), stoppingToken);
             }
 
             _logger.LogInformation("CacheWarmerService is stopping.");

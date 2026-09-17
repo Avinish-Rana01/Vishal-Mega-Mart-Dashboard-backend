@@ -20,40 +20,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
         public async Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request)
         {
-            string masterCacheKey = $"CycleCountReportView_Master_{request.SearchTerm}_{request.FromDate}_{request.ToDate}_{request.StoreCode}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new CycleCountReportViewQueryRequest
-                {
-                    SearchTerm = request.SearchTerm,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    StoreCode = request.StoreCode,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryCycleCountReportViewFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
-            {
-                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
-                return new CycleCountReportViewResponse
-                {
-                    Items = pagedItems,
-                    Summary = new CycleCountReportViewSummary
-                    {
-                        PageIndex = request.PageIndex,
-                        RecordCount = masterData.Summary.RecordCount,
-                        RefNo = masterData.Summary.RefNo
-                    }
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryCycleCountReportViewFromDbAsync(request);
         }
 
@@ -105,45 +73,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
         public async Task<CycleCountDetailsResponse> GetCycleCountDetailsAsync(CycleCountDetailsQueryRequest request)
         {
-            string masterCacheKey = $"CycleCountDetails_Master_{request.SearchTerm}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.RefNo}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new CycleCountDetailsQueryRequest
-                {
-                    SearchTerm = request.SearchTerm,
-                    StoreCode = request.StoreCode,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    RefNo = request.RefNo,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryCycleCountDetailsFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
-            {
-                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
-                return new CycleCountDetailsResponse
-                {
-                    Items = pagedItems,
-                    Summary = new CycleCountDetailsSummary
-                    {
-                        PageIndex = request.PageIndex,
-                        RecordCount = masterData.Summary.RecordCount,
-                        TotalCount = masterData.Summary.TotalCount,
-                        ActualQty = masterData.Summary.ActualQty,
-                        ScannedQty = masterData.Summary.ScannedQty,
-                        DiffQty = masterData.Summary.DiffQty,
-                        ExcessQty = masterData.Summary.ExcessQty
-                    }
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryCycleCountDetailsFromDbAsync(request);
         }
 

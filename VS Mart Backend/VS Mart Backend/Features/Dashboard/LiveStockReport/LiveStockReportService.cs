@@ -91,44 +91,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
         public async Task<LiveStockReportResponse> GetLiveStockDetailsAsync(LiveStockReportRequest request)
         {
-            string masterCacheKey = $"LiveStockReportDetails_Master_{request.SearchTerm}_{request.StoreName}_{request.StockDate}_{request.ArticleNo}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new LiveStockReportRequest
-                {
-                    SearchTerm = request.SearchTerm,
-                    StoreName = request.StoreName,
-                    StockDate = request.StockDate,
-                    ArticleNo = request.ArticleNo,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryLiveStockDetailsFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.Summary.TotalRecords))
-            {
-                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
-                return new LiveStockReportResponse
-                {
-                    Data = pagedItems,
-                    Summary = new ReportSummary
-                    {
-                        PageIndex = request.PageIndex,
-                        TotalRecords = masterData.Summary.TotalRecords,
-                        SapStockCount = masterData.Summary.SapStockCount,
-                        RfidStockCount = masterData.Summary.RfidStockCount,
-                        DifferenceCount = masterData.Summary.DifferenceCount,
-                        StoreName = masterData.Summary.StoreName,
-                        Date = masterData.Summary.Date
-                    }
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryLiveStockDetailsFromDbAsync(request);
         }
 

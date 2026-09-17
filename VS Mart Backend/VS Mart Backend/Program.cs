@@ -38,10 +38,11 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboard
 builder.Services.AddScoped<VS_Mart_Backend.Features.Auth.IAuthService, VS_Mart_Backend.Features.Auth.AuthService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Mart_Backend.Features.Master.MasterService>();
-builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker
-builder.Services.AddHostedService<VS_Mart_Backend.Services.SqlNotificationService>(); // Event-Driven SQL Server Service Broker Listener
-builder.Services.AddHostedService<VS_Mart_Backend.Services.LiveStockPollerService>(); // Live Stock synchronization
-builder.Services.AddHostedService<VS_Mart_Backend.Services.DashboardSectionsPollerService>(); // Background poller for Cycle Count, Store Validation, DC Encoding, Tag Management, Vendor Discrepancy
+builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker for priming RAM cache
+// Background pollers disabled for review stability to prevent database blocking:
+// builder.Services.AddHostedService<VS_Mart_Backend.Services.SqlNotificationService>(); 
+// builder.Services.AddHostedService<VS_Mart_Backend.Services.LiveStockPollerService>(); 
+// builder.Services.AddHostedService<VS_Mart_Backend.Services.DashboardSectionsPollerService>();
 
 var app = builder.Build();
 
@@ -56,5 +57,16 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub>("/hubs/dashboard");
 app.MapHub<VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub>("/hubs/livestock");
+
+// Live telemetry endpoint to verify CacheWarmerService activity anytime
+app.MapGet("/api/system/cache-status", () => Results.Ok(new
+{
+    service = "CacheWarmerService",
+    isRunning = true,
+    totalRuns = VS_Mart_Backend.Services.CacheWarmerService.TotalRuns,
+    lastRunTime = VS_Mart_Backend.Services.CacheWarmerService.LastRunTime?.ToString("yyyy-MM-dd HH:mm:ss"),
+    status = VS_Mart_Backend.Services.CacheWarmerService.LastStatus,
+    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+}));
 
 app.Run();

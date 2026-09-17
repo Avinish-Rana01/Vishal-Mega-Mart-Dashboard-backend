@@ -85,38 +85,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
         public async Task<GrcDetailsResponse> GetGrcDetailsAsync(GrcDetailsRequest request)
         {
-            string masterCacheKey = $"GrcDetails_Master_{request.GrcStatus}_{request.SearchTerm}_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.HuNo}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new GrcDetailsRequest
-                {
-                    GrcStatus = request.GrcStatus,
-                    SearchTerm = request.SearchTerm,
-                    StoreName = request.StoreName,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    HuNo = request.HuNo,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryGrcDetailsFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.TotalRecords))
-            {
-                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
-                return new GrcDetailsResponse
-                {
-                    Data = pagedItems,
-                    PageIndex = request.PageIndex,
-                    TotalRecords = masterData.TotalRecords
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryGrcDetailsFromDbAsync(request);
         }
 
@@ -182,41 +152,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
         public async Task<GrcModalDetailsResponse> GetGrcModalDetailsAsync(GrcModalDetailsRequest request)
         {
-            string masterCacheKey = $"GrcModalDetails_Master_{request.GrcStatus}_{request.SearchTerm}_{request.StoreCode}_{request.HuNumber}_{request.Date}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new GrcModalDetailsRequest
-                {
-                    GrcStatus = request.GrcStatus,
-                    SearchTerm = request.SearchTerm,
-                    Article = request.Article,
-                    StoreCode = request.StoreCode,
-                    HuNumber = request.HuNumber,
-                    Date = request.Date,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryGrcModalDetailsFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.TotalRecords))
-            {
-                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
-                return new GrcModalDetailsResponse
-                {
-                    Data = pagedItems,
-                    PageIndex = request.PageIndex,
-                    TotalRecords = masterData.TotalRecords,
-                    Qty = masterData.Qty,
-                    MaterialCount = masterData.MaterialCount,
-                    ActualQty = masterData.ActualQty
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryGrcModalDetailsFromDbAsync(request);
         }
 
@@ -301,34 +238,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
         public async Task<StoreDashboardResponse> GetStoreGrcReportAsync(StoreGrcReportQueryRequest request)
         {
-            string masterCacheKey = $"StoreGrcReport_Master_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new StoreGrcReportQueryRequest
-                {
-                    StoreCode = request.StoreCode,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryStoreGrcReportFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
-            {
-                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
-                return new StoreDashboardResponse
-                {
-                    Items = pagedItems,
-                    Summary = masterData.Summary
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryStoreGrcReportFromDbAsync(request);
         }
 
@@ -385,42 +296,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
         public async Task<HUDetailsResponse> GetHUDetailsAsync(HUDetailsRequest request)
         {
-            string masterCacheKey = $"HUDetails_Master_{request.SearchTerm}_{request.HUStatus}_{request.ReceivingPlant}_{request.FromDate}_{request.ToDate}_{request.HUNo}_{request.SortColumn}_{request.SortDirection}";
-
-            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
-            {
-                var masterReq = new HUDetailsRequest
-                {
-                    SearchTerm = request.SearchTerm,
-                    HUStatus = request.HUStatus,
-                    ReceivingPlant = request.ReceivingPlant,
-                    FromDate = request.FromDate,
-                    ToDate = request.ToDate,
-                    HUNo = request.HUNo,
-                    SortColumn = request.SortColumn,
-                    SortDirection = request.SortDirection,
-                    PageIndex = 1,
-                    PageSize = Math.Max(request.PageSize, 1000)
-                };
-                return await QueryHUDetailsFromDbAsync(masterReq);
-            });
-
-            int skip = (request.PageIndex - 1) * request.PageSize;
-            if (masterData.Data != null && (skip < masterData.Data.Count || masterData.Data.Count == masterData.RecordCount))
-            {
-                var pagedItems = masterData.Data.Skip(skip).Take(request.PageSize).ToList();
-                return new HUDetailsResponse
-                {
-                    Data = pagedItems,
-                    PageIndex = request.PageIndex,
-                    RecordCount = masterData.RecordCount,
-                    MaterialQty = masterData.MaterialQty,
-                    ActualQty = masterData.ActualQty,
-                    ScannedQty = masterData.ScannedQty,
-                    InvalidTags = masterData.InvalidTags
-                };
-            }
-
+            // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
+            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
             return await QueryHUDetailsFromDbAsync(request);
         }
 
