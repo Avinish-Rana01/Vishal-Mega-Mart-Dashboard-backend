@@ -20,111 +20,184 @@ namespace VS_Mart_Backend.Features.CycleCountReport
 
         public async Task<CycleCountReportViewResponse> GetCycleCountReportViewAsync(CycleCountReportViewQueryRequest request)
         {
-            string cacheKey = $"CycleCountReportView_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.StoreCode}_{request.SortColumn}_{request.SortDirection}";
+            string masterCacheKey = $"CycleCountReportView_Master_{request.SearchTerm}_{request.FromDate}_{request.ToDate}_{request.StoreCode}_{request.SortColumn}_{request.SortDirection}";
 
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new CycleCountReportViewQueryRequest
                 {
-                    var response = new CycleCountReportViewResponse();
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
+                    SearchTerm = request.SearchTerm,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    StoreCode = request.StoreCode,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryCycleCountReportViewFromDbAsync(masterReq);
+            });
 
-                    parameters.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "DESC", DbType.String, size: 10);
-
-                    if (!string.IsNullOrEmpty(request.FromDate))
-                        parameters.Add("@FromDate", request.FromDate, DbType.String, size: 20);
-                    if (!string.IsNullOrEmpty(request.ToDate))
-                        parameters.Add("@ToDate", request.ToDate, DbType.String, size: 20);
-                    if (!string.IsNullOrEmpty(request.StoreCode))
-                        parameters.Add("@Store_code", request.StoreCode, DbType.String, size: 50);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    var items = await multi.ReadAsync<dynamic>();
-
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.Summary = new CycleCountReportViewSummary
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
+            {
+                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
+                return new CycleCountReportViewResponse
+                {
+                    Items = pagedItems,
+                    Summary = new CycleCountReportViewSummary
                     {
                         PageIndex = request.PageIndex,
-                        RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                        RefNo = parameters.Get<int?>("@QTY") ?? 0
-                    };
+                        RecordCount = masterData.Summary.RecordCount,
+                        RefNo = masterData.Summary.RefNo
+                    }
+                };
+            }
 
-                    return response;
-                }
-                catch (Exception ex)
+            return await QueryCycleCountReportViewFromDbAsync(request);
+        }
+
+        private async Task<CycleCountReportViewResponse> QueryCycleCountReportViewFromDbAsync(CycleCountReportViewQueryRequest request)
+        {
+            try
+            {
+                var response = new CycleCountReportViewResponse();
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", request.SortDirection ?? "DESC", DbType.String, size: 10);
+
+                if (!string.IsNullOrEmpty(request.FromDate))
+                    parameters.Add("@FromDate", request.FromDate, DbType.String, size: 20);
+                if (!string.IsNullOrEmpty(request.ToDate))
+                    parameters.Add("@ToDate", request.ToDate, DbType.String, size: 20);
+                if (!string.IsNullOrEmpty(request.StoreCode))
+                    parameters.Add("@Store_code", request.StoreCode, DbType.String, size: 50);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var items = await multi.ReadAsync<dynamic>();
+
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.Summary = new CycleCountReportViewSummary
                 {
-                    Console.WriteLine($"[CycleCountReportService ERROR]: {ex.Message}\n{ex.StackTrace}");
-                    return new CycleCountReportViewResponse();
-                }
-            });
+                    PageIndex = request.PageIndex,
+                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                    RefNo = parameters.Get<int?>("@QTY") ?? 0
+                };
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CycleCountReportService ERROR]: {ex.Message}\n{ex.StackTrace}");
+                return new CycleCountReportViewResponse();
+            }
         }
 
         public async Task<CycleCountDetailsResponse> GetCycleCountDetailsAsync(CycleCountDetailsQueryRequest request)
         {
-            string cacheKey = $"CycleCountDetails_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.RefNo}_{request.SortColumn}_{request.SortDirection}";
+            string masterCacheKey = $"CycleCountDetails_Master_{request.SearchTerm}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.RefNo}_{request.SortColumn}_{request.SortDirection}";
 
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
-                try
+                var masterReq = new CycleCountDetailsQueryRequest
                 {
-                    var response = new CycleCountDetailsResponse();
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
+                    SearchTerm = request.SearchTerm,
+                    StoreCode = request.StoreCode,
+                    FromDate = request.FromDate,
+                    ToDate = request.ToDate,
+                    RefNo = request.RefNo,
+                    SortColumn = request.SortColumn,
+                    SortDirection = request.SortDirection,
+                    PageIndex = 1,
+                    PageSize = Math.Max(request.PageSize, 1000)
+                };
+                return await QueryCycleCountDetailsFromDbAsync(masterReq);
+            });
 
-                    parameters.Add("@status", "CYCLE_COUNT_REPORT", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@Store_code", request.StoreCode ?? "", DbType.String, size: 50);
-                    parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
-                    parameters.Add("@ref_No", request.RefNo ?? "", DbType.String, size: 50);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@Ttl_Act_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@Sum_Scanned_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@Excess_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    var items = await multi.ReadAsync<dynamic>();
-
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.Summary = new CycleCountDetailsSummary
+            int skip = (request.PageIndex - 1) * request.PageSize;
+            if (masterData.Items != null && (skip < masterData.Items.Count || masterData.Items.Count == masterData.Summary.RecordCount))
+            {
+                var pagedItems = masterData.Items.Skip(skip).Take(request.PageSize).ToList();
+                return new CycleCountDetailsResponse
+                {
+                    Items = pagedItems,
+                    Summary = new CycleCountDetailsSummary
                     {
                         PageIndex = request.PageIndex,
-                        RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                        TotalCount = parameters.Get<int?>("@Qty") ?? 0,
-                        ActualQty = parameters.Get<int?>("@Ttl_Act_QTY") ?? 0,
-                        ScannedQty = parameters.Get<int?>("@Sum_Scanned_Qty") ?? 0,
-                        DiffQty = parameters.Get<int?>("@DIFFQTY") ?? 0,
-                        ExcessQty = parameters.Get<int?>("@Excess_Qty") ?? 0
-                    };
+                        RecordCount = masterData.Summary.RecordCount,
+                        TotalCount = masterData.Summary.TotalCount,
+                        ActualQty = masterData.Summary.ActualQty,
+                        ScannedQty = masterData.Summary.ScannedQty,
+                        DiffQty = masterData.Summary.DiffQty,
+                        ExcessQty = masterData.Summary.ExcessQty
+                    }
+                };
+            }
 
-                    return response;
-                }
-                catch (Exception ex)
+            return await QueryCycleCountDetailsFromDbAsync(request);
+        }
+
+        private async Task<CycleCountDetailsResponse> QueryCycleCountDetailsFromDbAsync(CycleCountDetailsQueryRequest request)
+        {
+            try
+            {
+                var response = new CycleCountDetailsResponse();
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "CYCLE_COUNT_REPORT", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@Store_code", request.StoreCode ?? "", DbType.String, size: 50);
+                parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
+                parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
+                parameters.Add("@ref_No", request.RefNo ?? "", DbType.String, size: 50);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@Ttl_Act_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@Sum_Scanned_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@Excess_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var items = await multi.ReadAsync<dynamic>();
+
+                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.Summary = new CycleCountDetailsSummary
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"[CycleCountDetails ERROR]: {ex.Message}");
-                    Console.ResetColor();
-                    return new CycleCountDetailsResponse();
-                }
-            });
+                    PageIndex = request.PageIndex,
+                    RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
+                    TotalCount = parameters.Get<int?>("@Qty") ?? 0,
+                    ActualQty = parameters.Get<int?>("@Ttl_Act_QTY") ?? 0,
+                    ScannedQty = parameters.Get<int?>("@Sum_Scanned_Qty") ?? 0,
+                    DiffQty = parameters.Get<int?>("@DIFFQTY") ?? 0,
+                    ExcessQty = parameters.Get<int?>("@Excess_Qty") ?? 0
+                };
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[CycleCountDetails ERROR]: {ex.Message}");
+                Console.ResetColor();
+                return new CycleCountDetailsResponse();
+            }
         }
     }
 }

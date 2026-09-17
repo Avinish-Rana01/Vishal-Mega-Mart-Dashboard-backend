@@ -81,6 +81,13 @@ namespace VS_Mart_Backend.Services
                 ?? string.Empty;
         }
 
+        private static readonly AutoResetEvent _pollTrigger = new(false);
+
+        public static void TriggerImmediatePoll()
+        {
+            _pollTrigger.Set();
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("LiveStockPollerService: Service starting. Waiting 5s for Kestrel & Auth initialization...");
@@ -95,32 +102,45 @@ namespace VS_Mart_Backend.Services
                 return;
             }
 
-            _logger.LogInformation("LiveStockPollerService: Starting 2-second background polling cycle.");
+            _logger.LogInformation("LiveStockPollerService: Starting event-driven & background refresh cycle.");
 
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            // Run initial baseline poll immediately
+            try
+            {
+                await _liveStockDbGate.WaitAsync(stoppingToken);
+                try
+                {
+                    await PollLiveStockAsync(stoppingToken);
+                }
+                finally
+                {
+                    _liveStockDbGate.Release();
+                }
+            }
+            catch { }
 
+            // Event-driven execution loop: sleeps up to 30 seconds unless awakened by SqlNotificationService
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    if (await timer.WaitForNextTickAsync(stoppingToken))
-                    {
-                        // Skip frequent polling if no clients are connected (only refresh once every 60s)
-                        bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
-                        if (!hasSubscribers && TotalTicksExecuted > 1 && TotalTicksExecuted % 30 != 0)
-                        {
-                            continue;
-                        }
+                    // Wait up to 30 seconds for an immediate database change event, or timeout for baseline check
+                    await Task.Run(() => _pollTrigger.WaitOne(30000), stoppingToken);
 
-                        await _liveStockDbGate.WaitAsync(stoppingToken);
-                        try
-                        {
-                            await PollLiveStockAsync(stoppingToken);
-                        }
-                        finally
-                        {
-                            _liveStockDbGate.Release();
-                        }
+                    bool hasSubscribers = DashboardHub.ConnectedClientsCount > 0;
+                    if (!hasSubscribers && TotalTicksExecuted > 1 && TotalTicksExecuted % 4 != 0)
+                    {
+                        continue;
+                    }
+
+                    await _liveStockDbGate.WaitAsync(stoppingToken);
+                    try
+                    {
+                        await PollLiveStockAsync(stoppingToken);
+                    }
+                    finally
+                    {
+                        _liveStockDbGate.Release();
                     }
                 }
                 catch (OperationCanceledException)
@@ -130,6 +150,7 @@ namespace VS_Mart_Backend.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "LiveStockPollerService: Unexpected error during poll cycle.");
+                    await Task.Delay(2000, stoppingToken);
                 }
             }
 
