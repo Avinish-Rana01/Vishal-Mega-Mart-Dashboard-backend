@@ -1,5 +1,6 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -13,11 +14,13 @@ namespace VS_Mart_Backend.Features.Auth
     public class AuthService : IAuthService
     {
         private readonly string _connectionString;
+        private readonly IMemoryCache _cache;
 
-        public AuthService(IConfiguration configuration)
+        public AuthService(IConfiguration configuration, IMemoryCache cache)
         {
             _connectionString = configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
+            _cache = cache;
         }
 
         public LoginResponse Login(LoginRequest request)
@@ -29,19 +32,36 @@ namespace VS_Mart_Backend.Features.Auth
         {
             try
             {
+                string uName = request.UserName?.Trim() ?? "";
+                string uPass = request.Password?.Trim() ?? "";
+                string cacheKey = $"auth_{uName.ToLowerInvariant()}_{uPass}";
+
+                if (_cache.TryGetValue(cacheKey, out LoginResponse? cached) && cached != null)
+                {
+                    return cached;
+                }
+
                 using var connection = new SqlConnection(_connectionString);
-                var parameters = new DynamicParameters();
 
-                parameters.Add("@User_Name", request.UserName?.Trim() ?? "");
-                parameters.Add("@Password", request.Password?.Trim() ?? "");
-                parameters.Add("@Status", "SP_Login");
-                parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
+                const string loginSql = @"
+SELECT TOP 1 
+    u.User_ID, 
+    u.User_Name, 
+    s.STORE_NAME, 
+    wm.Wh_Name, 
+    u.User_Type, 
+    s.Store_Code, 
+    wm.Wh_Code 
+FROM dbo.User_Registration u WITH (NOLOCK) 
+LEFT JOIN dbo.tbl_Store_Master s WITH (NOLOCK) ON u.Store_ID = s.Store_ID 
+LEFT JOIN dbo.tbl_Warehouse_Mst wm WITH (NOLOCK) ON u.WH_ID = wm.WH_ID 
+WHERE u.User_Name = @User_Name 
+  AND u.Password = @Password 
+  AND u.Is_Status = 1;";
 
-                var cmd = new CommandDefinition("SP_Master", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                var cmd = new CommandDefinition(loginSql, new { User_Name = uName, Password = uPass }, cancellationToken: cancellationToken);
                 var rawItems = await connection.QueryAsync<dynamic>(cmd);
                 var items = rawItems.ToList();
-
-                string dbMessage = parameters.Get<string>("@Message") ?? string.Empty;
 
                 if (items == null || items.Count == 0)
                 {
@@ -89,7 +109,7 @@ namespace VS_Mart_Backend.Features.Auth
                         break;
                 }
 
-                return new LoginResponse
+                var response = new LoginResponse
                 {
                     Success = true,
                     Message = "Login Successful",
@@ -103,6 +123,9 @@ namespace VS_Mart_Backend.Features.Auth
                     AllowedSections = allowedSections,
                     RedirectPage = redirectPage
                 };
+
+                _cache.Set(cacheKey, response, TimeSpan.FromMinutes(10));
+                return response;
             }
             catch (UnauthorizedAccessException)
             {
