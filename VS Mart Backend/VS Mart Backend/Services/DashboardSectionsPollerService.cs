@@ -351,7 +351,7 @@ namespace VS_Mart_Backend.Services
                         };
                     }
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "CYCLE_COUNT", stoppingToken);
                 _initializedSections.Add("CYCLE_COUNT");
@@ -481,7 +481,7 @@ namespace VS_Mart_Backend.Services
                         };
                     }
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "STORE_VALIDATION", stoppingToken);
                 _initializedSections.Add("STORE_VALIDATION");
@@ -595,7 +595,7 @@ namespace VS_Mart_Backend.Services
                     LogDelta("DC ENCODING", $"TimeBlock: {changedBlock} | Delta: {deltaVal:+0;-#} | Total: {totalCount}");
                     await _hubContext.Clients.All.SendAsync("ReceiveDcEncodingPatch", patch, stoppingToken);
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "DC_ENCODING", stoppingToken);
                 _initializedSections.Add("DC_ENCODING");
@@ -678,7 +678,7 @@ namespace VS_Mart_Backend.Services
                         RecordCount = recordCount
                     };
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "TAG_MANAGEMENT", stoppingToken);
                 _initializedSections.Add("TAG_MANAGEMENT");
@@ -795,7 +795,7 @@ namespace VS_Mart_Backend.Services
                         };
                     }
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "VENDOR_DISCREPANCY", stoppingToken);
                 _initializedSections.Add("VENDOR_DISCREPANCY");
@@ -907,7 +907,7 @@ namespace VS_Mart_Backend.Services
                         };
                     }
                 }
-            }
+
                 // ── OUTBOX CLEANUP ────────────────────────────────────────────────────
                 await ChangeNotificationChecker.MarkProcessedAsync(_connectionString, "DC_VALIDATION", stoppingToken);
                 _initializedSections.Add("DC_VALIDATION");
