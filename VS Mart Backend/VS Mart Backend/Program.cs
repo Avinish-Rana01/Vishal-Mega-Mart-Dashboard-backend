@@ -25,7 +25,6 @@ builder.Services.AddCors(options =>
 builder.Services.AddSignalR();
 
 // Register Dependency Injection Services
-builder.Services.AddSingleton<SseNotifierService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.MainDashboard.IMainDashboardService, VS_Mart_Backend.Features.MainDashboard.MainDashboardService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.LiveStockReport.ILiveStockReportService, VS_Mart_Backend.Features.LiveStockReport.LiveStockReportService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.StoreGrcReport.IStoreGrcReportService, VS_Mart_Backend.Features.StoreGrcReport.StoreGrcReportService>();
