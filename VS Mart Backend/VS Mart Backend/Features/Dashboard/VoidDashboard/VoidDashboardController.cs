@@ -86,5 +86,27 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                 return StatusCode(500, new { message = "An error occurred while fetching EANs.", error = ex.Message });
             }
         }
+
+        [HttpGet("GetVoidReconciliationDataModel")]
+        public async Task<IActionResult> GetVoidReconciliationDataModel([FromQuery] VoidReconciliationModelRequest request)
+        
+        {
+            try
+            {
+                var result = await _voidDashboardService.GetVoidReconciliationDataModelAsync(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Success = false,
+                    Message =
+                        "An internal server error occurred.",
+                    Error = ex.Message
+                });
+            }
+        }
     }
 }

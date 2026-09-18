@@ -240,5 +240,107 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                 }
             });
         }
+
+        public async Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request)
+        {
+            try
+            {
+                string connectionString = _connectionString;
+
+                using var connection = new SqlConnection(connectionString);
+
+                // =========================================
+                // Calculate paging
+                // =========================================
+
+                int startRow = ((request.PageIndex - 1) * request.PageSize) + 1;
+
+                int endRow = request.PageIndex * request.PageSize;
+
+
+                // =========================================
+                // Dapper Parameters
+                // =========================================
+
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "SHOW_SUMMARY_DATA_FOR_VOID", DbType.String);
+
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
+
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+
+                parameters.Add("@BILL_DATE", request.BillDate ?? "", DbType.String);
+
+                parameters.Add("@STORE_CODE", request.StoreCode ?? "", DbType.String);
+
+                parameters.Add("@COUNTER_NO", request.Pos ?? "", DbType.String);
+
+                parameters.Add("@EAN", request.Ean ?? "", DbType.String);
+
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn, DbType.String);
+
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection, DbType.String);
+
+
+                // =========================================
+                // Output Parameters
+                // =========================================
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+
+                // =========================================
+                // Execute Stored Procedure
+                // =========================================
+
+                var data = await connection.QueryAsync<VoidReconciliationModel>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
+
+
+                // =========================================
+                // Get Output Values
+                // =========================================
+
+                int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
+
+                int voidQty = parameters.Get<int?>("@QTY") ?? 0;
+
+                int encodeQty = parameters.Get<int?>("@ENCQTY") ?? 0;
+
+                int differenceQty = parameters.Get<int?>("@DIFFQTY") ?? 0;
+
+
+                // =========================================
+                // Response
+                // =========================================
+
+                return new VoidReconciliationModelResponse
+                {
+                    PageIndex = request.PageIndex,
+
+                    RecordCount = recordCount,
+
+                    VoidQty = voidQty,
+
+                    EncodeQty = encodeQty,
+
+                    DifferenceQty = differenceQty,
+
+                    Data = data.ToList()
+                };
+            }
+            catch (Exception ex)
+            {
+                return new VoidReconciliationModelResponse();
+            }
+        }
     }
 }

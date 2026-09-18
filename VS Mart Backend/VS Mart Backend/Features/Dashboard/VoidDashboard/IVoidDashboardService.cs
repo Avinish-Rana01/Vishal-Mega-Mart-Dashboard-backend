@@ -13,5 +13,6 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request);
         Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request);
         Task<List<EANItem>> SearchEAN(SearchEANRequest request);
+        Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request);
     }
 }
