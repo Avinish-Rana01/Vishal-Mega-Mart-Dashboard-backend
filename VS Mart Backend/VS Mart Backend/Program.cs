@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Reports;
 using VS_Mart_Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboard
 builder.Services.AddScoped<VS_Mart_Backend.Features.Auth.IAuthService, VS_Mart_Backend.Features.Auth.AuthService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Mart_Backend.Features.Master.MasterService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.Reports.ITagCleaningReport, VS_Mart_Backend.Features.Reports.TagCleaningReportsService>();
 builder.Services.AddSingleton<VS_Mart_Backend.Features.Dashboard.DiffEngine.IDashboardDiffEngine, VS_Mart_Backend.Features.Dashboard.DiffEngine.DashboardDiffEngine>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker for priming RAM cache & broadcasting diffs
 
