@@ -6,5 +6,9 @@ obj/
 *.suo
 appsettings.Development.json
 TempTest/
+logs/
+*.log
+test_api.json
+scratch/
 
 appsettings.json

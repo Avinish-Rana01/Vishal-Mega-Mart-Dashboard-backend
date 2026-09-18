@@ -119,14 +119,7 @@ namespace VS_Mart_Backend.Services
                         TotalRuns++;
                         LastRunTime = DateTime.Now;
                         LastStatus = $"Pre-warmed successfully (Iteration #{TotalRuns})";
-                        _logger.LogInformation("Cache successfully pre-warmed for Super Admin. Total runs: {runs}", TotalRuns);
-
-                        try
-                        {
-                            System.IO.Directory.CreateDirectory("logs");
-                            System.IO.File.AppendAllText("logs/cache_warmer.log", $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Cache pre-warmed & diff checked successfully. Iteration #{TotalRuns}\n");
-                        }
-                        catch { /* non-blocking file append */ }
+                        _logger.LogInformation("Cache pre-warmed & diff checked successfully. Iteration #{runs}", TotalRuns);
                     }
                 }
                 catch (Exception ex)

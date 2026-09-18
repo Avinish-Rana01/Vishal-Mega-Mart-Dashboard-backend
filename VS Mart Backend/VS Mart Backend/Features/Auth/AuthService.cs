@@ -23,11 +23,6 @@ namespace VS_Mart_Backend.Features.Auth
             _cache = cache;
         }
 
-        public LoginResponse Login(LoginRequest request)
-        {
-            return LoginAsync(request).GetAwaiter().GetResult();
-        }
-
         public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
         {
             try
