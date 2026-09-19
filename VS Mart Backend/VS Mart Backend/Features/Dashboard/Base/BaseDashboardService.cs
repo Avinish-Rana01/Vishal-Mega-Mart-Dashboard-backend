@@ -37,7 +37,7 @@ namespace VS_Mart_Backend.Features.Base
 
         public static void SetCacheItem<T>(IMemoryCache cache, string key, T data, TimeSpan? ttl = null)
         {
-            cache.Set(key, new CacheItem<T> { Data = data, CreatedAt = DateTime.UtcNow }, ttl ?? TimeSpan.FromSeconds(90));
+            cache.Set(key, new CacheItem<T> { Data = data, CreatedAt = DateTime.UtcNow }, ttl ?? TimeSpan.FromMinutes(10));
         }
 
         protected BaseDashboardService(IConfiguration configuration, IMemoryCache cache)
@@ -74,7 +74,7 @@ namespace VS_Mart_Backend.Features.Base
                             try
                             {
                                 var freshData = await databaseQuery();
-                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
+                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
                             }
                             finally
                             {
@@ -98,7 +98,7 @@ namespace VS_Mart_Backend.Features.Base
                 }
 
                 var initialData = await databaseQuery();
-                _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromSeconds(90));
+                _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
                 return initialData;
             }
             finally

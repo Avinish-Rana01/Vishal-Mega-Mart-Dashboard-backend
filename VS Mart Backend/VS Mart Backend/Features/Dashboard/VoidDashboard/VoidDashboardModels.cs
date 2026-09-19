@@ -107,23 +107,23 @@ namespace VS_Mart_Backend.Features.VoidDashboard
     }
     public class VoidReconciliationModelRequest
     {
-        public string SearchTerm { get; set; } = "";
+        public string? SearchTerm { get; set; } = string.Empty;
 
         public int PageIndex { get; set; } = 1;
 
         public int PageSize { get; set; } = 10;
 
-        public string BillDate { get; set; } = "";
+        public string? BillDate { get; set; } = string.Empty;
 
-        public string StoreCode { get; set; } = "";
+        public string? StoreCode { get; set; } = string.Empty;
 
-        public string Pos { get; set; } = "";
+        public string? Pos { get; set; } = string.Empty;
 
-        public string Ean { get; set; } = "";
+        public string? Ean { get; set; } = string.Empty;
 
-        public string SortColumn { get; set; } = "VOID_DATE";
+        public string? SortColumn { get; set; } = "VOID_DATE";
 
-        public string SortDirection { get; set; } = "ASC";
+        public string? SortDirection { get; set; } = "ASC";
     }
 
     public class VoidReconciliationModelResponse
@@ -145,16 +145,22 @@ namespace VS_Mart_Backend.Features.VoidDashboard
     {
         public DateTime? VOID_DATE { get; set; }
 
+        public string? POS_TYPE { get; set; }
+
         public string? STORE_CODE { get; set; }
 
         public string? COUNTER_NO { get; set; }
 
         public string? EAN { get; set; }
 
+        public string? MATERIAL { get; set; }
+
         public int VOID_QTY { get; set; }
 
         public int ENCODE_QTY { get; set; }
 
         public int DIFFERENCE_QTY { get; set; }
+
+        public string? STATUS { get; set; }
     }
 }

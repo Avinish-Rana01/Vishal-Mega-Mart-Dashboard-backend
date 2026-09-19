@@ -87,7 +87,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
             }
         }
 
-        [HttpGet("GetVoidReconciliationDataModel")]
+        [HttpGet("/api/Stock/GetVoidReconciliationDataModel")]
         public async Task<IActionResult> GetVoidReconciliationDataModel([FromQuery] VoidReconciliationModelRequest request)
         
         {

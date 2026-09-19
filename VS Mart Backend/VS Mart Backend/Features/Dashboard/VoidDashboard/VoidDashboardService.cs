@@ -13,62 +13,44 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 {
     public class VoidDashboardService : BaseDashboardService, IVoidDashboardService
     {
-        public VoidDashboardService(IConfiguration configuration, IMemoryCache cache)
+        private readonly VS_Mart_Backend.Features.MainDashboard.IMainDashboardService _mainDashboardService;
+
+        public VoidDashboardService(
+            IConfiguration configuration,
+            IMemoryCache cache,
+            VS_Mart_Backend.Features.MainDashboard.IMainDashboardService mainDashboardService)
             : base(configuration, cache)
         {
+            _mainDashboardService = mainDashboardService;
         }
 
         public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
         {
-            string cacheKey = $"VoidDashboard_{request.UserId}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.SortType}";
-
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            var mainRequest = new Features.MainDashboard.VoidDashboardQueryRequest
             {
-                try
+                UserId = request.UserId,
+                SearchTerm = request.SearchTerm,
+                PageIndex = request.PageIndex,
+                PageSize = request.PageSize,
+                SortColumn = request.SortColumn,
+                SortDirection = request.SortDirection,
+                SortType = request.SortType
+            };
+
+            var mainResponse = await _mainDashboardService.GetVoidDashboardAsync(mainRequest);
+
+            return new VoidDashboardResponse
+            {
+                Summary = new VoidDashboardSummary
                 {
-                    var response = new VoidDashboardResponse();
-                    using var connection = new SqlConnection(_connectionString);
-                    var parameters = new DynamicParameters();
-
-                    int userIdInt = 0;
-                    int.TryParse(request.UserId, out userIdInt);
-
-                    parameters.Add("@status", "VOID_DASHBOARD", DbType.String, size: 50);
-                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
-                    parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-                    parameters.Add("@User_ID", userIdInt, DbType.Int32);
-                    parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE" : request.SortColumn, DbType.String, size: 50);
-                    parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                    parameters.Add("@SortType", request.SortType ?? "string", DbType.String, size: 20);
-
-                    parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
-
-                    response.Summary = new VoidDashboardSummary
-                    {
-                        RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-                        TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-                        ReturnQty = parameters.Get<int?>("@QTY") ?? 0,
-                        ReturnEncodedQty = parameters.Get<int?>("@ENCODED_QTY") ?? 0,
-                        PendingQty = parameters.Get<int?>("@DIFF_QTY") ?? 0
-                    };
-
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[VoidDashboardService Error]: {ex.Message}");
-                    return new VoidDashboardResponse();
-                }
-            });
+                    RecordCount = mainResponse.Summary.RecordCount,
+                    TotalCount = mainResponse.Summary.TotalCount,
+                    ReturnQty = mainResponse.Summary.ReturnQty,
+                    ReturnEncodedQty = mainResponse.Summary.ReturnEncodedQty,
+                    PendingQty = mainResponse.Summary.PendingQty
+                },
+                Items = mainResponse.Items
+            };
         }
 
         public async Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request)
@@ -245,18 +227,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
-                string connectionString = _connectionString;
-
-                using var connection = new SqlConnection(connectionString);
-
-                // =========================================
-                // Calculate paging
-                // =========================================
-
-                int startRow = ((request.PageIndex - 1) * request.PageSize) + 1;
-
-                int endRow = request.PageIndex * request.PageSize;
-
+                using var connection = new SqlConnection(_connectionString);
 
                 // =========================================
                 // Dapper Parameters
@@ -266,23 +237,41 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
                 parameters.Add("@status", "SHOW_SUMMARY_DATA_FOR_VOID", DbType.String);
 
-                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
+                parameters.Add("@SearchTerm", (request.SearchTerm ?? "").Trim(), DbType.String);
 
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+                parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
 
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
 
-                parameters.Add("@BILL_DATE", request.BillDate ?? "", DbType.String);
+                string cleanDate = (request.BillDate ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(cleanDate))
+                {
+                    if (cleanDate.Contains('T')) cleanDate = cleanDate.Split('T')[0].Trim();
+                    string[] formats = { "yyyy-MM-dd", "dd-MM-yyyy", "dd/MM/yyyy", "yyyy/MM/dd", "MM/dd/yyyy", "MM-dd-yyyy" };
+                    if (DateTime.TryParseExact(cleanDate, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDt) ||
+                        DateTime.TryParse(cleanDate, out parsedDt))
+                    {
+                        cleanDate = parsedDt.ToString("yyyy-MM-dd");
+                    }
+                }
+                parameters.Add("@BILL_DATE", cleanDate, DbType.String);
 
-                parameters.Add("@STORE_CODE", request.StoreCode ?? "", DbType.String);
+                string cleanStore = (request.StoreCode ?? "").Trim();
+                if (cleanStore.Contains('-'))
+                {
+                    cleanStore = cleanStore.Split('-')[0].Trim();
+                }
+                parameters.Add("@STORE_CODE", cleanStore, DbType.String);
 
-                parameters.Add("@COUNTER_NO", request.Pos ?? "", DbType.String);
+                string cleanPos = (request.Pos ?? "").Trim();
+                parameters.Add("@COUNTER_NO", cleanPos, DbType.String);
 
-                parameters.Add("@EAN", request.Ean ?? "", DbType.String);
+                string cleanEan = (request.Ean ?? "").Trim();
+                parameters.Add("@EAN", cleanEan, DbType.String);
 
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn, DbType.String);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn.Trim(), DbType.String);
 
-                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection, DbType.String);
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection.Trim(), DbType.String);
 
 
                 // =========================================
@@ -337,7 +326,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     Data = data.ToList()
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new VoidReconciliationModelResponse();
             }
