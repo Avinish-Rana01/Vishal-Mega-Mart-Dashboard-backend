@@ -75,19 +75,5 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                 return StatusCode(500, new { message = "An error occurred while fetching store GRC report data.", error = ex.Message });
             }
         }
-
-        [HttpGet("/api/stock/Hu-details")]
-        public async Task<IActionResult> GetHUDetails([FromQuery] HUDetailsRequest request)
-        {
-            try
-            {
-                var result = await _service.GetHUDetailsAsync(request);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while fetching HU details.", error = ex.Message });
-            }
-        }
     }
 }
