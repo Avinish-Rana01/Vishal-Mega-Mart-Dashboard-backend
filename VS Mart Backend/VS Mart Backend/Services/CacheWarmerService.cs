@@ -81,7 +81,7 @@ namespace VS_Mart_Backend.Services
 
                         // 5. Warehouse Encoding
                         var encodeRequest = new WarehouseEncodingQueryRequest { FromDate = DateTime.Now.ToString("yyyy-MM-dd"), ToDate = DateTime.Now.ToString("yyyy-MM-dd") };
-                        var encodeData = await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest);
+                        var encodeData = await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest, forceRefresh: true);
                         await _diffEngine.ProcessWarehouseEncodingDiffAsync(encodeData, stoppingToken);
                         await Task.Delay(500, stoppingToken);
 

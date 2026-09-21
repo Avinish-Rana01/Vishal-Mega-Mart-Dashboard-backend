@@ -74,6 +74,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
         // ── 5. DC Encoding Snapshots ─────────────────────────────────────────
         private int _lastEncodingTotal = 0;
+        private Dictionary<string, int> _lastEncodingHours = new(StringComparer.OrdinalIgnoreCase);
         private bool _isEncodingInitialized = false;
 
         // ── 6. Tag Management Snapshots ──────────────────────────────────────
@@ -541,8 +542,23 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
             try
             {
                 int currentTotal = 0;
+                var hourCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
                 if (response.Summary != null)
                 {
+                    hourCounts["08 - 09"] = response.Summary.Hour8To9;
+                    hourCounts["09 - 10"] = response.Summary.Hour9To10;
+                    hourCounts["10 - 11"] = response.Summary.Hour10To11;
+                    hourCounts["11 - 12"] = response.Summary.Hour11To12;
+                    hourCounts["12 - 13"] = response.Summary.Hour12To13;
+                    hourCounts["13 - 14"] = response.Summary.Hour13To14;
+                    hourCounts["14 - 15"] = response.Summary.Hour14To15;
+                    hourCounts["15 - 16"] = response.Summary.Hour15To16;
+                    hourCounts["16 - 17"] = response.Summary.Hour16To17;
+                    hourCounts["17 - 18"] = response.Summary.Hour17To18;
+                    hourCounts["18 - 19"] = response.Summary.Hour18To19;
+                    hourCounts["19 - 20"] = response.Summary.Hour19To20;
+
                     currentTotal = response.Summary.Hour8To9 + response.Summary.Hour9To10 +
                                    response.Summary.Hour10To11 + response.Summary.Hour11To12 +
                                    response.Summary.Hour12To13 + response.Summary.Hour13To14 +
@@ -558,14 +574,29 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                 if (!_isEncodingInitialized)
                 {
                     _lastEncodingTotal = currentTotal;
+                    _lastEncodingHours = new Dictionary<string, int>(hourCounts, StringComparer.OrdinalIgnoreCase);
                     _isEncodingInitialized = true;
                     return;
                 }
 
-                if (currentTotal != _lastEncodingTotal)
+                bool hoursChanged = false;
+                if (hourCounts.Count > 0)
+                {
+                    foreach (var kvp in hourCounts)
+                    {
+                        if (!_lastEncodingHours.TryGetValue(kvp.Key, out int lastVal) || lastVal != kvp.Value)
+                        {
+                            hoursChanged = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (currentTotal != _lastEncodingTotal || hoursChanged)
                 {
                     int delta = currentTotal - _lastEncodingTotal;
                     _lastEncodingTotal = currentTotal;
+                    _lastEncodingHours = new Dictionary<string, int>(hourCounts, StringComparer.OrdinalIgnoreCase);
 
                     var patch = new DcEncodingDeltaPatch
                     {
@@ -574,10 +605,11 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         TimeBlock = "TOTAL",
                         DeltaCount = delta,
                         NewCount = currentTotal,
-                        TotalCount = currentTotal
+                        TotalCount = currentTotal,
+                        AllHourCounts = hourCounts.Count > 0 ? hourCounts : null
                     };
 
-                    _logger.LogInformation("DashboardDiffEngine: DcEncoding patch: Delta {Delta:+0;-#}", delta);
+                    _logger.LogInformation("DashboardDiffEngine: DcEncoding patch: Delta {Delta:+0;-#}, Total: {Total}", delta, currentTotal);
                     await _hubContext.Clients.All.SendAsync("ReceiveDcEncodingPatch", patch, cancellationToken);
                 }
             }

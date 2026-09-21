@@ -17,7 +17,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
         Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request);
         Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request);
         Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request);
-        Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request);
+        Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false);
 
         Task<int> GetActiveSuperAdminIdAsync();
         Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId);

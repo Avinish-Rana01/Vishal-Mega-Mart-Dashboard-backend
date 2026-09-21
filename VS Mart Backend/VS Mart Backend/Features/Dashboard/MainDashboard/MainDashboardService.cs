@@ -1048,7 +1048,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             }
         }
 
-        public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request)
+        public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false)
         {
             try
             {
@@ -1123,7 +1123,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                         Hour19To20 = parameters.Get<int?>("@19TO20") ?? 0
                     };
                     return response;
-                });
+                }, forceRefresh);
             }
             catch (Exception)
             {

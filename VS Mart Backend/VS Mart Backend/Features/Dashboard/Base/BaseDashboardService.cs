@@ -59,9 +59,16 @@ namespace VS_Mart_Backend.Features.Base
             _cacheOverride = enabled;
         }
 
-        protected async Task<T> GetOrCreateWithSWRAsync<T>(string cacheKey, Func<Task<T>> databaseQuery)
+        protected async Task<T> GetOrCreateWithSWRAsync<T>(string cacheKey, Func<Task<T>> databaseQuery, bool forceRefresh = false)
         {
             if (!IsCacheEnabled()) return await databaseQuery();
+
+            if (forceRefresh)
+            {
+                var freshData = await databaseQuery();
+                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
+                return freshData;
+            }
 
             if (_cache.TryGetValue(cacheKey, out CacheItem<T>? cachedItem) && cachedItem != null)
             {
