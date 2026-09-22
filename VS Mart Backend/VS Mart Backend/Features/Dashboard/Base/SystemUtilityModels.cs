@@ -28,4 +28,12 @@ namespace VS_Mart_Backend.Features.SystemUtility
         public int TotalCount { get; set; }
         public List<Dictionary<string, object?>> Data { get; set; } = new();
     }
+
+    public class EncodingStoreSearchRequest
+    {
+        public string? StoreName { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
+        public string? SearchTerm { get; set; } = "";
+    }
 }

@@ -16,6 +16,8 @@ namespace VS_Mart_Backend.Features.SystemUtility
         bool IsCacheEnabled();
         void SetCacheEnabled(bool enabled);
         Task<EncodingStoreDataResponse> GetEncodingStoreDataAsync(EncodingStoreDataRequest request);
+        Task<object> GetEncodingStoreSearchEANAsync(EncodingStoreSearchRequest request);
+        Task<object> GetEncodingStoreSearchArticleAsync(EncodingStoreSearchRequest request);
     }
 
     public class SystemUtilityService : BaseDashboardService, ISystemUtilityService
@@ -40,7 +42,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
                     DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
                     DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
 
-                    parameters.Add("@status", "ENCODING_SHOW_DATA_FOR_STORE", DbType.String, size: 50);
+                    parameters.Add("@status", "SHOW_DATA_FOR_STORE_ENCODING", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
@@ -66,9 +68,84 @@ namespace VS_Mart_Backend.Features.SystemUtility
 
                     return response;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"[GetEncodingStoreDataAsync Error]: {ex}");
                     return new EncodingStoreDataResponse();
+                }
+            });
+        }
+
+        public async Task<object> GetEncodingStoreSearchEANAsync(EncodingStoreSearchRequest request)
+        {
+            string cacheKey = $"EncodingStoreEAN_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}";
+
+            return await GetOrCreateWithSWRAsync<object>(cacheKey, async () =>
+            {
+                try
+                {
+                    using var connection = new SqlConnection(_connectionString);
+                    var parameters = new DynamicParameters();
+                    DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
+                    DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
+
+                    parameters.Add("@status", "SEARCH_BIND_EAN_FOR_STORE_ENCODING", DbType.String, size: 50);
+                    parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
+                    parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
+                    parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
+                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 60);
+                    var eans = items.Select(x => new
+                    {
+                        id = (string)x.EAN,
+                        value = (string)x.EAN,
+                        text = (string)x.EAN
+                    }).ToList();
+
+                    return new { eans };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[GetEncodingStoreSearchEANAsync Error]: {ex}");
+                    return new { eans = new List<dynamic>() };
+                }
+            });
+        }
+
+        public async Task<object> GetEncodingStoreSearchArticleAsync(EncodingStoreSearchRequest request)
+        {
+            string cacheKey = $"EncodingStoreArticle_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}";
+
+            return await GetOrCreateWithSWRAsync<object>(cacheKey, async () =>
+            {
+                try
+                {
+                    using var connection = new SqlConnection(_connectionString);
+                    var parameters = new DynamicParameters();
+                    DateTime? fromDate = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
+                    DateTime? toDate = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
+
+                    parameters.Add("@status", "SEARCH_BIND_MATERIAL_FOR_STORE_ENCODING", DbType.String, size: 50);
+                    parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
+                    parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
+                    parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
+                    parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+
+                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 60);
+                    var articles = items.Select(x => new
+                    {
+                        id = (string)x.ARTICLE,
+                        value = (string)x.ARTICLE,
+                        text = (string)x.ARTICLE
+                    }).ToList();
+
+                    return new { articles };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[GetEncodingStoreSearchArticleAsync Error]: {ex}");
+                    return new { articles = new List<dynamic>() };
                 }
             });
         }

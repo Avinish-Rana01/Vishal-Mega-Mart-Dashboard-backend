@@ -48,5 +48,32 @@ namespace VS_Mart_Backend.Features.SystemUtility
                 });
             }
         }
+        [HttpGet("/api/Stock/encoding-store-SearchEAN")]
+        public async Task<IActionResult> SearchEAN([FromQuery] EncodingStoreSearchRequest request)
+        {
+            try
+            {
+                var result = await _systemUtilityService.GetEncodingStoreSearchEANAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching EANs.", error = ex.Message });
+            }
+        }
+
+        [HttpGet("/api/Stock/encoding-store-SearchArticle")]
+        public async Task<IActionResult> SearchArticle([FromQuery] EncodingStoreSearchRequest request)
+        {
+            try
+            {
+                var result = await _systemUtilityService.GetEncodingStoreSearchArticleAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching Articles.", error = ex.Message });
+            }
+        }
     }
 }
