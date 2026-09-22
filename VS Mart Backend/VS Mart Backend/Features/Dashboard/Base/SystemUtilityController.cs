@@ -75,5 +75,34 @@ namespace VS_Mart_Backend.Features.SystemUtility
                 return StatusCode(500, new { message = "An error occurred while fetching Articles.", error = ex.Message });
             }
         }
+
+        [HttpGet("/api/Stock/GetEncodingReportDetailsModal")]
+        [HttpGet("/api/Stock/encoding-report-details-modal")]
+        public async Task<IActionResult> GetEncodingReportDetailsModal([FromQuery] EncodingStoreDataRequest request)
+        {
+            try
+            {
+                var result = await _systemUtilityService.GetEncodingReportDetailsModalAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching encoding report details modal.", error = ex.Message });
+            }
+        }
+
+        [HttpPost("/api/Stock/GetEncodingReportDetailsModal")]
+        public async Task<IActionResult> PostEncodingReportDetailsModal([FromBody] EncodingStoreDataRequest request)
+        {
+            try
+            {
+                var result = await _systemUtilityService.GetEncodingReportDetailsModalAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching encoding report details modal.", error = ex.Message });
+            }
+        }
     }
 }

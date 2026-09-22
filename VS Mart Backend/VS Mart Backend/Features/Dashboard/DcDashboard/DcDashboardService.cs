@@ -15,6 +15,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
     {
         Task<DCDetailsResponse> GetDCDetailsAsync(DCDetailsRequest request);
         Task<HUDetailsResponse> GetHUDetailsAsync(HUDetailsRequest request);
+        Task<HUReportViewResponse> GetHUReportViewDetailsAsync(HUReportViewRequest request);
         Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm);
     }
 
@@ -168,6 +169,55 @@ namespace VS_Mart_Backend.Features.DcDashboard
             {
                 _logger.LogError(ex, "Error searching validation HU numbers");
                 return new List<HuNumberItem>();
+            }
+        }
+
+        public async Task<HUReportViewResponse> GetHUReportViewDetailsAsync(HUReportViewRequest request)
+        {
+            try
+            {
+                var response = new HUReportViewResponse();
+                using var connection = new SqlConnection(_connectionString);
+                var parameters = new DynamicParameters();
+
+                DateTime? parsedFrom = !string.IsNullOrWhiteSpace(request.FromDate) ? DateTime.Parse(request.FromDate.Trim('"')) : null;
+                DateTime? parsedTo = !string.IsNullOrWhiteSpace(request.ToDate) ? DateTime.Parse(request.ToDate.Trim('"')) : null;
+
+                int pageIndex = request.PageIndex <= 0 ? 1 : request.PageIndex;
+                int pageSize = request.PageSize <= 0 ? 10 : request.PageSize;
+
+                parameters.Add("@status", "HU_REPORT_VIEW", DbType.String, size: 50);
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                parameters.Add("@PageIndex", pageIndex, DbType.Int32);
+                parameters.Add("@PageSize", pageSize, DbType.Int32);
+                parameters.Add("@fromdate", parsedFrom.HasValue ? parsedFrom.Value.Date : null, DbType.Date);
+                parameters.Add("@todate", parsedTo.HasValue ? parsedTo.Value.Date : null, DbType.Date);
+                parameters.Add("@CI_STATUS", string.IsNullOrEmpty(request.HUStatus) ? "1" : request.HUStatus, DbType.String, size: 50);
+                parameters.Add("@HU_NO", request.HUNo ?? "", DbType.String, size: 50);
+                parameters.Add("@ref_No", request.RefNo ?? "", DbType.String, size: 50);
+
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn, DbType.String, size: 50);
+                parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+
+                response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                response.PageIndex = pageIndex;
+                response.RecordCount = parameters.Get<int?>("@RecordCount") ?? 0;
+                response.ActualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
+                response.ScannedQty = parameters.Get<int?>("@SCANQTY") ?? 0;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching HU report view details");
+                return new HUReportViewResponse();
             }
         }
     }
