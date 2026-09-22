@@ -1,4 +1,4 @@
-﻿using ClosedXML.Excel;
+﻿
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using VS_Mart_Backend.Features.Master;
@@ -32,11 +32,11 @@ namespace VS_Mart_Backend.Features.Reports
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing universal Master execution for status {Status}.");
+                _logger.LogError(ex, "Error processing universal GetTagCleaningReport execution for status {Status}.");
                 return StatusCode(500, new
                 {
                     Success = false,
-                    Message = "An internal server error occurred while executing the master operation."
+                    Message = "An internal server error occurred while executing the GetTagCleaningReport operation."
                 });
             }
             

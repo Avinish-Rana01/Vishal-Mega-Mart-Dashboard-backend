@@ -129,6 +129,7 @@ namespace VS_Mart_Backend.Services
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            
             }
 
             _logger.LogInformation("CacheWarmerService is stopping.");
