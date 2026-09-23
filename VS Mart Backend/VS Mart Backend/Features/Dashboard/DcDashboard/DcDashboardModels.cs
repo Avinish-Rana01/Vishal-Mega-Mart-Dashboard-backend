@@ -81,6 +81,51 @@ namespace VS_Mart_Backend.Features.DcDashboard
         public int ScannedQty { get; set; }
         public List<Dictionary<string, object?>> Data { get; set; } = new();
     }
+    public class HUSummaryRequest
+    {
+        public string? SearchTerm { get; set; }
+
+        public int PageIndex { get; set; }
+
+        public int PageSize { get; set; }
+
+        public string? HU { get; set; }
+
+        public string? FromDate { get; set; }
+
+        public string? ToDate { get; set; }
+
+        public string? SortColumn { get; set; }
+
+        public string? SortDirection { get; set; }
+    }
+
+    public class HUSummaryResponse
+    {
+        public object? HUData { get; set; }
+
+        public HUSummaryPager? Pager { get; set; }
+    }
+
+    public class HUSummaryPager
+    {
+        public int PageIndex { get; set; }
+
+        public int RecordCount { get; set; }
+
+        public int ActualCount { get; set; }
+
+        public int ScanCount { get; set; }
+    }
+
+    public class HUSummaryData
+    {
+        public string? HU_NO { get; set; }
+        public string? EAN { get; set; }
+        public string? ARTICLE_NAME { get; set; }
+        public int? ACTUAL_QTY { get; set; }
+        public int? SCAN_QTY { get; set; }
+    }
 }
 
 

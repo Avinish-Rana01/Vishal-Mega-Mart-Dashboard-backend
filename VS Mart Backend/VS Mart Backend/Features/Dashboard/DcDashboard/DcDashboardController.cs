@@ -49,10 +49,10 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
         [HttpGet("hu-numbers/search")]
         public async Task<IActionResult> SearchValidationHuNumbers(
-            [FromQuery] string? huStatus, 
-            [FromQuery] string? receivingPlant, 
-            [FromQuery] string? fromDate, 
-            [FromQuery] string? toDate, 
+            [FromQuery] string? huStatus,
+            [FromQuery] string? receivingPlant,
+            [FromQuery] string? fromDate,
+            [FromQuery] string? toDate,
             [FromQuery] string? searchTerm)
         {
             try
@@ -93,6 +93,28 @@ namespace VS_Mart_Backend.Features.DcDashboard
                 return StatusCode(500, new { message = "An error occurred while fetching HU report details.", error = ex.Message });
             }
         }
+
+        [HttpGet("GetHUSummaryDetails")]
+        public async Task<IActionResult> GetHUSummaryDetails([FromQuery] HUSummaryRequest request)
+        {
+            try
+            {
+                var result = await _dcDashboardService.GetHUSummaryDetailsAsync(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        message = ex.Message
+                    });
+            }
+        }
+
+
     }
 }
 

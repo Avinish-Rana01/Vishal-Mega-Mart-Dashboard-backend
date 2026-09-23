@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using VS_Mart_Backend.Features.Base;
@@ -17,6 +18,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
         Task<HUDetailsResponse> GetHUDetailsAsync(HUDetailsRequest request);
         Task<HUReportViewResponse> GetHUReportViewDetailsAsync(HUReportViewRequest request);
         Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm);
+        Task<HUSummaryResponse> GetHUSummaryDetailsAsync(HUSummaryRequest request);
     }
 
     public class DcDashboardService : BaseDashboardService, IDcDashboardService
@@ -170,6 +172,81 @@ namespace VS_Mart_Backend.Features.DcDashboard
                 _logger.LogError(ex, "Error searching validation HU numbers");
                 return new List<HuNumberItem>();
             }
+        }
+
+        public async Task<HUSummaryResponse> GetHUSummaryDetailsAsync(HUSummaryRequest request)
+        {
+            try
+            {
+
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                if (!string.IsNullOrWhiteSpace(request.FromDate))
+                {
+                    string fromDateValue = request.FromDate.Trim('"');
+                    fromDate = DateTime.ParseExact(fromDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ToDate))
+                {
+                    string toDateValue = request.ToDate.Trim('"');
+                    toDate = DateTime.ParseExact(toDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
+                using var connection = new SqlConnection(_connectionString);
+
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "SHOW_VALIDATE_HU_DATA", DbType.String);
+
+                parameters.Add("@SearchTerm", string.IsNullOrWhiteSpace(request.SearchTerm) ? "" : request.SearchTerm, DbType.String);
+
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+
+                parameters.Add("@HU_NO", string.IsNullOrWhiteSpace(request.HU) ? "" : request.HU, DbType.String);
+
+                parameters.Add("@fromdate", fromDate, DbType.Date);
+
+                parameters.Add("@todate", toDate, DbType.Date);
+
+                parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "ENCODE_DATE" : request.SortColumn, DbType.String);
+
+                parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
+
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                var result = await connection.QueryAsync<HUSummaryData>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
+
+                var data = result.ToList();
+
+                int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
+                int actualCount = parameters.Get<int?>("@ACTUALQTY") ?? 0;
+                int scanCount = parameters.Get<int?>("@SCANQTY") ?? 0;
+
+                return new HUSummaryResponse
+                {
+                    HUData = data,
+
+                    Pager = new HUSummaryPager
+                    {
+                        PageIndex = request.PageIndex,
+                        RecordCount = recordCount,
+                        ActualCount = actualCount,
+                        ScanCount = scanCount
+                    }
+                };
+            }
+            catch(Exception ex)
+            {
+                return new HUSummaryResponse();
+            }
+
         }
 
         public async Task<HUReportViewResponse> GetHUReportViewDetailsAsync(HUReportViewRequest request)
