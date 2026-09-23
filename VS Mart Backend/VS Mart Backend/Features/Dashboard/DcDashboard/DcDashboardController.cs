@@ -66,6 +66,34 @@ namespace VS_Mart_Backend.Features.DcDashboard
             }
         }
 
+        [HttpGet("hu-report-details")]
+        public async Task<IActionResult> GetHUReportDetails([FromQuery] HUReportViewRequest request)
+        {
+            try
+            {
+                var result = await _dcDashboardService.GetHUReportViewDetailsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching HU report details.", error = ex.Message });
+            }
+        }
+
+        [HttpPost("GetHUReportDetails")]
+        public async Task<IActionResult> PostHUReportDetails([FromBody] HUReportViewRequest request)
+        {
+            try
+            {
+                var result = await _dcDashboardService.GetHUReportViewDetailsAsync(request);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while fetching HU report details.", error = ex.Message });
+            }
+        }
+
         [HttpGet("GetHUSummaryDetails")]
         public async Task<IActionResult> GetHUSummaryDetails([FromQuery] HUSummaryRequest request)
         {

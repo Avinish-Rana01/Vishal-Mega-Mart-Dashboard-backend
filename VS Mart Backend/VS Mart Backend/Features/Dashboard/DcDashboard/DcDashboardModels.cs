@@ -58,6 +58,29 @@ namespace VS_Mart_Backend.Features.DcDashboard
         public string Value { get; set; } = string.Empty;
         public string Text { get; set; } = string.Empty;
     }
+
+    public class HUReportViewRequest
+    {
+        public string? SearchTerm { get; set; } = "";
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? HUStatus { get; set; } = "";
+        public string? HUNo { get; set; } = "";
+        public string? FromDate { get; set; } = "";
+        public string? ToDate { get; set; } = "";
+        public string? RefNo { get; set; } = "";
+        public string? SortColumn { get; set; } = "HU_Number";
+        public string? SortDirection { get; set; } = "asc";
+    }
+
+    public class HUReportViewResponse
+    {
+        public int PageIndex { get; set; } = 1;
+        public int RecordCount { get; set; }
+        public int ActualQty { get; set; }
+        public int ScannedQty { get; set; }
+        public List<Dictionary<string, object?>> Data { get; set; } = new();
+    }
     public class HUSummaryRequest
     {
         public string? SearchTerm { get; set; }
@@ -104,4 +127,5 @@ namespace VS_Mart_Backend.Features.DcDashboard
         public int? SCAN_QTY { get; set; }
     }
 }
+
 
