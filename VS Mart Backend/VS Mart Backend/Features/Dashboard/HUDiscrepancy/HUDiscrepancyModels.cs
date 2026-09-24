@@ -25,4 +25,6 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
         public int ExcessQty { get; set; }
         public int HUCount { get; set; }
     }
+
+
 }
