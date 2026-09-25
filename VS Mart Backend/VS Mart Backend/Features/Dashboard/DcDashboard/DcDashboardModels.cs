@@ -120,11 +120,17 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
     public class HUSummaryData
     {
-        public string? HU_NO { get; set; }
+        public long? RowNumber { get; set; }
+        public string? STORE_NAME { get; set; }
+        public string? HU_NUMBER { get; set; }
+        public int? ACT_QTY { get; set; }
+        public int? SCAN_QTY { get; set; }
+        public DateTime? HU_SCAN_DATE { get; set; }
+
+        public string? HU_NO { get => HU_NUMBER; set => HU_NUMBER = value; }
+        public int? ACTUAL_QTY { get => ACT_QTY; set => ACT_QTY = value; }
         public string? EAN { get; set; }
         public string? ARTICLE_NAME { get; set; }
-        public int? ACTUAL_QTY { get; set; }
-        public int? SCAN_QTY { get; set; }
     }
 }
 

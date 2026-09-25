@@ -221,7 +221,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
                 parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                var result = await connection.QueryAsync<HUSummaryData>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
+                var result = await connection.QueryAsync<HUSummaryData>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
                 var data = result.ToList();
 
