@@ -3,5 +3,7 @@
     public interface IWHEncodingDetails
     {
         Task<WHEncodingResponse> GetWHEncodingDetailsAsync(WHEncodingRequest request);
+
+        Task<List<Username>> SearchUsernameAsync(UsernameRequest request);
     }
 }

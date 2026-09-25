@@ -31,5 +31,15 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
                     });
             }
         }
+
+        [HttpGet("SearchUsername")]
+        public async Task<IActionResult> SearchUsername(
+        [FromQuery] UsernameRequest request)
+        {
+            var result =
+                await _whEncodingDetails.SearchUsernameAsync(request);
+
+            return Ok(result);
+        }
     }
 }

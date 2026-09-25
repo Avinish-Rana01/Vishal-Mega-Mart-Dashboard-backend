@@ -52,7 +52,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
 
-                parameters.Add("@User_ID", request.User ?? 0 , DbType.Int32);
+                parameters.Add("@User_ID", request.User ?? 0, DbType.Int32);
 
                 parameters.Add("@fromdate", fromDate, DbType.Date);
 
@@ -204,5 +204,80 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
 
         }
+
+        public async Task<List<Username>> SearchUsernameAsync(UsernameRequest request)
+        {
+            try
+            {
+                string fromDateValue = string.Empty;
+                string toDateValue = string.Empty;
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                if (!string.IsNullOrWhiteSpace(request.FromDate))
+                {
+                     fromDateValue = request.FromDate.Trim('"');
+                    fromDate = DateTime.ParseExact(fromDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ToDate))
+                {
+                     toDateValue = request.ToDate.Trim('"');
+                    toDate = DateTime.ParseExact(toDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
+
+                using var connection = new SqlConnection(_connectionString);
+
+                var parameters = new DynamicParameters();
+
+                // Same logic as old WebForms code
+                string status;
+
+                if (string.IsNullOrWhiteSpace(request.SearchTerm))
+                {
+                    status = "BIND_WAREHOUSE_ENCODE_USERS";
+                }
+                else
+                {
+                    status = "SEARCH_BIND_WAREHOUSE_ENCODE_USERS";
+                }
+
+                parameters.Add("@status", status, DbType.String);
+
+                parameters.Add("@SearchTerm", string.IsNullOrWhiteSpace(request.SearchTerm) ? "" : request.SearchTerm.Trim(), DbType.String);
+
+                parameters.Add("@fromdate", fromDateValue, DbType.Date);
+
+                // Old code:
+                //
+                // if (toDate == "")
+                //     @todate = fromDate
+                //
+                // Same behavior here.
+
+               // string toDate = string.IsNullOrWhiteSpace(request.ToDate) ? request.FromDate ?? "" : request.ToDate;
+
+                parameters.Add("@todate", toDateValue, DbType.Date);
+
+                // Old code was taking User_ID from Session.
+                //
+                // In ASP.NET Core, don't use HttpContext.Current.
+                // Get it from the authenticated user's claims.
+
+                //int? userId = null;
+
+                //parameters.Add("@User_ID", userId ?? 0, DbType.Int32);
+
+                var result = await connection.QueryAsync<Username>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
+
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                return new List<Username>();
+            }
+
+        }
+
     }
 }

@@ -60,4 +60,23 @@
         public int T_ENC_USERS { get; set; }
         public int ERRORQTY { get; set; }
     }
+
+    public class UsernameRequest
+    {
+        public string? SearchTerm { get; set; }
+
+        public string? FromDate { get; set; }
+
+        public string? ToDate { get; set; }
+
+
+    }
+
+    public class Username
+    {
+        public string? Encode_By { get; set; }
+
+        public string? User_Name { get; set; }
+    }
+
 }
