@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using VS_Mart_Backend.Features.Master;
@@ -42,34 +42,39 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
 
                 // Output parameters
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@STORECOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@WHCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
+                // Execute stored procedure and read multiple result sets
+                using var multi = await connection.QueryMultipleAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
-                // Execute stored procedure
-                var result = (await connection.QueryAsync<TagDetailsData>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure)).ToList();
+                var data = (await multi.ReadAsync<TagDetailsData>()).ToList();
+                var storeInventory = new List<TagStoreInventoryData>();
 
-                var data = result.ToList();
-
+                if (!multi.IsConsumed)
+                {
+                    storeInventory = (await multi.ReadAsync<TagStoreInventoryData>()).ToList();
+                }
 
                 // Get output values
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
-
                 int cycleCount = parameters.Get<int?>("@QTY") ?? 0;
-
+                int storeCount = parameters.Get<int?>("@STORECOUNT") ?? 0;
+                int whCount = parameters.Get<int?>("@WHCOUNT") ?? 0;
 
                 // Build response
                 return new TagDetailsResponse
                 {
                     TagData = data,
-
+                    StoreInventory = storeInventory,
                     Pager = new TagDetailsPager
                     {
                         PageIndex = request.PageIndex,
-
                         RecordCount = recordCount,
-
-                        CycleCount = cycleCount
+                        CycleCount = cycleCount,
+                        StoreCount = storeCount,
+                        WhCount = whCount
                     }
                 };
             }

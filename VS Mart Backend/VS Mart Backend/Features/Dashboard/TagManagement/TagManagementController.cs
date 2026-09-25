@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using VS_Mart_Backend.Features.StoreGrcReport;
 
 namespace VS_Mart_Backend.Features.Dashboard.TagManagement
 {
     [ApiController]
+    [Route("api/Stock")]
+    [Route("api/[controller]")]
     public class TagManagementController : ControllerBase
     {
         private readonly ITagManagement _service;
@@ -16,6 +18,7 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
         }
 
         [HttpGet("GetTagDetails")]
+        [HttpGet("/GetTagDetails")]
         public async Task<IActionResult> GetTagDetails([FromQuery] TagDetailsRequest request)
         {
             try
