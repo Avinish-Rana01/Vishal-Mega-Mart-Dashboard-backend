@@ -1,13 +1,13 @@
 # Universal Report Export Mapping & Architecture Specification
 
 ## Overview
-This document specifies the architecture, unique `reportName` keys, parameters, and Stored Procedure mappings for the **Universal Server-Side Excel/CSV Export Engine** in VMM POS.
+This document specifies the architecture, unique `reportName` keys, parameters, and Stored Procedure mappings for the **Universal Server-Side Excel Export Engine** in VMM POS.
 
 Instead of developing 23 distinct export endpoints, the backend exposes **one single streaming endpoint**:
 ```http
 GET /api/reports/export
 ```
-This endpoint streams report data row-by-row directly from SQL Server to the browser as a downloadable CSV/Excel file, preventing browser crashes, memory exhaustion, and HTTP timeouts on large datasets (10,000 to 1,000,000+ rows).
+This endpoint streams report data directly from SQL Server to the browser as a downloadable native **`.xlsx` Excel file** (OpenXML format with styled headers and cell types), preventing browser crashes, memory exhaustion, and HTTP timeouts on large datasets (10,000 to 1,000,000+ rows).
 
 ---
 
@@ -100,7 +100,7 @@ GET /api/reports/export?reportName={reportName}&[filters...]
 | `columnName` | string (Optional) | Sales column type (`TOTAL_DPOS_SALE`, `TOTAL_RFID_CHECKOUT`, etc.) |
 | `sortColumn` | string (Optional) | Target sort column |
 | `sortDirection` | string (Optional) | `asc` or `desc` |
-| `format` | string (Optional) | `csv` (default) or `xlsx` |
+| `format` | string (Optional) | `xlsx` (default) or `csv` |
 
 ---
 
@@ -114,19 +114,19 @@ GET /api/reports/export?reportName={reportName}&[filters...]
 - **The Streaming Way (Open Pipe)**:
   `SqlDataReader` connects a continuous pipe from SQL Server directly to the user's hard drive. Water flows drop by drop:
   1. The server reads **Row 1** from the SQL network socket (~200 bytes).
-  2. It immediately writes that row to the HTTP response stream.
-  3. Row 1 is instantly flushed over the wire and discarded from RAM.
+  2. It writes that row to the OpenXML workbook stream.
+  3. Row 1 is cleared from SQL buffer.
   4. The server moves to Row 2, Row 3... Row 40,000.
-  Whether the report has 10 rows, 40,000 rows, or 1,000,000 rows, **the server never holds more than ~200 bytes in memory!**
+  Whether the report has 10 rows, 40,000 rows, or 1,000,000 rows, the server memory stays low and controlled.
 
 #### Why Neither Server Nor Browser Crashes
 1. **Server-Side Memory ($O(1)$ RAM)**:
-   - Does not accumulate 40,000+ C# objects or giant JSON strings.
-   - Memory usage remains completely flat at ~200 bytes per active stream.
-   - 50 simultaneous users can export massive reports without any memory spikes on IIS or Kestrel.
+   - Does not accumulate 40,000+ C# DTO objects or giant JSON strings.
+   - Generates compact, compressed OpenXML `.xlsx` directly.
+   - 50 simultaneous users can export reports without memory spikes on IIS or Kestrel.
 2. **Browser-Side Memory ($0$ MB RAM)**:
    - Because the HTTP response includes `Content-Disposition: attachment; filename="..."`, the incoming bytes bypass the JavaScript engine and React state entirely.
-   - The browser's native C++ download manager writes incoming chunks directly to the user's `.csv` file in their `Downloads` folder on disk.
+   - The browser's native C++ download manager writes incoming chunks directly to the user's `.xlsx` file in their `Downloads` folder on disk.
    - The browser tab never freezes, spinners keep animating, and the UI never stutters.
 3. **Instant Download Initiation (~0.2s Time-to-First-Byte)**:
    - The user does **not** wait for all 40,000 rows to finish querying before the download begins.
@@ -172,45 +172,14 @@ public async Task ExportReportAsync([FromQuery] ExportReportRequest request)
         return;
     }
 
-    Response.ContentType = "text/csv; charset=utf-8";
-    Response.Headers.Add("Content-Disposition", $"attachment; filename=\"{request.ReportName}_{DateTime.Now:yyyyMMdd_HHmmss}.csv\"");
+    string format = string.IsNullOrWhiteSpace(request.Format) ? "xlsx" : request.Format.Trim().ToLowerInvariant();
+    string extension = format == "csv" ? "csv" : "xlsx";
+    string contentType = format == "csv" ? "text/csv; charset=utf-8" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    await using var connection = new SqlConnection(_connectionString);
-    await connection.OpenAsync();
+    Response.ContentType = contentType;
+    Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{request.ReportName}_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}\"");
 
-    await using var command = new SqlCommand(config.StoredProcedure, connection);
-    command.CommandType = CommandType.StoredProcedure;
-    command.CommandTimeout = 300; // 5 min timeout for massive historical reports
-
-    // Populate Dynamic Parameters mapped from request
-    config.PopulateParameters(command, request);
-
-    await using var reader = await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
-    await using var writer = new StreamWriter(Response.Body, Encoding.UTF8);
-
-    // Write Header Row
-    var columnNames = Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToList();
-    await writer.WriteLineAsync(string.Join(",", columnNames.Select(EscapeCsv)));
-
-    // Stream Data Rows
-    while (await reader.ReadAsync())
-    {
-        var rowValues = new string[reader.FieldCount];
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            var val = reader.IsDBNull(i) ? "" : reader.GetValue(i).ToString();
-            rowValues[i] = EscapeCsv(val);
-        }
-        await writer.WriteLineAsync(string.Join(",", rowValues));
-    }
-
-    await writer.FlushAsync();
-}
-
-private static string EscapeCsv(string? value)
-{
-    if (string.IsNullOrEmpty(value)) return "\"\"";
-    return $"\"{value.Replace("\"", "\"\"")}\"";
+    await _exportService.StreamExportAsync(request, Response.Body, cancellationToken);
 }
 ```
 

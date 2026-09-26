@@ -24,15 +24,15 @@ sequenceDiagram
     
     loop Stream Chunks Over HTTP (Chunked Transfer)
         DB-->>API: Read next row (SqlDataReader)
-        API-->>Hook: Stream CSV chunk over network socket
-        Hook->>Hook: Count newlines ('\n') in incoming Uint8Array chunk
-        Hook->>UI: Update progress state: percent = (receivedRows / totalRecords) * 100
-        UI-->>User: Render live progress: "Exporting 45% (18,000 / 40,000 rows)"
+        API-->>API: Write styled row to OpenXML Workbook
+        API-->>Hook: Stream XLSX binary chunk over network socket
+        Hook->>UI: Update progress state (indeterminate pulse or byte counter)
+        UI-->>User: Render live progress: "Exporting Excel Workbook (.xlsx)..."
     end
 
-    Hook->>Hook: Stream complete (done === true) -> Create Blob & ObjectURL
+    Hook->>Hook: Stream complete (done === true) -> Create XLSX Blob & ObjectURL
     Hook->>UI: Trigger browser download anchor (.click())
-    UI-->>User: File downloaded to C:\Users\Downloads\Report.csv
+    UI-->>User: File downloaded to C:\Users\Downloads\Report.xlsx
     Hook->>UI: Set state: isExporting=false, progress=100%
 ```
 
@@ -75,7 +75,7 @@ export const useStreamingExport = () => {
 
   const startExport = useCallback(async ({
     downloadUrl,
-    fileName = 'Report_Export.csv',
+    fileName = 'Report_Export.xlsx',
     totalRecords = 0,
     onSuccess,
     onError
@@ -92,7 +92,7 @@ export const useStreamingExport = () => {
       const response = await fetch(downloadUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'text/csv'
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         },
         signal: controller.signal
       });
@@ -106,38 +106,23 @@ export const useStreamingExport = () => {
       }
 
       const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      
       const chunks = [];
-      let totalReceivedRows = 0;
+      let totalReceivedBytes = 0;
 
       while (true) {
         const { done, value } = await reader.read();
-        
-        if (done) {
-          break;
-        }
+        if (done) break;
 
         chunks.push(value);
-
-        // Decode binary chunk to count newlines (rows)
-        const textChunk = decoder.decode(value, { stream: true });
-        const newLines = (textChunk.match(/\n/g) || []).length;
-        totalReceivedRows += newLines;
-
-        setProcessedRows(totalReceivedRows);
-
-        // Calculate progress percentage if totalRecords is known
-        if (totalRecords > 0) {
-          const rawPercent = Math.round((totalReceivedRows / totalRecords) * 100);
-          setProgressPercent(Math.min(99, Math.max(1, rawPercent)));
-        }
+        totalReceivedBytes += value.length;
+        // Periodic progress pulse
+        setProgressPercent(prev => (prev < 90 ? prev + 10 : 95));
       }
 
       setProgressPercent(100);
 
-      // Assemble final CSV blob and trigger download
-      const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
+      // Assemble final XLSX binary blob and trigger download
+      const blob = new Blob(chunks, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const blobUrl = URL.createObjectURL(blob);
       
       const anchor = document.createElement('a');
@@ -215,7 +200,7 @@ export default function ExportButtonWithProgress({
 
     startExport({
       downloadUrl,
-      fileName: fileName || `${reportName}.csv`,
+      fileName: fileName || `${reportName}.xlsx`,
       totalRecords
     });
   };

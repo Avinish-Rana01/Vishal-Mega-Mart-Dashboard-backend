@@ -40,6 +40,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Ma
 builder.Services.AddSingleton<VS_Mart_Backend.Features.Dashboard.DiffEngine.IDashboardDiffEngine, VS_Mart_Backend.Features.Dashboard.DiffEngine.DashboardDiffEngine>();
 builder.Services.AddSingleton<VS_Mart_Backend.Features.Dashboard.DCEncoding.IWHEncodingDetails, VS_Mart_Backend.Features.Dashboard.DCEncoding.WHEncodingDetailsService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Dashboard.TagManagement.ITagManagement, VS_Mart_Backend.Features.Dashboard.TagManagement.TagmanagementService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.Dashboard.Export.IUniversalExportService, VS_Mart_Backend.Features.Dashboard.Export.UniversalExportService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker for priming RAM cache & broadcasting diffs
 
 var app = builder.Build();

@@ -52,10 +52,11 @@ gantt
 - **Path**: `VS_mart_Backend/VS Mart Backend/VS Mart Backend/Features/Dashboard/Export/UniversalExportService.cs`
 - **Responsibility**:
   - Connects to SQL Server via `SqlConnection`.
-  - Executes `SqlCommand.ExecuteReaderAsync(CommandBehavior.SequentialAccess)`.
-  - Dynamically extracts column headers from `reader.GetName(i)` and writes the CSV header row.
-  - Loops `while (await reader.ReadAsync(cancellationToken))` and writes comma-separated, RFC 4180 double-quote escaped strings directly to `Response.Body`.
-  - Flushes chunks periodically to ensure instant Time-to-First-Byte (~0.2s).
+  - Executes `SqlCommand.ExecuteReaderAsync()`.
+  - Dynamically extracts column headers from `reader.GetName(i)` and builds styled Excel `.xlsx` headers (slate-900 bold font, slate-100 fill, bottom borders).
+  - Loops `while (await reader.ReadAsync(cancellationToken))` and formats cells with native data types (integers, decimal #,##0.00 currency, timestamps).
+  - Auto-fits column widths and freezes header row.
+  - Streams OpenXML `.xlsx` package directly into `Response.Body`.
   - Listens to `HttpContext.RequestAborted` to immediately terminate SQL execution if the user cancels or closes their browser.
 
 ### Step 3: Create `UniversalExportController.cs`
@@ -64,16 +65,16 @@ gantt
 - **Responsibility**:
   - Validates `reportName`.
   - Sets HTTP response headers:
-    - `Content-Type: text/csv; charset=utf-8`
-    - `Content-Disposition: attachment; filename="{reportName}_{yyyyMMdd_HHmmss}.csv"`
+    - `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+    - `Content-Disposition: attachment; filename="{reportName}_{yyyyMMdd_HHmmss}.xlsx"`
   - Delegates execution to `UniversalExportService`.
 
 ### Step 4: Backend Integration Verification
-- Execute a test cURL request against `http://localhost:5050/api/reports/export?reportName=VENDOR_HU_DISCREPANCY_SUMMARY&fromDate=2026-09-01&toDate=2026-09-26`.
+- Execute a test cURL request against `http://localhost:5050/api/reports/export?reportName=VENDOR_HU_DISCREPANCY_SUMMARY&userId=1&fromDate=2026-09-01&toDate=2026-09-26`.
 - Verify:
-  - Immediate byte arrival (< 300ms).
+  - Immediate byte arrival.
   - Complete output of all rows without 10-row cutoff.
-  - Proper CSV quotation escaping.
+  - Generates valid `.xlsx` OpenXML spreadsheet readable by Microsoft Excel.
 
 ---
 
