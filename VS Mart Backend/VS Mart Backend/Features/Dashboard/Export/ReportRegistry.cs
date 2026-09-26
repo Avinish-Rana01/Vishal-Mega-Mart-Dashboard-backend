@@ -426,16 +426,54 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 ReportName = "GRC_ARTICLE_ITEM_DETAILS",
                 StoredProcedure = "SP_NEW_REPORT",
-                Status = "SHOW_GRC_MODAL_DATA",
-                DefaultSortColumn = "Scan_Date",
-                DefaultSortDirection = "DESC",
+                Status = "VIEW_SHOW_GRC_DATA",
+                DefaultSortColumn = "GRC_DATE",
+                DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
                 {
+                    string grcStatus = r.GrcStatus ?? "";
+                    if (grcStatus == "0")
+                    {
+                        cmd.Parameters["@status"].Value = "VIEW_SHOW_HHTGRC_DATA";
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", "2");
+                    }
+                    else if (grcStatus == "2")
+                    {
+                        cmd.Parameters["@status"].Value = "VIEW_SHOW_HHTGRC_DATA";
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", "1");
+                    }
+                    else if (grcStatus == "3")
+                    {
+                        cmd.Parameters["@status"].Value = "VIEW_SHOW_STORE_PENDING_GRC_DATA";
+                    }
+                    else
+                    {
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", grcStatus == "4" ? "" : grcStatus);
+                    }
+
+                    string dateStr = !string.IsNullOrWhiteSpace(r.ScanTime) ? r.ScanTime.Trim() : (!string.IsNullOrWhiteSpace(r.FromDate) ? r.FromDate.Trim() : "");
+                    string formattedDate = "";
+                    if (!string.IsNullOrWhiteSpace(dateStr))
+                    {
+                        string[] formats = { "dd-MM-yyyy", "yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MMM-yyyy" };
+                        if (DateTime.TryParseExact(dateStr, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime exactDate))
+                        {
+                            formattedDate = exactDate.ToString("yyyy-MM-dd");
+                        }
+                        else if (DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
+                        {
+                            formattedDate = parsedDate.ToString("yyyy-MM-dd");
+                        }
+                        else
+                        {
+                            formattedDate = dateStr;
+                        }
+                    }
+
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
-                    cmd.Parameters.AddWithValue("@Material", r.Article ?? r.ArticleNo ?? "");
-                    cmd.Parameters.AddWithValue("@ScanTime", r.ScanTime ?? "");
-                    cmd.Parameters.AddWithValue("@GRC_STATUS", r.GrcStatus ?? "1");
+                    cmd.Parameters.AddWithValue("@FromDate", formattedDate);
+                    cmd.Parameters.AddWithValue("@ToDate", formattedDate);
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });

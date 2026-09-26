@@ -202,16 +202,27 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                 parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
 
-                if (!string.IsNullOrWhiteSpace(request.Date) && DateTime.TryParse(request.Date, out DateTime parsedDate))
+                string dateStr = !string.IsNullOrWhiteSpace(request.Date) ? request.Date.Trim() : "";
+                string formattedDate = "";
+                if (!string.IsNullOrWhiteSpace(dateStr))
                 {
-                    parameters.Add("@FromDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
-                    parameters.Add("@ToDate", parsedDate.ToString("yyyy-MM-dd"), DbType.String);
+                    string[] formats = { "dd-MM-yyyy", "yyyy-MM-dd", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff", "dd/MM/yyyy", "MM/dd/yyyy", "dd-MMM-yyyy" };
+                    if (DateTime.TryParseExact(dateStr, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime exactDate))
+                    {
+                        formattedDate = exactDate.ToString("yyyy-MM-dd");
+                    }
+                    else if (DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
+                    {
+                        formattedDate = parsedDate.ToString("yyyy-MM-dd");
+                    }
+                    else
+                    {
+                        formattedDate = dateStr;
+                    }
                 }
-                else
-                {
-                    parameters.Add("@FromDate", "", DbType.String);
-                    parameters.Add("@ToDate", "", DbType.String);
-                }
+
+                parameters.Add("@FromDate", formattedDate, DbType.String);
+                parameters.Add("@ToDate", formattedDate, DbType.String);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
