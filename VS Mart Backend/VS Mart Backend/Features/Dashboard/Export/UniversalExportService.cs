@@ -208,6 +208,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             if (validColIndices.Count > 0)
             {
                 worksheet.SheetView.FreezeRows(1);
+                worksheet.Range(1, 1, rowIdx - 1, validColIndices.Count).SetAutoFilter();
                 if (rowIdx <= 10_000)
                 {
                     worksheet.Columns(1, validColIndices.Count).AdjustToContents(10.0, 50.0);
