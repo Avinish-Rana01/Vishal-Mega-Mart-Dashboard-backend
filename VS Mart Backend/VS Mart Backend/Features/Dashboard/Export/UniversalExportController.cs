@@ -46,15 +46,27 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             string safeFileName = $"{request.ReportName.Trim()}_{DateTime.Now:yyyyMMdd_HHmmss}.{extension}";
 
-            Response.ContentType = contentType;
-            Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{safeFileName}\"");
-            Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
-            Response.Headers.Append("Pragma", "no-cache");
-            Response.Headers.Append("Expires", "0");
-
             try
             {
-                await _exportService.StreamExportAsync(request, Response.Body, cancellationToken);
+                using var memoryBuffer = new System.IO.MemoryStream();
+                bool hasData = await _exportService.StreamExportAsync(request, memoryBuffer, cancellationToken);
+
+                if (!hasData || memoryBuffer.Length == 0)
+                {
+                    _logger.LogInformation("Export requested for {ReportName} produced 0 rows. Returning 204 No Content.", request.ReportName);
+                    Response.StatusCode = StatusCodes.Status204NoContent;
+                    return;
+                }
+
+                Response.ContentType = contentType;
+                Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{safeFileName}\"");
+                Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+                Response.Headers.Append("Pragma", "no-cache");
+                Response.Headers.Append("Expires", "0");
+                Response.Headers.Append("Content-Length", memoryBuffer.Length.ToString());
+
+                memoryBuffer.Position = 0;
+                await memoryBuffer.CopyToAsync(Response.Body, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -63,15 +75,10 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed streaming report export for {ReportName}", request.ReportName);
-                try
+                if (!Response.HasStarted)
                 {
-                    await using var errorWriter = new System.IO.StreamWriter(Response.Body, System.Text.Encoding.UTF8, leaveOpen: true);
-                    await errorWriter.WriteLineAsync($"\n--- EXPORT ERROR ---\n{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-                    await errorWriter.FlushAsync();
-                }
-                catch
-                {
-                    // Ignore secondary stream errors
+                    Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await Response.WriteAsync($"Export Error: {ex.Message}", cancellationToken);
                 }
             }
         }

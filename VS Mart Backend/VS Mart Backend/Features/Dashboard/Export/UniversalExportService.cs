@@ -24,7 +24,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             _logger = logger;
         }
 
-        public async Task StreamExportAsync(UniversalExportRequest request, Stream outputStream, CancellationToken cancellationToken)
+        public async Task<bool> StreamExportAsync(UniversalExportRequest request, Stream outputStream, CancellationToken cancellationToken)
         {
             var config = ReportRegistry.GetConfig(request.ReportName);
             if (config == null)
@@ -103,20 +103,31 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
             }
 
+            if (!reader.HasRows)
+            {
+                _logger.LogInformation("No rows found for export request {ReportName}", config.ReportName);
+                return false;
+            }
+
+            bool hasData;
             if (format == "csv")
             {
-                await ExportCsvAsync(reader, outputStream, cancellationToken);
+                hasData = await ExportCsvAsync(reader, outputStream, cancellationToken);
             }
             else
             {
                 // Default: Professional XLSX Workbook
-                await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
+                hasData = await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
             }
 
-            _logger.LogInformation("Export completed successfully for {ReportName} in {Format}", config.ReportName, format);
+            if (hasData)
+            {
+                _logger.LogInformation("Export completed successfully for {ReportName} in {Format}", config.ReportName, format);
+            }
+            return hasData;
         }
 
-        private async Task ExportXlsxAsync(SqlDataReader reader, Stream outputStream, string reportName, CancellationToken cancellationToken)
+        private async Task<bool> ExportXlsxAsync(SqlDataReader reader, Stream outputStream, string reportName, CancellationToken cancellationToken)
         {
             using var workbook = new XLWorkbook();
             string sheetTitle = reportName.Length > 28 ? reportName.Substring(0, 28) : reportName;
@@ -189,6 +200,11 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 }
             }
 
+            if (rowIdx == 2)
+            {
+                return false;
+            }
+
             if (validColIndices.Count > 0)
             {
                 worksheet.SheetView.FreezeRows(1);
@@ -206,18 +222,17 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             workbook.SaveAs(ms);
             ms.Position = 0;
             await ms.CopyToAsync(outputStream, cancellationToken);
+            return true;
         }
 
-        private async Task ExportCsvAsync(SqlDataReader reader, Stream outputStream, CancellationToken cancellationToken)
+        private async Task<bool> ExportCsvAsync(SqlDataReader reader, Stream outputStream, CancellationToken cancellationToken)
         {
-            await using var writer = new StreamWriter(outputStream, new UTF8Encoding(true), bufferSize: 65536, leaveOpen: true);
-
             if (reader.FieldCount == 0)
             {
-                await writer.WriteLineAsync("No data available");
-                await writer.FlushAsync();
-                return;
+                return false;
             }
+
+            await using var writer = new StreamWriter(outputStream, new UTF8Encoding(true), bufferSize: 65536, leaveOpen: true);
 
             var validColIndices = new List<int>();
             var headers = new List<string>();
@@ -270,6 +285,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             }
 
             await writer.FlushAsync();
+            return rowCount > 0;
         }
 
         private static void AddOutputParam(SqlCommand cmd, string paramName, SqlDbType type)

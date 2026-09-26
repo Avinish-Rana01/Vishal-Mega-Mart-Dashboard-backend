@@ -57,7 +57,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Vendor_Code", string.IsNullOrWhiteSpace(r.VendorCode) ? "0" : r.VendorCode.Trim());
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -77,7 +77,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     string hu = (r.HuNo == "ALL HU" || string.IsNullOrWhiteSpace(r.HuNo)) ? "" : r.HuNo.Trim();
                     cmd.Parameters.AddWithValue("@HU", hu);
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -98,7 +98,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@CI_STATUS", r.HuStatus ?? "");
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -119,7 +119,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@CI_STATUS", r.HuStatus ?? "1");
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -138,7 +138,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -157,7 +157,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -179,7 +179,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@Material", r.Material ?? r.ArticleNo ?? "");
                     cmd.Parameters.AddWithValue("@EAN", r.Ean ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -200,7 +200,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@COUNTER_NO", r.Pos ?? "");
                     cmd.Parameters.AddWithValue("@Material", r.Material ?? r.ArticleNo ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -221,7 +221,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@COUNTER_NO", r.Pos ?? "");
                     cmd.Parameters.AddWithValue("@Material", r.Material ?? r.ArticleNo ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -240,7 +240,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -259,7 +259,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -280,7 +280,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@COUNTER_NO", r.Pos ?? "");
                     cmd.Parameters.AddWithValue("@EAN", r.Ean ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -319,7 +319,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -340,7 +340,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@COUNTER_NO", r.Pos ?? "");
                     cmd.Parameters.AddWithValue("@EAN", r.Ean ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -379,7 +379,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -414,7 +414,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
                     cmd.Parameters.AddWithValue("@FromDate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@ToDate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@ToDate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -454,7 +454,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 {
                     cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@FromDate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@ToDate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@ToDate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -474,7 +474,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@ref_No", r.RefNo ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -497,7 +497,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
                     cmd.Parameters.AddWithValue("@User_ID", uid);
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -518,7 +518,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@EAN", r.Ean ?? "");
                     cmd.Parameters.AddWithValue("@Material", r.ArticleNo ?? r.Article ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -539,7 +539,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@EAN", r.Ean ?? "");
                     cmd.Parameters.AddWithValue("@Material", r.ArticleNo ?? r.Article ?? "");
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -573,7 +573,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 ParameterBinder = (cmd, r) =>
                 {
                     cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, DateTime.Today.ToString("yyyy-MM-dd")));
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@Material", r.ArticleNo ?? r.Article ?? "");
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }

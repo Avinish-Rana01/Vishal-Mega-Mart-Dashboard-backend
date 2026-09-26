@@ -6,6 +6,6 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 {
     public interface IUniversalExportService
     {
-        Task StreamExportAsync(UniversalExportRequest request, Stream outputStream, CancellationToken cancellationToken);
+        Task<bool> StreamExportAsync(UniversalExportRequest request, Stream outputStream, CancellationToken cancellationToken);
     }
 }
