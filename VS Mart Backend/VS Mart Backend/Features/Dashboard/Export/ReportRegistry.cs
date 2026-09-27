@@ -34,6 +34,17 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
         public static bool Contains(string reportName) =>
             !string.IsNullOrWhiteSpace(reportName) && _registry.ContainsKey(reportName.Trim());
 
+        /// <summary>
+        /// Retrieves a read-only list of all registered report names in alphabetical order.
+        /// </summary>
+        public static IReadOnlyList<string> GetAllReportNames() =>
+            _registry.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+
+        /// <summary>
+        /// Gets the total count of registered reports in the system.
+        /// </summary>
+        public static int RegisteredReportCount => _registry.Count;
+
         private static void RegisterReports()
         {
             // Helper for clean dates

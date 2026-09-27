@@ -21,6 +21,20 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             _logger = logger;
         }
 
+        /// <summary>
+        /// Retrieves the list of all registered report names supported for streaming export.
+        /// </summary>
+        [HttpGet("supported-reports")]
+        public IActionResult GetSupportedReports()
+        {
+            var reports = ReportRegistry.GetAllReportNames();
+            return Ok(new
+            {
+                totalReports = ReportRegistry.RegisteredReportCount,
+                reports
+            });
+        }
+
         [HttpGet("export")]
         public async Task ExportReport([FromQuery] UniversalExportRequest request, CancellationToken cancellationToken)
         {
