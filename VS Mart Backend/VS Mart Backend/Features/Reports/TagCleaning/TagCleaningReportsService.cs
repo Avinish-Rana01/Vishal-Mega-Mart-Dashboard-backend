@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using VS_Mart_Backend.Features.Master;
@@ -22,60 +22,59 @@ namespace VS_Mart_Backend.Features.Reports
         {
             try
             {
-                string connectionString = _connectionString;
+                using var connection = new SqlConnection(_connectionString);
 
-                using var connection = new SqlConnection(connectionString);
+                int pageIndex = request.PageIndex < 1 ? 1 : request.PageIndex;
+                int pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
-                int startRow = ((request.PageIndex - 1) * request.PageSize) + 1;
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
 
-                int endRow = request.PageIndex * request.PageSize;
+                if (!string.IsNullOrWhiteSpace(request.FromDate))
+                {
+                    string fromVal = request.FromDate.Trim('"').Trim();
+                    if (DateTime.TryParse(fromVal, out var parsedFrom))
+                        fromDate = parsedFrom;
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ToDate))
+                {
+                    string toVal = request.ToDate.Trim('"').Trim();
+                    if (DateTime.TryParse(toVal, out var parsedTo))
+                        toDate = parsedTo;
+                }
 
                 var parameters = new DynamicParameters();
 
-                parameters.Add("@status", "TAG_CLEANING_REPORT", DbType.String);
-
+                parameters.Add("@status", "TAG_CLEANING_CONSOLIDATE_REPORT", DbType.String);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
-
-                parameters.Add("@fromdate", request.FromDate ?? "", DbType.String);
-
-                parameters.Add("@todate", request.ToDate ?? "", DbType.String);
-
-                //parameters.Add("@StartRow", startRow, DbType.Int32);
-
-                //parameters.Add("@EndRow", endRow, DbType.Int32);
-
-                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "INWARD_DATE" : request.SortColumn, DbType.String);
-
+                parameters.Add("@fromdate", fromDate, DbType.Date);
+                parameters.Add("@todate", toDate, DbType.Date);
+                parameters.Add("@PageIndex", pageIndex, DbType.Int32);
+                parameters.Add("@PageSize", pageSize, DbType.Int32);
+                parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "TAG_CLEANED_DATE" : request.SortColumn, DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "DESC" : request.SortDirection, DbType.String);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@TAG_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var data = await connection.QueryAsync<TagCleaningReportModel>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
 
                 return new TagCleaningReportResponse
                 {
-                    Action = "TAG_CLEANING_REPORT",
-
+                    Action = "TAG_CLEANING_CONSOLIDATE_REPORT",
                     RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
-
                     TotalCount = parameters.Get<int?>("@TotalCount") ?? 0,
-
-                    TagValidatedCount = parameters.Get<int?>("@TAG_VALIDATED_QTY") ?? 0,
-
+                    TotalValidatedCount = parameters.Get<int?>("@TAG_VALIDATED_QTY") ?? 0,
+                    TotalCleanedCount = parameters.Get<int?>("@TotalCount") ?? 0,
                     Data = data.ToList()
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "Error while getting Tag Cleaning Report");
-
-                return new TagCleaningReportResponse();
+                _logger.LogError(ex, "Error while getting Tag Cleaning Report: {Message}", ex.Message);
+                throw;
             }
         }
 
