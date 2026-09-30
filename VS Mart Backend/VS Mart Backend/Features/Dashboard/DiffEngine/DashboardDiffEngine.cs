@@ -93,6 +93,15 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
             public int ProcessedArticleQty { get; set; }
         }
 
+        // ── 8. Counter Status Snapshots ───────────────────────────────────────
+        private readonly ConcurrentDictionary<string, CounterSnapshot> _counterSnapshots = new(StringComparer.OrdinalIgnoreCase);
+
+        private class CounterSnapshot
+        {
+            public int Status { get; set; }
+            public string LastUpdatedDate { get; set; } = string.Empty;
+        }
+
         public DashboardDiffEngine(IHubContext<DashboardHub> hubContext, ILogger<DashboardDiffEngine> logger)
         {
             _hubContext = hubContext;
@@ -911,6 +920,90 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DashboardDiffEngine: Error processing DcValidation diff.");
+            }
+        }
+
+        // =====================================================================
+        // 8. Counter Status Diff
+        // =====================================================================
+        public async Task ProcessCounterStatusDiffAsync(int storeId, IEnumerable<VS_Mart_Backend.Features.Store.CounterStatusDetailDto> currentCounters, CancellationToken cancellationToken = default)
+        {
+            if (currentCounters == null || storeId <= 0) return;
+
+            try
+            {
+                var counterList = currentCounters.ToList();
+                var changedCounters = new List<CounterStatusItemPatch>();
+
+                int totalCount = counterList.Count;
+                int onlineCount = 0;
+
+                foreach (var counter in counterList)
+                {
+                    string key = $"{storeId}_{counter.Cash_Counter}";
+                    int currentStatus = counter.STATUS;
+                    string currentDate = counter.LAST_UPDATED_DATE ?? string.Empty;
+
+                    if (currentStatus == 0)
+                    {
+                        onlineCount++;
+                    }
+
+                    if (!_counterSnapshots.TryGetValue(key, out var snapshot))
+                    {
+                        // Baseline entry for this counter
+                        _counterSnapshots[key] = new CounterSnapshot
+                        {
+                            Status = currentStatus,
+                            LastUpdatedDate = currentDate
+                        };
+                    }
+                    else
+                    {
+                        // Check if status or timestamp changed
+                        if (snapshot.Status != currentStatus || snapshot.LastUpdatedDate != currentDate)
+                        {
+                            changedCounters.Add(new CounterStatusItemPatch
+                            {
+                                CashCounter = counter.Cash_Counter,
+                                Status = currentStatus,
+                                PreviousStatus = snapshot.Status,
+                                LastUpdatedDate = currentDate
+                            });
+
+                            snapshot.Status = currentStatus;
+                            snapshot.LastUpdatedDate = currentDate;
+                        }
+                    }
+                }
+
+                int offlineCount = totalCount - onlineCount;
+
+                // Broadcast if any counter changed state
+                if (changedCounters.Count > 0)
+                {
+                    var patch = new CounterStatusDeltaPatch
+                    {
+                        Type = "COUNTER_STATUS_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreId = storeId,
+                        ChangedCounters = changedCounters,
+                        Summary = new CounterStatusSummaryDelta
+                        {
+                            TotalCounters = totalCount,
+                            OnlineCounters = onlineCount,
+                            OfflineCounters = offlineCount
+                        }
+                    };
+
+                    string groupName = $"store_counters_{storeId}";
+                    await _hubContext.Clients.Group(groupName).SendAsync("ReceiveCounterStatusPatch", patch, cancellationToken);
+                    _logger.LogInformation("DashboardDiffEngine: Broadcasted counter status patch for store {StoreId} with {ChangeCount} change(s).", storeId, changedCounters.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DashboardDiffEngine: Error processing CounterStatus diff for store {StoreId}.", storeId);
             }
         }
 

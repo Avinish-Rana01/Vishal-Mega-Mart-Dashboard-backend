@@ -13,5 +13,6 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
         Task ProcessWarehouseEncodingDiffAsync(WarehouseEncodingResponse response, CancellationToken cancellationToken = default);
         Task ProcessTagManagementDiffAsync(TagManagementResponse response, CancellationToken cancellationToken = default);
         Task ProcessDcValidationDiffAsync(DcValidateDashboardResponse response, CancellationToken cancellationToken = default);
+        Task ProcessCounterStatusDiffAsync(int storeId, System.Collections.Generic.IEnumerable<VS_Mart_Backend.Features.Store.CounterStatusDetailDto> currentCounters, CancellationToken cancellationToken = default);
     }
 }

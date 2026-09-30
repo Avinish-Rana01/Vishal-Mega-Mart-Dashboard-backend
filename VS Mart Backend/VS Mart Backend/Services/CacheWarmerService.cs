@@ -59,6 +59,14 @@ namespace VS_Mart_Backend.Services
         {
             _logger.LogInformation("CacheWarmerService started with DashboardDiffEngine.");
 
+            var dashboardTask = RunDashboardWarmerLoopAsync(stoppingToken);
+            var counterTask = RunActiveCounterPollerLoopAsync(stoppingToken);
+
+            await Task.WhenAll(dashboardTask, counterTask);
+        }
+
+        private async Task RunDashboardWarmerLoopAsync(CancellationToken stoppingToken)
+        {
             while (!stoppingToken.IsCancellationRequested)
             {
                 LastRunTime = DateTime.Now;
@@ -170,7 +178,61 @@ namespace VS_Mart_Backend.Services
                 await _wakeUpSignal.WaitAsync(_realtimeDelay, stoppingToken);
             }
 
-            _logger.LogInformation("CacheWarmerService is stopping.");
+            _logger.LogInformation("CacheWarmerService dashboard loop is stopping.");
+        }
+
+        private async Task RunActiveCounterPollerLoopAsync(CancellationToken stoppingToken)
+        {
+            _logger.LogInformation("CacheWarmerService: Active Counter Poller loop started (Interval: 2.5s).");
+            var pollInterval = TimeSpan.FromSeconds(2.5);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var activeStoreIds = VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.GetActiveStoreIds();
+                    if (activeStoreIds.Count > 0)
+                    {
+                        using var scope = _serviceProvider.CreateScope();
+                        var storeService = scope.ServiceProvider.GetRequiredService<VS_Mart_Backend.Features.Store.IStoreService>();
+
+                        foreach (var storeId in activeStoreIds)
+                        {
+                            try
+                            {
+                                var result = await storeService.GetCounterStatusDetailsAsync(storeId);
+                                if (result?.Data != null)
+                                {
+                                    await _diffEngine.ProcessCounterStatusDiffAsync(storeId, result.Data, stoppingToken);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "CacheWarmerService: Error checking counter status for active store {StoreId}", storeId);
+                            }
+                        }
+                    }
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "CacheWarmerService: Error in active counter poller loop.");
+                }
+
+                try
+                {
+                    await Task.Delay(pollInterval, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+
+            _logger.LogInformation("CacheWarmerService active counter poller loop is stopping.");
         }
     }
 }

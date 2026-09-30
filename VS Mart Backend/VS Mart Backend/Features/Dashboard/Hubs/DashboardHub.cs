@@ -12,6 +12,14 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
         private static int _connectedClients = 0;
         public static int ConnectedClientsCount => Math.Max(0, Volatile.Read(ref _connectedClients));
 
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Concurrent.ConcurrentDictionary<string, byte>> _storeSubscriptions = new();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentBag<int>> _connectionStores = new();
+
+        public static IReadOnlyCollection<int> GetActiveStoreIds()
+        {
+            return _storeSubscriptions.Where(kvp => !kvp.Value.IsEmpty).Select(kvp => kvp.Key).ToList();
+        }
+
         public override async Task OnConnectedAsync()
         {
             Interlocked.Increment(ref _connectedClients);
@@ -21,7 +29,51 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             Interlocked.Decrement(ref _connectedClients);
+
+            if (_connectionStores.TryRemove(Context.ConnectionId, out var subscribedStores))
+            {
+                foreach (var storeId in subscribedStores)
+                {
+                    if (_storeSubscriptions.TryGetValue(storeId, out var set))
+                    {
+                        set.TryRemove(Context.ConnectionId, out _);
+                    }
+                }
+            }
+
             await base.OnDisconnectedAsync(exception);
+        }
+
+        public async Task SubscribeStoreCounters(int storeId)
+        {
+            if (storeId <= 0) return;
+            string groupName = $"store_counters_{storeId}";
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+
+            var connectionSet = _storeSubscriptions.GetOrAdd(storeId, _ => new System.Collections.Concurrent.ConcurrentDictionary<string, byte>());
+            connectionSet.TryAdd(Context.ConnectionId, 0);
+
+            var storeBag = _connectionStores.GetOrAdd(Context.ConnectionId, _ => new System.Collections.Concurrent.ConcurrentBag<int>());
+            storeBag.Add(storeId);
+        }
+
+        public async Task UnsubscribeStoreCounters(int storeId)
+        {
+            if (storeId <= 0) return;
+            string groupName = $"store_counters_{storeId}";
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+
+            if (_storeSubscriptions.TryGetValue(storeId, out var connectionSet))
+            {
+                connectionSet.TryRemove(Context.ConnectionId, out _);
+            }
+        }
+
+        // 7. Counter Status Patch
+        public async Task BroadcastCounterStatusPatch(int storeId, CounterStatusDeltaPatch patch)
+        {
+            string groupName = $"store_counters_{storeId}";
+            await Clients.Group(groupName).SendAsync("ReceiveCounterStatusPatch", patch);
         }
 
         // 1. Live Stock

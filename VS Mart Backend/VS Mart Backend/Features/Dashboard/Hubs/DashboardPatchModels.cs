@@ -168,4 +168,32 @@
             public int NewProcessedArticleQty { get; set; }
             public DcValidationSummaryDelta? SummaryDelta { get; set; }
         }
+
+        // ==========================================
+        // 8. Cash Counter Status Real-Time Patch Models
+        // ==========================================
+        public class CounterStatusItemPatch
+        {
+            public string CashCounter { get; set; } = string.Empty;
+            public int Status { get; set; }
+            public int? PreviousStatus { get; set; }
+            public string LastUpdatedDate { get; set; } = string.Empty;
+            public bool IsOnline => Status == 0;
+        }
+
+        public class CounterStatusSummaryDelta
+        {
+            public int TotalCounters { get; set; }
+            public int OnlineCounters { get; set; }
+            public int OfflineCounters { get; set; }
+        }
+
+        public class CounterStatusDeltaPatch
+        {
+            public string Type { get; set; } = "COUNTER_STATUS_DELTA";
+            public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+            public int StoreId { get; set; }
+            public List<CounterStatusItemPatch> ChangedCounters { get; set; } = new();
+            public CounterStatusSummaryDelta Summary { get; set; } = new();
+        }
     }
