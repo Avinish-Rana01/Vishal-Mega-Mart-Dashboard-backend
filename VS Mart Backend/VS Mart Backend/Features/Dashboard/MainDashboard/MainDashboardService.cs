@@ -208,7 +208,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     AvgTagPercentage = roundedAverage
                 };
                 return response;
-            }, forceRefresh);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
         }
 
         private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)

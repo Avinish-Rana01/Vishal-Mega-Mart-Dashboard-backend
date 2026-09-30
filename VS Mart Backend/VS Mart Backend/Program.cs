@@ -72,6 +72,7 @@ app.MapGet("/api/system/cache-status", () =>
         totalRuns = VS_Mart_Backend.Services.CacheWarmerService.TotalRuns,
         lastRunTime = VS_Mart_Backend.Services.CacheWarmerService.LastRunTime?.ToString("yyyy-MM-dd HH:mm:ss"),
         lastPeriodicWarmup = lastPeriodic == DateTime.MinValue ? "Pending initial run" : lastPeriodic.ToString("yyyy-MM-dd HH:mm:ss"),
+        realtimeWarmerIntervalSeconds = (int)VS_Mart_Backend.Services.CacheWarmerService.RealtimeWarmerInterval.TotalSeconds,
         periodicIntervalMinutes = (int)interval.TotalMinutes,
         nextPeriodicWarmup = nextPeriodic.ToString("yyyy-MM-dd HH:mm:ss"),
         nextPeriodicWarmupInMinutes = remainingMins,

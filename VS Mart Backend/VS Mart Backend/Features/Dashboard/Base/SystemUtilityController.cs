@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
@@ -10,11 +11,16 @@ namespace VS_Mart_Backend.Features.SystemUtility
     {
         private readonly ISystemUtilityService _systemUtilityService;
         private readonly ILogger<SystemUtilityController> _logger;
+        private readonly IConfiguration _configuration;
 
-        public SystemUtilityController(ISystemUtilityService systemUtilityService, ILogger<SystemUtilityController> logger)
+        public SystemUtilityController(
+            ISystemUtilityService systemUtilityService, 
+            ILogger<SystemUtilityController> logger,
+            IConfiguration configuration)
         {
             _systemUtilityService = systemUtilityService;
             _logger = logger;
+            _configuration = configuration;
         }
 
 
@@ -24,11 +30,40 @@ namespace VS_Mart_Backend.Features.SystemUtility
             return Ok(new { cacheEnabled = _systemUtilityService.IsCacheEnabled() });
         }
 
+        [HttpGet("/api/Stock/toggle-cache")]
         [HttpPost("/api/Stock/toggle-cache")]
-        public IActionResult ToggleCache([FromQuery] bool enabled)
+        public IActionResult ToggleCache(
+            [FromQuery] bool enabled, 
+            [FromQuery] string? secret, 
+            [FromHeader(Name = "X-Admin-Secret")] string? headerSecret)
         {
+            string configuredSecret = _configuration.GetValue<string>("DashboardSettings:AdminSecretKey") ?? "VMM-Admin-Secret-2026";
+            string providedSecret = (!string.IsNullOrWhiteSpace(secret) ? secret : headerSecret) ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(providedSecret) || !string.Equals(providedSecret.Trim(), configuredSecret.Trim(), StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Unauthorized cache toggle attempt from IP: {Ip}", HttpContext.Connection.RemoteIpAddress);
+                return Unauthorized(new 
+                { 
+                    success = false, 
+                    error = "Unauthorized. A valid secret key is required via '?secret=...' parameter or 'X-Admin-Secret' header." 
+                });
+            }
+
             _systemUtilityService.SetCacheEnabled(enabled);
-            return Ok(new { message = $"Cache system is now {(enabled ? "ENABLED" : "DISABLED")}.", cacheEnabled = enabled });
+            if (enabled)
+            {
+                VS_Mart_Backend.Services.CacheWarmerService.TriggerImmediateWarmup();
+            }
+            _logger.LogInformation("Cache system toggled to {Status} by authorized admin.", enabled ? "ENABLED" : "DISABLED");
+
+            return Ok(new 
+            { 
+                success = true,
+                message = $"Cache system is now {(enabled ? "ENABLED" : "DISABLED")}.", 
+                cacheEnabled = enabled,
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            });
         }
 
         [HttpGet("/api/Stock/GetEncodingStoreData")]
