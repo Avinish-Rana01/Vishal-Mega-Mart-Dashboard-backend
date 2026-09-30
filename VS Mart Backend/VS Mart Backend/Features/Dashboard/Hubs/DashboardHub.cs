@@ -13,7 +13,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
         public static int ConnectedClientsCount => Math.Max(0, Volatile.Read(ref _connectedClients));
 
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, System.Collections.Concurrent.ConcurrentDictionary<string, byte>> _storeSubscriptions = new();
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentBag<int>> _connectionStores = new();
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentDictionary<int, byte>> _connectionStores = new();
 
         public static IReadOnlyCollection<int> GetActiveStoreIds()
         {
@@ -32,9 +32,9 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
 
             if (_connectionStores.TryRemove(Context.ConnectionId, out var subscribedStores))
             {
-                foreach (var storeId in subscribedStores)
+                foreach (var entry in subscribedStores)
                 {
-                    if (_storeSubscriptions.TryGetValue(storeId, out var set))
+                    if (_storeSubscriptions.TryGetValue(entry.Key, out var set))
                     {
                         set.TryRemove(Context.ConnectionId, out _);
                     }
@@ -53,8 +53,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
             var connectionSet = _storeSubscriptions.GetOrAdd(storeId, _ => new System.Collections.Concurrent.ConcurrentDictionary<string, byte>());
             connectionSet.TryAdd(Context.ConnectionId, 0);
 
-            var storeBag = _connectionStores.GetOrAdd(Context.ConnectionId, _ => new System.Collections.Concurrent.ConcurrentBag<int>());
-            storeBag.Add(storeId);
+            var storeSet = _connectionStores.GetOrAdd(Context.ConnectionId, _ => new System.Collections.Concurrent.ConcurrentDictionary<int, byte>());
+            storeSet.TryAdd(storeId, 0);
         }
 
         public async Task UnsubscribeStoreCounters(int storeId)
@@ -66,6 +66,12 @@ namespace VS_Mart_Backend.Features.Dashboard.Hubs
             if (_storeSubscriptions.TryGetValue(storeId, out var connectionSet))
             {
                 connectionSet.TryRemove(Context.ConnectionId, out _);
+            }
+
+            // Clean up _connectionStores so poller stops querying unwatched stores
+            if (_connectionStores.TryGetValue(Context.ConnectionId, out var storeSet))
+            {
+                storeSet.TryRemove(storeId, out _);
             }
         }
 
