@@ -59,20 +59,28 @@ namespace VS_Mart_Backend.Features.Base
             _cacheOverride = enabled;
         }
 
-        protected async Task<T> GetOrCreateWithSWRAsync<T>(string cacheKey, Func<Task<T>> databaseQuery, bool forceRefresh = false)
+        protected async Task<T> GetOrCreateWithSWRAsync<T>(
+            string cacheKey, 
+            Func<Task<T>> databaseQuery, 
+            bool forceRefresh = false,
+            TimeSpan? customTtl = null,
+            TimeSpan? customStaleDuration = null)
         {
             if (!IsCacheEnabled()) return await databaseQuery();
+
+            var ttl = customTtl ?? TimeSpan.FromMinutes(10);
+            var staleDuration = customStaleDuration ?? TimeSpan.FromSeconds(20);
 
             if (forceRefresh)
             {
                 var freshData = await databaseQuery();
-                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
+                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, ttl);
                 return freshData;
             }
 
             if (_cache.TryGetValue(cacheKey, out CacheItem<T>? cachedItem) && cachedItem != null)
             {
-                if (DateTime.UtcNow - cachedItem.CreatedAt > TimeSpan.FromSeconds(20))
+                if (DateTime.UtcNow - cachedItem.CreatedAt > staleDuration)
                 {
                     if (_refreshingKeys.TryAdd(cacheKey, true))
                     {
@@ -81,7 +89,7 @@ namespace VS_Mart_Backend.Features.Base
                             try
                             {
                                 var freshData = await databaseQuery();
-                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
+                                _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, ttl);
                             }
                             finally
                             {
@@ -105,13 +113,19 @@ namespace VS_Mart_Backend.Features.Base
                 }
 
                 var initialData = await databaseQuery();
-                _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, TimeSpan.FromMinutes(10));
+                _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, ttl);
                 return initialData;
             }
             finally
             {
                 keyLock.Release();
             }
+        }
+
+        protected TimeSpan GetSlowMovingRefreshInterval()
+        {
+            int minutes = _configuration.GetValue<int>("DashboardSettings:SlowMovingDashboardRefreshMinutes", 60);
+            return TimeSpan.FromMinutes(minutes > 0 ? minutes : 60);
         }
 
         public async Task<int> GetActiveSuperAdminIdAsync()

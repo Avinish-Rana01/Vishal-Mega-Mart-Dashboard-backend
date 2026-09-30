@@ -58,14 +58,26 @@ app.MapHub<VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub>("/hubs/dashboar
 app.MapHub<VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub>("/hubs/livestock");
 
 // Live telemetry endpoint to verify CacheWarmerService activity anytime
-app.MapGet("/api/system/cache-status", () => Results.Ok(new
+app.MapGet("/api/system/cache-status", () =>
 {
-    service = "CacheWarmerService",
-    isRunning = true,
-    totalRuns = VS_Mart_Backend.Services.CacheWarmerService.TotalRuns,
-    lastRunTime = VS_Mart_Backend.Services.CacheWarmerService.LastRunTime?.ToString("yyyy-MM-dd HH:mm:ss"),
-    status = VS_Mart_Backend.Services.CacheWarmerService.LastStatus,
-    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-}));
+    var lastPeriodic = VS_Mart_Backend.Services.CacheWarmerService.LastPeriodicWarmupTime;
+    var interval = VS_Mart_Backend.Services.CacheWarmerService.PeriodicInterval;
+    var nextPeriodic = lastPeriodic == DateTime.MinValue ? DateTime.Now : lastPeriodic.Add(interval);
+    var remainingMins = Math.Max(0, (int)(nextPeriodic - DateTime.Now).TotalMinutes);
+
+    return Results.Ok(new
+    {
+        service = "CacheWarmerService",
+        isRunning = true,
+        totalRuns = VS_Mart_Backend.Services.CacheWarmerService.TotalRuns,
+        lastRunTime = VS_Mart_Backend.Services.CacheWarmerService.LastRunTime?.ToString("yyyy-MM-dd HH:mm:ss"),
+        lastPeriodicWarmup = lastPeriodic == DateTime.MinValue ? "Pending initial run" : lastPeriodic.ToString("yyyy-MM-dd HH:mm:ss"),
+        periodicIntervalMinutes = (int)interval.TotalMinutes,
+        nextPeriodicWarmup = nextPeriodic.ToString("yyyy-MM-dd HH:mm:ss"),
+        nextPeriodicWarmupInMinutes = remainingMins,
+        status = VS_Mart_Backend.Services.CacheWarmerService.LastStatus,
+        timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+    });
+});
 
 app.Run();

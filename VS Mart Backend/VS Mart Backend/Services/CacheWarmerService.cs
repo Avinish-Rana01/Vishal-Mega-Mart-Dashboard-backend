@@ -13,19 +13,30 @@ namespace VS_Mart_Backend.Services
         public static int TotalRuns { get; private set; } = 0;
         public static DateTime? LastRunTime { get; private set; }
         public static string LastStatus { get; private set; } = "Initializing";
+        public static DateTime LastPeriodicWarmupTime { get; private set; } = DateTime.MinValue;
+        public static TimeSpan PeriodicInterval { get; private set; } = TimeSpan.FromMinutes(60);
 
         private readonly ILogger<CacheWarmerService> _logger;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IConfiguration _configuration;
         private readonly VS_Mart_Backend.Features.Dashboard.DiffEngine.IDashboardDiffEngine _diffEngine;
+        private readonly TimeSpan _periodicInterval;
+        private DateTime _lastPeriodicWarmupTime = DateTime.MinValue;
 
         public CacheWarmerService(
             ILogger<CacheWarmerService> logger,
             IServiceProvider serviceProvider,
+            IConfiguration configuration,
             VS_Mart_Backend.Features.Dashboard.DiffEngine.IDashboardDiffEngine diffEngine)
         {
             _logger = logger;
             _serviceProvider = serviceProvider;
+            _configuration = configuration;
             _diffEngine = diffEngine;
+
+            int refreshMinutes = _configuration.GetValue<int>("DashboardSettings:SlowMovingDashboardRefreshMinutes", 60);
+            _periodicInterval = TimeSpan.FromMinutes(refreshMinutes > 0 ? refreshMinutes : 60);
+            PeriodicInterval = _periodicInterval;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -91,20 +102,31 @@ namespace VS_Mart_Backend.Services
                         await _diffEngine.ProcessStoreValidationDiffAsync(storeDashboardData, stoppingToken);
                         await Task.Delay(300, stoppingToken);
 
-                        // 7. Sale Dashboard
-                        var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest, forceRefresh: true);
-                        await Task.Delay(300, stoppingToken);
+                        // 7, 8, 9: Periodic Dashboards (Sale, Void, Return - refreshed every _periodicInterval, e.g. 60 mins)
+                        bool shouldRunPeriodicWarmup = (DateTime.Now - _lastPeriodicWarmupTime) >= _periodicInterval;
 
-                        // 8. Void Dashboard
-                        var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest, forceRefresh: true);
-                        await Task.Delay(300, stoppingToken);
+                        if (shouldRunPeriodicWarmup)
+                        {
+                            _logger.LogInformation("CacheWarmerService: Performing periodic refresh for Sale, Void, and Return dashboards (Interval: {mins} mins).", _periodicInterval.TotalMinutes);
 
-                        // 9. Return Dashboard
-                        var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest, forceRefresh: true);
-                        await Task.Delay(300, stoppingToken);
+                            // 7. Sale Dashboard
+                            var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                            await liveStockService.GetSaleDashboardAsync(saleDashboardRequest, forceRefresh: true);
+                            await Task.Delay(300, stoppingToken);
+
+                            // 8. Void Dashboard
+                            var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                            await liveStockService.GetVoidDashboardAsync(voidDashboardRequest, forceRefresh: true);
+                            await Task.Delay(300, stoppingToken);
+
+                            // 9. Return Dashboard
+                            var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                            await liveStockService.GetReturnDashboardAsync(returnDashboardRequest, forceRefresh: true);
+                            await Task.Delay(300, stoppingToken);
+
+                            _lastPeriodicWarmupTime = DateTime.Now;
+                            LastPeriodicWarmupTime = _lastPeriodicWarmupTime;
+                        }
 
                         // 10. DC Validation
                         var dcValidateRequest = new DcValidateDashboardQueryRequest { UserId = superAdminIdStr, PageIndex = 1, PageSize = 1000 };

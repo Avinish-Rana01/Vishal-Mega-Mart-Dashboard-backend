@@ -415,7 +415,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -527,7 +527,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -632,7 +632,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
