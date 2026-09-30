@@ -183,8 +183,8 @@ namespace VS_Mart_Backend.Services
 
         private async Task RunActiveCounterPollerLoopAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("CacheWarmerService: Active Counter Poller loop started (Interval: 2.5s).");
-            var pollInterval = TimeSpan.FromSeconds(2.5);
+            _logger.LogInformation("CacheWarmerService: Active Counter Poller loop started (Interval: 3s, Mode: Parallel).");
+            var pollInterval = TimeSpan.FromSeconds(3.0);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -193,13 +193,16 @@ namespace VS_Mart_Backend.Services
                     var activeStoreIds = VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.GetActiveStoreIds();
                     if (activeStoreIds.Count > 0)
                     {
-                        using var scope = _serviceProvider.CreateScope();
-                        var storeService = scope.ServiceProvider.GetRequiredService<VS_Mart_Backend.Features.Store.IStoreService>();
-
-                        foreach (var storeId in activeStoreIds)
+                        // Run all active store queries concurrently.
+                        // Each store gets its OWN DI scope — required for scoped services (DbContext, etc.)
+                        // No shared state between tasks, so no race conditions.
+                        var tasks = activeStoreIds.Select(async storeId =>
                         {
                             try
                             {
+                                using var scope = _serviceProvider.CreateScope();
+                                var storeService = scope.ServiceProvider.GetRequiredService<VS_Mart_Backend.Features.Store.IStoreService>();
+
                                 var result = await storeService.GetCounterStatusDetailsAsync(storeId);
                                 if (result?.Data != null)
                                 {
@@ -210,7 +213,10 @@ namespace VS_Mart_Backend.Services
                             {
                                 _logger.LogWarning(ex, "CacheWarmerService: Error checking counter status for active store {StoreId}", storeId);
                             }
-                        }
+                        });
+
+                        // Wait for all stores to finish — total time = slowest single query (not sum)
+                        await Task.WhenAll(tasks);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
