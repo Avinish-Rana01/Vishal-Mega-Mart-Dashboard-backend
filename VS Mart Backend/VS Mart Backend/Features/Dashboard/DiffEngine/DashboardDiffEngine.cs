@@ -194,6 +194,29 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             Percentage = newPct,
                             StoreName = storeName
                         };
+
+                        var patch = new LiveStockDeltaPatch
+                        {
+                            Type = "STOCK_DELTA",
+                            Timestamp = DateTime.UtcNow,
+                            StoreCode = storeCode,
+                            StoreName = storeName,
+                            DeltaRfid = newRfid,
+                            DeltaDiff = newDiff,
+                            NewRfidStock = newRfid,
+                            NewSapStock = newSap,
+                            NewDifference = newDiff,
+                            NewPercentage = newPct,
+                            SummaryDelta = new LiveStockSummaryDelta
+                            {
+                                TotalRfidDelta = currentTotalRfid - _lastTotalRfid,
+                                TotalDiffDelta = currentTotalDiff - _lastTotalDiff,
+                                NewTotalRfid = currentTotalRfid,
+                                NewTotalDiff = currentTotalDiff
+                            }
+                        };
+                        _logger.LogInformation("DashboardDiffEngine: LiveStock new store patch for {StoreCode}: RFID {NewRfid}", storeCode, newRfid);
+                        await _hubContext.Clients.All.SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
                     }
                 }
 
@@ -223,16 +246,23 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     foreach (var row in response.Items)
                     {
                         string refNo = GetString(row, "REF_NO");
+                        if (string.IsNullOrEmpty(refNo)) refNo = GetString(row, "Ref_ID");
                         string storeCode = GetString(row, "STORE_CODE");
                         string key = !string.IsNullOrEmpty(refNo) ? refNo : storeCode;
                         if (!string.IsNullOrEmpty(key))
                         {
+                            int netDiff = GetInt(row, "NET_DIFFERENCE");
+                            if (netDiff == 0 && row.ContainsKey("NET_DIFF")) netDiff = GetInt(row, "NET_DIFF");
+
+                            int noOfArticles = GetInt(row, "NO_OF_ARTICLES");
+                            if (noOfArticles == 0 && row.ContainsKey("NO_OF_ARTICLE")) noOfArticles = GetInt(row, "NO_OF_ARTICLE");
+
                             _cycleSnapshots[key] = new CycleSnapshot
                             {
                                 ScannedQty = GetInt(row, "SCANNED_QTY"),
                                 SystemStock = GetInt(row, "SYSTEM_STOCK"),
-                                NetDiff = GetInt(row, "NET_DIFF"),
-                                NoOfArticles = GetInt(row, "NO_OF_ARTICLE"),
+                                NetDiff = netDiff,
+                                NoOfArticles = noOfArticles,
                                 ShortQty = GetInt(row, "SHORT_QTY"),
                                 ExcessQty = GetInt(row, "EXCESS_QTY")
                             };
@@ -246,21 +276,27 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                 foreach (var row in response.Items)
                 {
                     string refNo = GetString(row, "REF_NO");
+                    if (string.IsNullOrEmpty(refNo)) refNo = GetString(row, "Ref_ID");
                     string storeCode = GetString(row, "STORE_CODE");
                     string key = !string.IsNullOrEmpty(refNo) ? refNo : storeCode;
                     if (string.IsNullOrEmpty(key)) continue;
 
                     int scannedQty = GetInt(row, "SCANNED_QTY");
                     int systemStock = GetInt(row, "SYSTEM_STOCK");
-                    int netDiff = GetInt(row, "NET_DIFF");
-                    int noOfArticles = GetInt(row, "NO_OF_ARTICLE");
+
+                    int netDiff = GetInt(row, "NET_DIFFERENCE");
+                    if (netDiff == 0 && row.ContainsKey("NET_DIFF")) netDiff = GetInt(row, "NET_DIFF");
+
+                    int noOfArticles = GetInt(row, "NO_OF_ARTICLES");
+                    if (noOfArticles == 0 && row.ContainsKey("NO_OF_ARTICLE")) noOfArticles = GetInt(row, "NO_OF_ARTICLE");
+
                     int shortQty = GetInt(row, "SHORT_QTY");
                     int excessQty = GetInt(row, "EXCESS_QTY");
                     string storeName = GetString(row, "STORE_NAME");
 
                     if (_cycleSnapshots.TryGetValue(key, out var oldSnap))
                     {
-                        if (oldSnap.ScannedQty != scannedQty || oldSnap.NetDiff != netDiff)
+                        if (oldSnap.ScannedQty != scannedQty || oldSnap.NetDiff != netDiff || oldSnap.ShortQty != shortQty || oldSnap.ExcessQty != excessQty || oldSnap.SystemStock != systemStock)
                         {
                             int deltaScanned = scannedQty - oldSnap.ScannedQty;
                             int deltaNetDiff = netDiff - oldSnap.NetDiff;
@@ -309,6 +345,30 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             ShortQty = shortQty,
                             ExcessQty = excessQty
                         };
+
+                        var patch = new CycleCountDeltaPatch
+                        {
+                            Type = "CYCLE_COUNT_DELTA",
+                            Timestamp = DateTime.UtcNow,
+                            RefNo = refNo,
+                            StoreCode = storeCode,
+                            StoreName = storeName,
+                            DeltaScannedQty = scannedQty,
+                            DeltaNetDiff = netDiff,
+                            NewScannedQty = scannedQty,
+                            NewSystemStock = systemStock,
+                            NewNetDifference = netDiff,
+                            NewNoOfArticles = noOfArticles,
+                            NewShortQty = shortQty,
+                            NewExcessQty = excessQty,
+                            SummaryDelta = new CycleCountSummaryDelta
+                            {
+                                RecordCount = recordCount,
+                                TotalRefNo = totalRefNo
+                            }
+                        };
+                        _logger.LogInformation("DashboardDiffEngine: CycleCount new entry patch for Key {Key}: Scanned {ScannedQty}", key, scannedQty);
+                        await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
                     }
                 }
             }
@@ -408,6 +468,29 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             DiffQty = diff,
                             DiffTillDate = tillDate
                         };
+
+                        var patch = new VendorDiscrepancyDeltaPatch
+                        {
+                            Type = "VENDOR_DISCREPANCY_DELTA",
+                            Timestamp = DateTime.UtcNow,
+                            VendorName = vendorName,
+                            VendorCode = vendorCode,
+                            DeltaScannedQty = scanned,
+                            DeltaDiffQty = diff,
+                            NewActualQty = actual,
+                            NewScannedQty = scanned,
+                            NewDifferenceQty = diff,
+                            NewDifferenceQtyTillDate = tillDate,
+                            SummaryDelta = new VendorDiscrepancySummaryDelta
+                            {
+                                TotalActualQty = summary?.ActualQty ?? 0,
+                                TotalScannedQty = summary?.ScannedQty ?? 0,
+                                TotalDifferenceQty = summary?.DifferenceQty ?? 0,
+                                TotalDifferenceTillDate = summary?.DifferenceQtyTillDate ?? 0
+                            }
+                        };
+                        _logger.LogInformation("DashboardDiffEngine: VendorDiscrepancy new entry patch for {Vendor}: Scanned {Scanned}", key, scanned);
+                        await _hubContext.Clients.All.SendAsync("ReceiveVendorDiscrepancyPatch", patch, cancellationToken);
                     }
                 }
             }
@@ -436,14 +519,19 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         if (string.IsNullOrEmpty(storeCode)) storeCode = GetString(row, "STORE_CODE");
                         if (!string.IsNullOrEmpty(storeCode))
                         {
+                            int huRec = GetInt(row, "HU_RECEIVED_QTY");
+                            int huVal = GetInt(row, "HU_VALIDATED_QTY");
+                            int pending = GetInt(row, "STORE_PENDING_QTY");
+                            if (pending == 0 && huRec > 0) pending = huRec - huVal;
+
                             _storeValidationSnapshots[storeCode] = new StoreValidationSnapshot
                             {
-                                HuReceived = GetInt(row, "HU_RECEIVED_QTY"),
-                                HuValidated = GetInt(row, "HU_VALIDATED_QTY"),
+                                HuReceived = huRec,
+                                HuValidated = huVal,
                                 HuWrong = GetInt(row, "HU_WRONG_QTY"),
                                 HhtValidate = GetInt(row, "HHT_VALIDATE_QTY"),
                                 Encoded = GetInt(row, "ENCODED_QTY"),
-                                StorePending = GetInt(row, "STORE_PENDING_QTY")
+                                StorePending = pending
                             };
                         }
                     }
@@ -458,16 +546,23 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     if (string.IsNullOrEmpty(storeCode)) continue;
 
                     string storeName = GetString(row, "StoreName");
+                    if (string.IsNullOrEmpty(storeName)) storeName = GetString(row, "STORE_NAME");
                     int huReceived = GetInt(row, "HU_RECEIVED_QTY");
                     int huValidated = GetInt(row, "HU_VALIDATED_QTY");
                     int huWrong = GetInt(row, "HU_WRONG_QTY");
                     int hhtValidate = GetInt(row, "HHT_VALIDATE_QTY");
                     int encoded = GetInt(row, "ENCODED_QTY");
                     int storePending = GetInt(row, "STORE_PENDING_QTY");
+                    if (storePending == 0 && huReceived > 0) storePending = huReceived - huValidated;
 
                     if (_storeValidationSnapshots.TryGetValue(storeCode, out var oldSnap))
                     {
-                        if (oldSnap.HuValidated != huValidated || oldSnap.HuWrong != huWrong || oldSnap.Encoded != encoded)
+                        if (oldSnap.HuReceived != huReceived ||
+                            oldSnap.HuValidated != huValidated ||
+                            oldSnap.HuWrong != huWrong ||
+                            oldSnap.HhtValidate != hhtValidate ||
+                            oldSnap.Encoded != encoded ||
+                            oldSnap.StorePending != storePending)
                         {
                             int deltaValidated = huValidated - oldSnap.HuValidated;
                             int deltaWrong = huWrong - oldSnap.HuWrong;
@@ -523,6 +618,35 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             Encoded = encoded,
                             StorePending = storePending
                         };
+
+                        var patch = new StoreValidationDeltaPatch
+                        {
+                            Type = "STORE_VALIDATION_DELTA",
+                            Timestamp = DateTime.UtcNow,
+                            StoreCode = storeCode,
+                            StoreName = storeName,
+                            DeltaHuValidated = huValidated,
+                            DeltaHuWrong = huWrong,
+                            DeltaHhtValidate = hhtValidate,
+                            DeltaEncoded = encoded,
+                            NewHuReceivedQty = huReceived,
+                            NewHuValidatedQty = huValidated,
+                            NewHuWrongQty = huWrong,
+                            NewHhtValidateQty = hhtValidate,
+                            NewEncodedQty = encoded,
+                            NewStorePendingQty = storePending,
+                            SummaryDelta = new StoreValidationSummaryDelta
+                            {
+                                TotalHuReceived = summary?.HuReceivedQty ?? 0,
+                                TotalHuValidated = summary?.HuValidatedQty ?? 0,
+                                TotalHuWrong = summary?.HuWrongQty ?? 0,
+                                TotalHhtValidate = summary?.HhtValidateQty ?? 0,
+                                TotalEncoded = summary?.EncodedQty ?? 0,
+                                TotalPending = (summary?.HuReceivedQty ?? 0) - (summary?.HuValidatedQty ?? 0)
+                            }
+                        };
+                        _logger.LogInformation("DashboardDiffEngine: StoreValidation new store patch for {StoreCode}: Validated {HuValidated}", storeCode, huValidated);
+                        await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
                     }
                 }
             }
@@ -685,6 +809,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     foreach (var row in response.Items)
                     {
                         string plant = GetString(row, "RECIVING_PLANT");
+                        if (string.IsNullOrEmpty(plant)) plant = GetString(row, "Reciving_Plant");
+                        if (string.IsNullOrEmpty(plant)) plant = GetString(row, "Store_Code");
                         if (!string.IsNullOrEmpty(plant))
                         {
                             _dcValidationSnapshots[plant] = new DcValidationSnapshot
@@ -702,6 +828,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                 foreach (var row in response.Items)
                 {
                     string plant = GetString(row, "RECIVING_PLANT");
+                    if (string.IsNullOrEmpty(plant)) plant = GetString(row, "Reciving_Plant");
+                    if (string.IsNullOrEmpty(plant)) plant = GetString(row, "Store_Code");
                     if (string.IsNullOrEmpty(plant)) continue;
 
                     string storeName = GetString(row, "STORE_NAME");
@@ -711,7 +839,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                     if (_dcValidationSnapshots.TryGetValue(plant, out var oldSnap))
                     {
-                        if (oldSnap.ProcessedHu != procHu || oldSnap.UnprocessedHu != unprocHu)
+                        if (oldSnap.ProcessedHu != procHu || oldSnap.UnprocessedHu != unprocHu || oldSnap.ProcessedArticleQty != procArt)
                         {
                             int deltaProc = procHu - oldSnap.ProcessedHu;
                             int deltaUnproc = unprocHu - oldSnap.UnprocessedHu;
@@ -754,6 +882,29 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             UnprocessedHu = unprocHu,
                             ProcessedArticleQty = procArt
                         };
+
+                        var patch = new DcValidationDeltaPatch
+                        {
+                            Type = "DC_VALIDATION_DELTA",
+                            Timestamp = DateTime.UtcNow,
+                            RecivingPlant = plant,
+                            StoreName = storeName,
+                            DeltaProcessedHu = procHu,
+                            DeltaUnprocessedHu = unprocHu,
+                            DeltaProcessedArticleQty = procArt,
+                            NewProcessedHu = procHu,
+                            NewUnprocessedHu = unprocHu,
+                            NewProcessedArticleQty = procArt,
+                            SummaryDelta = new DcValidationSummaryDelta
+                            {
+                                RecordCount = summary?.RecordCount ?? 0,
+                                TotalProcessedHu = summary?.ProcessedHu ?? 0,
+                                TotalUnprocessedHu = summary?.UnprocessedHu ?? 0,
+                                TotalProcessedArticleQty = summary?.ArticleQty ?? 0
+                            }
+                        };
+                        _logger.LogInformation("DashboardDiffEngine: DcValidation new plant patch for {Plant}: Processed HU {ProcHu}", plant, procHu);
+                        await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
                     }
                 }
             }

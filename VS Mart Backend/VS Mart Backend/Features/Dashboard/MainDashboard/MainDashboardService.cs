@@ -72,7 +72,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request)
+        public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -92,7 +92,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
@@ -152,7 +152,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return await QueryLiveStockFromDbAsync(request, userIdInt);
         }
 
-        public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request)
+        public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false)
         {
             int pageIndex = request.PageIndex > 0 ? request.PageIndex : 1;
             int pageSize = request.PageSize > 0 ? request.PageSize : 100;
@@ -208,7 +208,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     AvgTagPercentage = roundedAverage
                 };
                 return response;
-            });
+            }, forceRefresh);
         }
 
         private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)
@@ -250,7 +250,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request)
+        public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -274,7 +274,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryStoreDashboardFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
@@ -391,7 +391,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request)
+        public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -415,7 +415,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -503,7 +503,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request)
+        public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -527,7 +527,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -608,7 +608,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
+        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -632,7 +632,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -711,7 +711,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request)
+        public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -735,7 +735,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortType = request.SortType
                 };
                 return await QueryDcValidateFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             // 1. Super Admin or Warehouse Admin: both see company-wide master dataset instantly from RAM!
             if (profile.IsSuperAdmin || string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase))
@@ -883,7 +883,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request)
+        public async Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request, bool forceRefresh = false)
         {
             var profile = await GetUserProfileAsync(request.UserId);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
@@ -905,7 +905,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection
                 };
                 return await QueryCycleCountFromDbAsync(masterRequest, masterAdminId);
-            });
+            }, forceRefresh);
 
             if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
             {
@@ -949,7 +949,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return await QueryCycleCountFromDbAsync(request, userIdInt);
         }
 
-        public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request)
+        public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false)
         {
             try
             {
@@ -999,7 +999,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                         DifferenceQtyTillDate = parameters.Get<int?>("@HU_DIFF_TILL_DATE") ?? 0
                     };
                     return response;
-                });
+                }, forceRefresh);
             }
             catch (Exception)
             {
@@ -1007,7 +1007,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             }
         }
 
-        public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request)
+        public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request, bool forceRefresh = false)
         {
             try
             {
@@ -1040,7 +1040,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                         WarehouseCount = parameters.Get<int?>("@WHCOUNT") ?? 0
                     };
                     return response;
-                });
+                }, forceRefresh);
             }
             catch (Exception)
             {

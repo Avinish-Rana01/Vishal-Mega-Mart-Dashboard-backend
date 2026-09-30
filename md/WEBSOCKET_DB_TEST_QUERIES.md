@@ -35,23 +35,23 @@ PRINT '  TRIGGERING REAL-TIME WEBSOCKET DELTAS (ALL SECTIONS) ';
 PRINT '=======================================================';
 BEGIN TRANSACTION;
 
--- 1. LIVE STOCK DASHBOARD (Simulate 5 tags checked out / sold from HD44)
+-- 1. LIVE STOCK DASHBOARD (Simulate 5 tags checked out / sold from HD55)
 UPDATE TOP (5) dbo.tbl_Encoding_Dtl 
 SET Is_Status = '0' 
-WHERE STORE_ID = 6 AND Is_Status = '1';
-PRINT '>>> 1. Live Stock: 5 tags subtracted from Store HD44.';
+WHERE STORE_ID = 1 AND Is_Status = '1' AND IsNull(Is_HU_GRC_Flg,0) = 1;
+PRINT '>>> 1. Live Stock: 5 tags subtracted from Store HD55.';
 
--- 2. STORE VALIDATION (De-validate HU 4000827011 for Store HD55)
+-- 2. STORE VALIDATION (De-validate latest HU for Store HD55)
 UPDATE dbo.tbl_GRC_DETAILS 
 SET Is_Status = 0 
-WHERE STORE_CODE = 'HD55' AND HU = '4000827011';
-PRINT '>>> 2. Store Validation: HU 4000827011 marked as Unvalidated for HD55.';
+WHERE STORE_CODE = 'HD55' AND HU = '1303696170';
+PRINT '>>> 2. Store Validation: HU 1303696170 marked as Unvalidated for HD55.';
 
--- 3. CYCLE COUNT (Add +5 to physical scanned quantity on active audit)
+-- 3. CYCLE COUNT (Add +5 to physical scanned quantity on latest active audit)
 UPDATE TOP (1) dbo.tbl_Cycle_count_Dtl 
 SET Scanned_Qty = Scanned_Qty + 5 
-WHERE Ref_ID = '20260909024154' AND Site_Code = 'HD55';
-PRINT '>>> 3. Cycle Count: +5 Scanned Qty added to audit Ref 20260909024154.';
+WHERE Ref_ID = '20260925074454' AND Site_Code = 'HD55';
+PRINT '>>> 3. Cycle Count: +5 Scanned Qty added to audit Ref 20260925074454.';
 
 -- 4. DC VALIDATION (Mark outward HU 1229042922 for Plant HD55 as Unprocessed)
 UPDATE dbo.tbl_SAP_DC_Outward_Dtl 
@@ -96,23 +96,23 @@ PRINT '  REVERTING ALL DASHBOARD CHANGES TO PRISTINE BASELINE ';
 PRINT '=======================================================';
 BEGIN TRANSACTION;
 
--- 1. RESTORE LIVE STOCK (Re-enable the 5 tags for HD44)
+-- 1. RESTORE LIVE STOCK (Re-enable the 5 tags for HD55)
 UPDATE TOP (5) dbo.tbl_Encoding_Dtl 
 SET Is_Status = '1' 
-WHERE STORE_ID = 6 AND Is_Status = '0';
-PRINT '>>> 1. Live Stock: 5 tags restored for Store HD44.';
+WHERE STORE_ID = 1 AND Is_Status = '0' AND IsNull(Is_HU_GRC_Flg,0) = 1;
+PRINT '>>> 1. Live Stock: 5 tags restored for Store HD55.';
 
--- 2. RESTORE STORE VALIDATION (Re-validate HU 4000827011 for Store HD55)
+-- 2. RESTORE STORE VALIDATION (Re-validate latest HU for Store HD55)
 UPDATE dbo.tbl_GRC_DETAILS 
 SET Is_Status = 1 
-WHERE STORE_CODE = 'HD55' AND HU = '4000827011';
-PRINT '>>> 2. Store Validation: HU 4000827011 re-validated for HD55.';
+WHERE STORE_CODE = 'HD55' AND HU = '1303696170';
+PRINT '>>> 2. Store Validation: HU 1303696170 re-validated for HD55.';
 
 -- 3. RESTORE CYCLE COUNT (Subtract the 5 test scanned items)
 UPDATE TOP (1) dbo.tbl_Cycle_count_Dtl 
 SET Scanned_Qty = Scanned_Qty - 5 
-WHERE Ref_ID = '20260909024154' AND Site_Code = 'HD55';
-PRINT '>>> 3. Cycle Count: Scanned Qty restored for audit Ref 20260909024154.';
+WHERE Ref_ID = '20260925074454' AND Site_Code = 'HD55';
+PRINT '>>> 3. Cycle Count: Scanned Qty restored for audit Ref 20260925074454.';
 
 -- 4. RESTORE DC VALIDATION (Mark outward HU 1229042922 back to Processed)
 UPDATE dbo.tbl_SAP_DC_Outward_Dtl 

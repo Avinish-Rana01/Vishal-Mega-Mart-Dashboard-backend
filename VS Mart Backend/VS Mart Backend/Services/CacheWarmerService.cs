@@ -56,65 +56,65 @@ namespace VS_Mart_Backend.Services
                         string superAdminIdStr = superAdminId.ToString();
 
                         // 1. LiveStock
-                        var liveStockRequest = new LiveStockQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100 };
-                        var liveStockData = await liveStockService.GetLiveStockDetailsAsync(liveStockRequest);
+                        var liveStockRequest = new LiveStockQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                        var liveStockData = await liveStockService.GetLiveStockDetailsAsync(liveStockRequest, forceRefresh: true);
                         await _diffEngine.ProcessLiveStockDiffAsync(liveStockData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 2. Cycle Count
-                        var cycleCountRequest = new CycleCountDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100, SortColumn = "STORE CODE", SortDirection = "ASC" };
-                        var cycleCountData = await liveStockService.GetCycleCountDashboardAsync(cycleCountRequest);
+                        var cycleCountRequest = new CycleCountDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "STORE CODE", SortDirection = "ASC" };
+                        var cycleCountData = await liveStockService.GetCycleCountDashboardAsync(cycleCountRequest, forceRefresh: true);
                         await _diffEngine.ProcessCycleCountDiffAsync(cycleCountData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 3. Vendor HU Discrepancy
-                        var vendorHuRequest = new VendorHUDiscrepancyQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100, SortColumn = "DIFF_TILL_DATE", SortDirection = "asc" };
-                        var vendorHuData = await liveStockService.GetVendorHUDiscrepancyAsync(vendorHuRequest);
+                        var vendorHuRequest = new VendorHUDiscrepancyQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "DIFF_TILL_DATE", SortDirection = "asc" };
+                        var vendorHuData = await liveStockService.GetVendorHUDiscrepancyAsync(vendorHuRequest, forceRefresh: true);
                         await _diffEngine.ProcessVendorDiscrepancyDiffAsync(vendorHuData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 4. Tag Management
                         var tagRequest = new TagManagementQueryRequest();
-                        var tagData = await liveStockService.GetTagManagementDataAsync(tagRequest);
+                        var tagData = await liveStockService.GetTagManagementDataAsync(tagRequest, forceRefresh: true);
                         await _diffEngine.ProcessTagManagementDiffAsync(tagData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 5. Warehouse Encoding
                         var encodeRequest = new WarehouseEncodingQueryRequest { FromDate = DateTime.Now.ToString("yyyy-MM-dd"), ToDate = DateTime.Now.ToString("yyyy-MM-dd") };
                         var encodeData = await liveStockService.GetWarehouseEncodingDataAsync(encodeRequest, forceRefresh: true);
                         await _diffEngine.ProcessWarehouseEncodingDiffAsync(encodeData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 6. Store Validation / Dashboard
-                        var storeDashboardRequest = new StoreDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100, SortColumn = "Store", SortDirection = "asc" };
-                        var storeDashboardData = await liveStockService.GetStoreDashboardAsync(storeDashboardRequest);
+                        var storeDashboardRequest = new StoreDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "Store", SortDirection = "asc" };
+                        var storeDashboardData = await liveStockService.GetStoreDashboardAsync(storeDashboardRequest, forceRefresh: true);
                         await _diffEngine.ProcessStoreValidationDiffAsync(storeDashboardData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 7. Sale Dashboard
-                        var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100 };
-                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest);
-                        await Task.Delay(500, stoppingToken);
+                        var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                        await liveStockService.GetSaleDashboardAsync(saleDashboardRequest, forceRefresh: true);
+                        await Task.Delay(300, stoppingToken);
 
                         // 8. Void Dashboard
-                        var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100 };
-                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest);
-                        await Task.Delay(500, stoppingToken);
+                        var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                        await liveStockService.GetVoidDashboardAsync(voidDashboardRequest, forceRefresh: true);
+                        await Task.Delay(300, stoppingToken);
 
                         // 9. Return Dashboard
-                        var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 100 };
-                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest);
-                        await Task.Delay(500, stoppingToken);
+                        var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                        await liveStockService.GetReturnDashboardAsync(returnDashboardRequest, forceRefresh: true);
+                        await Task.Delay(300, stoppingToken);
 
                         // 10. DC Validation
-                        var dcValidateRequest = new DcValidateDashboardQueryRequest { UserId = superAdminIdStr, PageIndex = 1, PageSize = 100 };
-                        var dcValidateData = await liveStockService.GetDcValidateDashboardAsync(dcValidateRequest);
+                        var dcValidateRequest = new DcValidateDashboardQueryRequest { UserId = superAdminIdStr, PageIndex = 1, PageSize = 1000 };
+                        var dcValidateData = await liveStockService.GetDcValidateDashboardAsync(dcValidateRequest, forceRefresh: true);
                         await _diffEngine.ProcessDcValidationDiffAsync(dcValidateData, stoppingToken);
-                        await Task.Delay(500, stoppingToken);
+                        await Task.Delay(300, stoppingToken);
 
                         // 11. Tag Cycle Count
-                        var tagCycleCountRequest = new TagCycleCountQueryRequest { SearchTerm = "", PageIndex = 1, PageSize = 100, SortColumn = "CYCLE_COUNT", SortDirection = "DESC" };
-                        await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest);
+                        var tagCycleCountRequest = new TagCycleCountQueryRequest { SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "CYCLE_COUNT", SortDirection = "DESC" };
+                        await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest, forceRefresh: true);
 
                         TotalRuns++;
                         LastRunTime = DateTime.Now;
