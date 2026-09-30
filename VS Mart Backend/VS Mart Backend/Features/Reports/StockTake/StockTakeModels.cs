@@ -1,4 +1,4 @@
-﻿namespace VS_Mart_Backend.Features.Reports.StockTake
+namespace VS_Mart_Backend.Features.Reports.StockTake
 {
     public class StockTakeModels
     {
@@ -24,9 +24,14 @@
         public int RecordCount { get; set; }
         public int TotalCount { get; set; }
 
+        public int NoOfArticles { get; set; }
         public int ActualQty { get; set; }
+        public int SystemStock { get; set; }
         public int ScannedQty { get; set; }
+        public int ScannedStock { get; set; }
+        public int NetDifference { get; set; }
         public int DifferenceQty { get; set; }
+        public int ShortQty { get; set; }
         public int ExcessQty { get; set; }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Globalization;
@@ -29,90 +29,75 @@ namespace VS_Mart_Backend.Features.Reports.StockTake
 
                 if (!string.IsNullOrWhiteSpace(request.FromDate))
                 {
-                    string fromDateValue = request.FromDate.Trim('"');
-                    fromDate = DateTime.ParseExact(fromDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    string fromDateValue = request.FromDate.Trim('"').Trim();
+                    if (DateTime.TryParse(fromDateValue, out var parsedFrom))
+                        fromDate = parsedFrom;
                 }
 
                 if (!string.IsNullOrWhiteSpace(request.ToDate))
                 {
-                    string toDateValue = request.ToDate.Trim('"');
-                    toDate = DateTime.ParseExact(toDateValue, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    string toDateValue = request.ToDate.Trim('"').Trim();
+                    if (DateTime.TryParse(toDateValue, out var parsedTo))
+                        toDate = parsedTo;
                 }
 
+                int pageIndex = request.PageIndex < 1 ? 1 : request.PageIndex;
+                int pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
                 var parameters = new DynamicParameters();
 
                 parameters.Add("@status", "VIEW_STOCK_TAKE_REPORT", DbType.String);
-
                 parameters.Add("@USER_ID", userId, DbType.Int32);
-
                 parameters.Add("@Store_code", request.StoreCode ?? "", DbType.String);
-
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
-
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-
+                parameters.Add("@PageIndex", pageIndex, DbType.Int32);
+                parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@fromdate", fromDate, DbType.Date);
-
                 parameters.Add("@todate", toDate, DbType.Date);
-
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "REF_NO" : request.SortColumn, DbType.String);
-
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
 
                 // Output parameters
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@SCANQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@Excess_Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
 
                 // Execute stored procedure
                 var data = await connection.QueryAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure);
 
-
                 // Read output parameters
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
-
                 int totalCount = parameters.Get<int?>("@TotalCount") ?? 0;
-
                 int actualQty = parameters.Get<int?>("@ACTUALQTY") ?? 0;
-
                 int scannedQty = parameters.Get<int?>("@SCANQTY") ?? 0;
-
                 int excessQty = parameters.Get<int?>("@Excess_Qty") ?? 0;
-
                 int differenceQty = parameters.Get<int?>("@DIFFQTY") ?? 0;
-
 
                 return new StockTakeResponse
                 {
                     Data = data,
-
-                    PageIndex = request.PageIndex,
+                    PageIndex = pageIndex,
                     RecordCount = recordCount,
                     TotalCount = totalCount,
-
+                    NoOfArticles = totalCount,
                     ActualQty = actualQty,
+                    SystemStock = actualQty,
                     ScannedQty = scannedQty,
+                    ScannedStock = scannedQty,
+                    NetDifference = scannedQty - actualQty,
                     DifferenceQty = differenceQty,
+                    ShortQty = differenceQty,
                     ExcessQty = excessQty
                 };
             }
             catch (Exception ex)
             {
-                return new StockTakeResponse();
+                _logger.LogError(ex, "Error while getting Stock Take data: {Message}", ex.Message);
+                throw;
             }
-
         }
 
     }
