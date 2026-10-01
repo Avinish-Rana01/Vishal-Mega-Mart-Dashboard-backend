@@ -39,9 +39,27 @@ namespace VS_Mart_Backend.Features.Reports
                     Message = "An internal server error occurred while executing the GetTagCleaningReport operation."
                 });
             }
-            
-            
 
+        }
+
+        [HttpPost("GetTagCleaningData")]
+        public async Task<IActionResult> GetTagCleaningData([FromBody] TagCleaningRequest request)
+        {
+            try
+            {
+                var result = await _tagCleaningService.GetTagCleaningDataAsync(request);
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        message = "Error while fetching Tag Cleaning data.",
+                        error = ex.Message
+                    });
+            }
         }
     }
 }

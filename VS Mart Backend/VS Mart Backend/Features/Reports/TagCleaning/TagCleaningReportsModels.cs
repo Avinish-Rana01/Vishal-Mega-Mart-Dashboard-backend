@@ -33,4 +33,40 @@ namespace VS_Mart_Backend.Features.Reports
         public int? TOTAL_VALIDATED_QTY { get; set; }
         public int? TOTAL_CLEANED_QTY { get; set; }
     }
+
+    public class TagCleaningRequest
+    {
+        public string? SearchTerm { get; set; }
+        public int PageIndex { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? FromDate { get; set; }
+        public string? ToDate { get; set; }
+        public string? SortColumn { get; set; }
+        public string? SortDirection { get; set; }
+    }
+
+    public class TagCleaningData
+    {
+        // Add the actual columns returned by TAG_CLEANING_REPORT
+
+        public string? EPC { get; set; }
+        public string? STORE_NAME { get; set; }
+        public string? INWARD_DATE { get; set; }
+
+        // Add remaining SP columns here
+    }
+
+    public class TagCleaningPager
+    {
+        public int PageIndex { get; set; }
+        public int RecordCount { get; set; }
+        public int TotalCount { get; set; }
+        public int TagValidatedCount { get; set; }
+    }
+
+    public class TagCleaningResponse
+    {
+        public List<TagCleaningData> Data { get; set; } = new();
+        public TagCleaningPager Pager { get; set; } = new();
+    }
 }

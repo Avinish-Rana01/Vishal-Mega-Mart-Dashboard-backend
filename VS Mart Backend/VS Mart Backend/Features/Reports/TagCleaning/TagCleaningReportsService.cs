@@ -78,6 +78,72 @@ namespace VS_Mart_Backend.Features.Reports
             }
         }
 
+        public async Task<TagCleaningResponse> GetTagCleaningDataAsync(TagCleaningRequest request)
+        {
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+
+                var parameters = new DynamicParameters();
+
+                parameters.Add("@status", "TAG_CLEANING_REPORT", DbType.String);
+
+                parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
+
+                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
+
+                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
+
+                parameters.Add("@fromdate", request.FromDate ?? "", DbType.Date);
+
+                parameters.Add("@todate", request.ToDate ?? "", DbType.Date);
+
+                parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "INWARD_DATE" : request.SortColumn, DbType.String);
+
+                parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
+
+                // Output parameters
+                parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                parameters.Add("@TAG_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+
+                using var multi = await connection.QueryMultipleAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
+
+
+                var data = (await multi.ReadAsync<TagCleaningData>()).ToList();
+
+
+                int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
+
+                int totalCount = parameters.Get<int?>("@TotalCount") ?? 0;
+
+                int tagValidatedCount = parameters.Get<int?>("@TAG_VALIDATED_QTY") ?? 0;
+
+
+                return new TagCleaningResponse
+                {
+                    Data = data,
+
+                    Pager = new TagCleaningPager
+                    {
+                        PageIndex = request.PageIndex,
+                        RecordCount = recordCount,
+                        TotalCount = totalCount,
+                        TagValidatedCount = tagValidatedCount
+                    }
+                };
+            }
+            catch(Exception ex)
+            {
+                return new TagCleaningResponse();
+            }
+
+            
+        }
+
 
         //public async Task<List<TagCleaningReportModel>> GetTagCleaningExportDataAsync(TagCleaningReportRequest request)
         //{
