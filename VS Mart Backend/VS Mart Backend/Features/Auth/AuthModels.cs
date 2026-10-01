@@ -21,4 +21,18 @@ namespace VS_Mart_Backend.Features.Auth
         public string? WarehouseCode { get; set; }
         public List<string> AllowedSections { get; set; } = new();
     }
+
+    public class ChangePasswordRequest
+    {
+        public string? UserId { get; set; }
+        public string? UserName { get; set; }
+        public string? CurrentPassword { get; set; }
+        public string? NewPassword { get; set; }
+    }
+
+    public class ChangePasswordResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }

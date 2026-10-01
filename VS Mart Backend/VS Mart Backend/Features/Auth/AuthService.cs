@@ -70,37 +70,71 @@ WHERE u.User_Name = @User_Name
                 var row = (IDictionary<string, object>)items[0];
                 string userType = row.ContainsKey("User_Type") && row["User_Type"] != null ? row["User_Type"].ToString()!.Trim() : string.Empty;
 
-                if (userType == "Store" || userType == "Warehouse")
-                {
-                    throw new UnauthorizedAccessException("Forbidden user type");
-                }
-
                 string redirectPage = "Dashboard";
-                if (userType == "Dispatch Admin")
+                if (userType.Equals("Dispatch Admin", StringComparison.OrdinalIgnoreCase))
                     redirectPage = "Dispatch_Tracking";
-                else if (userType == "Tag Admin")
+                else if (userType.Equals("Tag Admin", StringComparison.OrdinalIgnoreCase))
                     redirectPage = "Tag_Cycle_Count";
 
                 var allowedSections = new List<string>();
-                switch (userType)
+                string normalizedRole = userType.Trim();
+
+                switch (normalizedRole)
                 {
                     case "Super Admin":
                         allowedSections.AddRange(new[] {
                             "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
-                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy"
+                            "store_counter_status", "get_sap_stock_take",
+                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy",
+                            "user_registration", "store_registration", "warehouse_registration", "tag_cleaning"
                         });
                         break;
 
                     case "Store Admin":
                         allowedSections.AddRange(new[] {
-                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return"
+                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "store_counter_status", "get_sap_stock_take", "user_registration"
+                        });
+                        break;
+
+                    case "Store User":
+                    case "Store":
+                        allowedSections.AddRange(new[] {
+                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "store_counter_status"
                         });
                         break;
 
                     case "Warehouse Admin":
+                    case "WH Admin":
                         allowedSections.AddRange(new[] {
-                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy"
+                            "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy",
+                            "user_registration"
                         });
+                        break;
+
+                    case "Warehouse User":
+                    case "Warehouse":
+                    case "WH":
+                    case "WH User":
+                        allowedSections.AddRange(new[] {
+                            "dc_validation", "dc_encoding"
+                        });
+                        break;
+
+                    case "Dispatch Admin":
+                        allowedSections.AddRange(new[] {
+                            "dc_validation", "dc_encoding", "tag_management"
+                        });
+                        break;
+
+                    case "Tag Admin":
+                        allowedSections.AddRange(new[] {
+                            "tag_management", "cycle_count", "tag_cleaning"
+                        });
+                        break;
+
+                    default:
                         break;
                 }
 
@@ -132,6 +166,84 @@ WHERE u.User_Name = @User_Name
                 {
                     Success = false,
                     Message = "An error occurred during login."
+                };
+            }
+        }
+
+        public async Task<ChangePasswordResponse> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                string uName = request.UserName?.Trim() ?? "";
+                string uId = request.UserId?.Trim() ?? "";
+                string currentPass = request.CurrentPassword?.Trim() ?? "";
+                string newPass = request.NewPassword?.Trim() ?? "";
+
+                if (string.IsNullOrEmpty(currentPass))
+                {
+                    return new ChangePasswordResponse { Success = false, Message = "Current password is required." };
+                }
+
+                if (string.IsNullOrEmpty(newPass) || newPass.Length < 3)
+                {
+                    return new ChangePasswordResponse { Success = false, Message = "New password must be at least 3 characters long." };
+                }
+
+                if (currentPass == newPass)
+                {
+                    return new ChangePasswordResponse { Success = false, Message = "New password cannot be identical to the current password." };
+                }
+
+                if (string.IsNullOrEmpty(uName) && string.IsNullOrEmpty(uId))
+                {
+                    return new ChangePasswordResponse { Success = false, Message = "User identifier is required." };
+                }
+
+                using var connection = new SqlConnection(_connectionString);
+
+                const string updateSql = @"
+UPDATE dbo.User_Registration
+SET Password = @NewPassword,
+    Modify_Date = GETDATE()
+WHERE (User_Name = @UserName OR (@UserId <> '' AND User_ID = @UserId))
+  AND Password = @CurrentPassword
+  AND (Is_Status = 1 OR Is_Status IS NULL);";
+
+                var cmd = new CommandDefinition(
+                    updateSql,
+                    new { NewPassword = newPass, UserName = uName, UserId = uId, CurrentPassword = currentPass },
+                    cancellationToken: cancellationToken
+                );
+
+                int rowsAffected = await connection.ExecuteAsync(cmd);
+
+                if (rowsAffected == 0)
+                {
+                    return new ChangePasswordResponse
+                    {
+                        Success = false,
+                        Message = "Current password is incorrect or user account is not active."
+                    };
+                }
+
+                // Invalidate any cached login entries for this user
+                if (!string.IsNullOrEmpty(uName))
+                {
+                    _cache.Remove($"auth_{uName.ToLowerInvariant()}_{currentPass}");
+                }
+
+                return new ChangePasswordResponse
+                {
+                    Success = true,
+                    Message = "Password changed successfully."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ChangePasswordResponse
+                {
+                    Success = false,
+                    Message = $"An error occurred while changing password: {ex.Message}"
                 };
             }
         }

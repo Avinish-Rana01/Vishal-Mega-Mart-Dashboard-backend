@@ -44,5 +44,32 @@ namespace VS_Mart_Backend.Features.Auth
                 return StatusCode(500, "An error occurred during authentication.");
             }
         }
+
+        [HttpPost("/api/Auth/change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var response = await _authService.ChangePasswordAsync(request, cancellationToken);
+                if (!response.Success)
+                {
+                    return BadRequest(response);
+                }
+                return Ok(response);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499, "Client Closed Request");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during password change.");
+                return StatusCode(500, new ChangePasswordResponse
+                {
+                    Success = false,
+                    Message = "An error occurred while changing password."
+                });
+            }
+        }
     }
 }
