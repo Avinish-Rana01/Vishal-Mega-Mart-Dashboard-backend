@@ -82,51 +82,54 @@ namespace VS_Mart_Backend.Features.Reports
         {
             try
             {
+                request ??= new TagCleaningRequest();
+
+                DateTime? fromDate = null;
+                DateTime? toDate = null;
+
+                if (!string.IsNullOrWhiteSpace(request.FromDate))
+                {
+                    string fromVal = request.FromDate.Trim('"').Trim();
+                    if (DateTime.TryParse(fromVal, out var parsedFrom))
+                        fromDate = parsedFrom;
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ToDate))
+                {
+                    string toVal = request.ToDate.Trim('"').Trim();
+                    if (DateTime.TryParse(toVal, out var parsedTo))
+                        toDate = parsedTo;
+                }
+
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
 
                 parameters.Add("@status", "TAG_CLEANING_REPORT", DbType.String);
-
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
-
-                parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-
-                parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-
-                parameters.Add("@fromdate", request.FromDate ?? "", DbType.Date);
-
-                parameters.Add("@todate", request.ToDate ?? "", DbType.Date);
-
+                parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
+                parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
+                parameters.Add("@fromdate", fromDate, DbType.Date);
+                parameters.Add("@todate", toDate, DbType.Date);
                 parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "INWARD_DATE" : request.SortColumn, DbType.String);
-
                 parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
 
                 // Output parameters
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@TAG_VALIDATED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
 
                 using var multi = await connection.QueryMultipleAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
 
-
                 var data = (await multi.ReadAsync<TagCleaningData>()).ToList();
 
-
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
-
                 int totalCount = parameters.Get<int?>("@TotalCount") ?? 0;
-
                 int tagValidatedCount = parameters.Get<int?>("@TAG_VALIDATED_QTY") ?? 0;
-
 
                 return new TagCleaningResponse
                 {
                     Data = data,
-
                     Pager = new TagCleaningPager
                     {
                         PageIndex = request.PageIndex,
@@ -136,12 +139,11 @@ namespace VS_Mart_Backend.Features.Reports
                     }
                 };
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error while getting Tag Cleaning Data: {Message}", ex.Message);
                 return new TagCleaningResponse();
             }
-
-            
         }
 
 

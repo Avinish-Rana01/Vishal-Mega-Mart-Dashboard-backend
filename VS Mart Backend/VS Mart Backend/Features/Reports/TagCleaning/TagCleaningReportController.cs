@@ -42,17 +42,39 @@ namespace VS_Mart_Backend.Features.Reports
 
         }
 
-        [HttpPost("GetTagCleaningData")]
-        public async Task<IActionResult> GetTagCleaningData([FromBody] TagCleaningRequest request)
+        [HttpGet("GetTagCleaningData")]
+        public async Task<IActionResult> GetTagCleaningData([FromQuery] TagCleaningRequest request)
         {
             try
             {
-                var result = await _tagCleaningService.GetTagCleaningDataAsync(request);
+                var result = await _tagCleaningService.GetTagCleaningDataAsync(request ?? new TagCleaningRequest());
 
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error while fetching Tag Cleaning data.");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        message = "Error while fetching Tag Cleaning data.",
+                        error = ex.Message
+                    });
+            }
+        }
+
+        [HttpPost("GetTagCleaningData")]
+        public async Task<IActionResult> PostTagCleaningData([FromBody] TagCleaningRequest request)
+        {
+            try
+            {
+                var result = await _tagCleaningService.GetTagCleaningDataAsync(request ?? new TagCleaningRequest());
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while fetching Tag Cleaning data via POST.");
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new
                     {

@@ -47,13 +47,12 @@ namespace VS_Mart_Backend.Features.Reports
 
     public class TagCleaningData
     {
-        // Add the actual columns returned by TAG_CLEANING_REPORT
-
-        public string? EPC { get; set; }
+        public long? RowNumber { get; set; }
+        public long? SR_NO => RowNumber;
         public string? STORE_NAME { get; set; }
-        public string? INWARD_DATE { get; set; }
-
-        // Add remaining SP columns here
+        public DateTime? INWARD_DATE { get; set; }
+        public int? TOTAL_COUNT { get; set; }
+        public string? EPC { get; set; }
     }
 
     public class TagCleaningPager
