@@ -12,6 +12,10 @@ using VS_Mart_Backend.Features.MainDashboard;
 
 namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 {
+    /// <summary>
+    /// Computes in-memory delta snapshots across all dashboard modules and broadcasts
+    /// real-time micro-patch updates to connected SignalR dashboard clients.
+    /// </summary>
     public class DashboardDiffEngine : IDashboardDiffEngine
     {
         private readonly IHubContext<DashboardHub> _hubContext;
