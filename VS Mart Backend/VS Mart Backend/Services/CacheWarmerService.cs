@@ -8,6 +8,10 @@ using VS_Mart_Backend.Features.MainDashboard;
 
 namespace VS_Mart_Backend.Services
 {
+    /// <summary>
+    /// Background service responsible for pre-warming in-memory dashboard caches
+    /// and running periodic difference checks across active store modules.
+    /// </summary>
     public class CacheWarmerService : BackgroundService
     {
         public static int TotalRuns { get; private set; } = 0;
