@@ -160,8 +160,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "DESC" : request.SortDirection;
             string searchTerm = request.SearchTerm ?? "";
 
-            string cacheKey = $"TagCycleCount_{searchTerm.Trim().ToLowerInvariant()}_{pageIndex}_{pageSize}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}";
-            return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+            string masterCacheKey = $"TagCycleCount_Master_{searchTerm.Trim().ToLowerInvariant()}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}";
+            var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
             {
                 var response = new TagCycleCountResponse();
                 using var connection = new SqlConnection(_connectionString);
@@ -169,8 +169,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                 parameters.Add("@status", "TAG_CYCLE_COUNT", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", searchTerm, DbType.String, size: 200);
-                parameters.Add("@PageIndex", pageIndex, DbType.Int32);
-                parameters.Add("@PageSize", pageSize, DbType.Int32);
+                parameters.Add("@PageIndex", 1, DbType.Int32);
+                parameters.Add("@PageSize", 1000, DbType.Int32);
                 parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
                 parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
 
@@ -209,6 +209,23 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
                 return response;
             }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
+
+            if (pageIndex == 1 && (pageSize >= masterData.Items.Count || pageSize == 1000))
+            {
+                return masterData;
+            }
+
+            var pagedItems = masterData.Items
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new TagCycleCountResponse
+            {
+                Items = pagedItems,
+                Distribution = masterData.Distribution,
+                Summary = masterData.Summary
+            };
         }
 
         private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)
@@ -961,8 +978,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 string searchTerm = request.SearchTerm ?? "";
 
                 // Shared master cache key across all roles (Vendor discrepancy is company-wide by vendor)
-                string cacheKey = $"VendorHUDiscrepancy_Master_{searchTerm.Trim().ToLowerInvariant()}_{pageIndex}_{pageSize}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}_{sortType.Trim().ToLowerInvariant()}";
-                return await GetOrCreateWithSWRAsync(cacheKey, async () =>
+                string masterCacheKey = $"VendorHUDiscrepancy_Master_{searchTerm.Trim().ToLowerInvariant()}_{sortCol.Trim().ToLowerInvariant()}_{sortDir.Trim().ToLowerInvariant()}_{sortType.Trim().ToLowerInvariant()}";
+                var masterData = await GetOrCreateWithSWRAsync(masterCacheKey, async () =>
                 {
                     var response = new VendorHUDiscrepancyResponse();
                     using var connection = new SqlConnection(_connectionString);
@@ -973,8 +990,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     parameters.Add("@Status", "HU_DISCREPANCY_VENDOR_DASHBOARD", DbType.String, size: 50);
                     parameters.Add("@SearchTerm", searchTerm, DbType.String, size: 200);
-                    parameters.Add("@PageIndex", pageIndex, DbType.Int32);
-                    parameters.Add("@PageSize", pageSize, DbType.Int32);
+                    parameters.Add("@PageIndex", 1, DbType.Int32);
+                    parameters.Add("@PageSize", 1000, DbType.Int32);
                     parameters.Add("@USER_ID", userId, DbType.Int32);
                     parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
                     parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
@@ -991,7 +1008,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     response.Summary = new VendorHUDiscrepancySummary
                     {
-                        PageIndex = pageIndex,
+                        PageIndex = 1,
                         RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
                         ActualQty = parameters.Get<int?>("@HU_DIS_ACTUALQTY") ?? 0,
                         ScannedQty = parameters.Get<int?>("@HU_DIS_SCANNEDQTY") ?? 0,
@@ -1000,6 +1017,22 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     };
                     return response;
                 }, forceRefresh);
+
+                if (pageIndex == 1 && (pageSize >= masterData.Items.Count || pageSize == 1000))
+                {
+                    return masterData;
+                }
+
+                var pagedItems = masterData.Items
+                    .Skip((pageIndex - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                return new VendorHUDiscrepancyResponse
+                {
+                    Items = pagedItems,
+                    Summary = masterData.Summary
+                };
             }
             catch (Exception)
             {
