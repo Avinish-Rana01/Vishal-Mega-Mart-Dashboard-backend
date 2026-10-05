@@ -26,6 +26,7 @@
             public int NewSapStock { get; set; }
             public int NewDifference { get; set; }
             public decimal NewPercentage { get; set; }
+            public bool IsRemoved { get; set; } = false;
             public LiveStockSummaryDelta? SummaryDelta { get; set; }
         }
 
@@ -53,6 +54,7 @@
             public int NewNoOfArticles { get; set; }
             public int NewShortQty { get; set; }
             public int NewExcessQty { get; set; }
+            public bool IsRemoved { get; set; } = false;
             public CycleCountSummaryDelta? SummaryDelta { get; set; }
         }
 
@@ -85,6 +87,7 @@
             public int NewHhtValidateQty { get; set; }
             public int NewEncodedQty { get; set; }
             public int NewStorePendingQty { get; set; }
+            public bool IsRemoved { get; set; } = false;
             public StoreValidationSummaryDelta? SummaryDelta { get; set; }
         }
 
@@ -166,6 +169,7 @@
             public int NewProcessedHu { get; set; }
             public int NewUnprocessedHu { get; set; }
             public int NewProcessedArticleQty { get; set; }
+            public bool IsRemoved { get; set; } = false;
             public DcValidationSummaryDelta? SummaryDelta { get; set; }
         }
 

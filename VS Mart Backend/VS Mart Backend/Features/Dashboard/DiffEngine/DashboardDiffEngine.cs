@@ -233,6 +233,35 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     }
                 }
 
+                // Check for removed / deactivated stores
+                var currentLiveStockStores = new HashSet<string>(
+                    response.Items.Select(r => GetString(r, "STORE_CODE") ?? GetString(r, "Store_Code"))
+                        .Where(s => !string.IsNullOrEmpty(s))!,
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                var removedLiveStockStores = _liveStockSnapshots.Keys.Where(k => !currentLiveStockStores.Contains(k)).ToList();
+                foreach (var removedStore in removedLiveStockStores)
+                {
+                    _liveStockSnapshots.TryRemove(removedStore, out _);
+                    var removePatch = new LiveStockDeltaPatch
+                    {
+                        Type = "STOCK_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = removedStore,
+                        IsRemoved = true,
+                        SummaryDelta = new LiveStockSummaryDelta
+                        {
+                            TotalRfidDelta = currentTotalRfid - _lastTotalRfid,
+                            TotalDiffDelta = currentTotalDiff - _lastTotalDiff,
+                            NewTotalRfid = currentTotalRfid,
+                            NewTotalDiff = currentTotalDiff
+                        }
+                    };
+                    _logger.LogInformation("DashboardDiffEngine: LiveStock removed store patch for {StoreCode}", removedStore);
+                    await _hubContext.Clients.All.SendAsync("ReceiveLiveStockPatch", removePatch, cancellationToken);
+                }
+
                 _lastTotalRfid = currentTotalRfid;
                 _lastTotalDiff = currentTotalDiff;
             }
@@ -662,6 +691,40 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
                     }
                 }
+
+                // Check for removed / deactivated stores
+                var currentStoreValidationStores = new HashSet<string>(
+                    response.Items.Select(r => {
+                        string s = GetString(r, "Store");
+                        if (string.IsNullOrEmpty(s)) s = GetString(r, "STORE_CODE");
+                        return s;
+                    }).Where(s => !string.IsNullOrEmpty(s))!,
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                var removedStoreValidationStores = _storeValidationSnapshots.Keys.Where(k => !currentStoreValidationStores.Contains(k)).ToList();
+                foreach (var removedStore in removedStoreValidationStores)
+                {
+                    _storeValidationSnapshots.TryRemove(removedStore, out _);
+                    var removePatch = new StoreValidationDeltaPatch
+                    {
+                        Type = "STORE_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = removedStore,
+                        IsRemoved = true,
+                        SummaryDelta = new StoreValidationSummaryDelta
+                        {
+                            TotalHuReceived = summary?.HuReceivedQty ?? 0,
+                            TotalHuValidated = summary?.HuValidatedQty ?? 0,
+                            TotalHuWrong = summary?.HuWrongQty ?? 0,
+                            TotalHhtValidate = summary?.HhtValidateQty ?? 0,
+                            TotalEncoded = summary?.EncodedQty ?? 0,
+                            TotalPending = (summary?.HuReceivedQty ?? 0) - (summary?.HuValidatedQty ?? 0)
+                        }
+                    };
+                    _logger.LogInformation("DashboardDiffEngine: StoreValidation removed store patch for {StoreCode}", removedStore);
+                    await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", removePatch, cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -919,6 +982,39 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         _logger.LogInformation("DashboardDiffEngine: DcValidation new plant patch for {Plant}: Processed HU {ProcHu}", plant, procHu);
                         await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
                     }
+                }
+
+                // Check for removed / deactivated plants
+                var currentDcPlants = new HashSet<string>(
+                    response.Items.Select(r => {
+                        string p = GetString(r, "RECIVING_PLANT");
+                        if (string.IsNullOrEmpty(p)) p = GetString(r, "Reciving_Plant");
+                        if (string.IsNullOrEmpty(p)) p = GetString(r, "Store_Code");
+                        return p;
+                    }).Where(p => !string.IsNullOrEmpty(p))!,
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                var removedDcPlants = _dcValidationSnapshots.Keys.Where(k => !currentDcPlants.Contains(k)).ToList();
+                foreach (var removedPlant in removedDcPlants)
+                {
+                    _dcValidationSnapshots.TryRemove(removedPlant, out _);
+                    var removePatch = new DcValidationDeltaPatch
+                    {
+                        Type = "DC_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        RecivingPlant = removedPlant,
+                        IsRemoved = true,
+                        SummaryDelta = new DcValidationSummaryDelta
+                        {
+                            RecordCount = summary?.RecordCount ?? 0,
+                            TotalProcessedHu = summary?.ProcessedHu ?? 0,
+                            TotalUnprocessedHu = summary?.UnprocessedHu ?? 0,
+                            TotalProcessedArticleQty = summary?.ArticleQty ?? 0
+                        }
+                    };
+                    _logger.LogInformation("DashboardDiffEngine: DcValidation removed plant patch for {Plant}", removedPlant);
+                    await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", removePatch, cancellationToken);
                 }
             }
             catch (Exception ex)
