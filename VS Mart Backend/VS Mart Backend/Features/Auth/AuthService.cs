@@ -29,12 +29,6 @@ namespace VS_Mart_Backend.Features.Auth
             {
                 string uName = request.UserName?.Trim() ?? "";
                 string uPass = request.Password?.Trim() ?? "";
-                string cacheKey = $"auth_{uName.ToLowerInvariant()}_{uPass}";
-
-                if (_cache.TryGetValue(cacheKey, out LoginResponse? cached) && cached != null)
-                {
-                    return cached;
-                }
 
                 using var connection = new SqlConnection(_connectionString);
 
@@ -46,7 +40,8 @@ SELECT TOP 1
     wm.Wh_Name, 
     u.User_Type, 
     s.Store_Code, 
-    wm.Wh_Code 
+    wm.Wh_Code,
+    u.Is_Login_Status 
 FROM dbo.User_Registration u WITH (NOLOCK) 
 LEFT JOIN dbo.tbl_Store_Master s WITH (NOLOCK) ON u.Store_ID = s.Store_ID 
 LEFT JOIN dbo.tbl_Warehouse_Mst wm WITH (NOLOCK) ON u.WH_ID = wm.WH_ID 
@@ -138,6 +133,12 @@ WHERE u.User_Name = @User_Name
                         break;
                 }
 
+                string rawLoginStatus = row.ContainsKey("Is_Login_Status") && row["Is_Login_Status"] != null
+                    ? row["Is_Login_Status"].ToString()!.Trim()
+                    : "0";
+
+                bool requirePasswordChange = (rawLoginStatus == "0" || string.IsNullOrEmpty(rawLoginStatus));
+
                 var response = new LoginResponse
                 {
                     Success = true,
@@ -150,10 +151,11 @@ WHERE u.User_Name = @User_Name
                     StoreCode = row.ContainsKey("Store_Code") ? row["Store_Code"]?.ToString() ?? "" : "",
                     WarehouseCode = row.ContainsKey("WH_Code") ? row["WH_Code"]?.ToString() ?? "" : "",
                     AllowedSections = allowedSections,
-                    RedirectPage = redirectPage
+                    RedirectPage = redirectPage,
+                    RequirePasswordChange = requirePasswordChange,
+                    IsLoginStatus = rawLoginStatus
                 };
 
-                _cache.Set(cacheKey, response, TimeSpan.FromMinutes(10));
                 return response;
             }
             catch (UnauthorizedAccessException)
@@ -204,6 +206,7 @@ WHERE u.User_Name = @User_Name
                 const string updateSql = @"
 UPDATE dbo.User_Registration
 SET Password = @NewPassword,
+    Is_Login_Status = '1',
     Modify_Date = GETDATE()
 WHERE (User_Name = @UserName OR (@UserId <> '' AND User_ID = @UserId))
   AND Password = @CurrentPassword
