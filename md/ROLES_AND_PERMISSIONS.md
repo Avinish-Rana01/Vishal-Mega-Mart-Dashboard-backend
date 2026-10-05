@@ -58,7 +58,7 @@
 | **33** | `1001004` | `123` | Warehouse Admin | Central Distribution Hub |
 | **42** | `REPORT` | `123` | Warehouse Admin | Reporting & Analytics |
 | **43** | `WA1` | `123` | Warehouse Admin | Warehouse Admin Operations |
-| **45** | `d_admin` | `123` | Dispatch Admin | Gate pass, Outward DC Loading |
+| **45** | `d_admin` | `123` | Dispatch Admin | Exclusive access to Dispatch Tracking & Picklist Creation (isolated from Super Admin and store users) |
 | **48** | `t_admin` | `123` | Tag Admin | RFID Encoding & Lifecycle |
 | **49** | `jitendra` | `123` | Area Manager | Regional stores assigned to `AM_ID` |
 | **50** | `sandeep` | `123` | ZFM | Regional stores assigned to `ZFM_ID` |

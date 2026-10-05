@@ -124,7 +124,7 @@ WHERE u.User_Name = @User_Name
 
                     case "Dispatch Admin":
                         allowedSections.AddRange(new[] {
-                            "dc_validation", "dc_encoding", "tag_management"
+                            "dispatch_tracking", "picklist_creation"
                         });
                         break;
 

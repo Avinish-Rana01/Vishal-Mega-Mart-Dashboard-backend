@@ -44,6 +44,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.Dashboard.TagManagement.ITag
 builder.Services.AddScoped<VS_Mart_Backend.Features.Dashboard.Export.IUniversalExportService, VS_Mart_Backend.Features.Dashboard.Export.UniversalExportService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Reports.ITagCleaningReport, VS_Mart_Backend.Features.Reports.TagCleaningReportsService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Reports.StockTake.IStockTake, VS_Mart_Backend.Features.Reports.StockTake.StockTakeService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.Dispatch.IDispatchService, VS_Mart_Backend.Features.Dispatch.DispatchService>();
 builder.Services.AddHostedService<VS_Mart_Backend.Services.CacheWarmerService>(); // Background worker for priming RAM cache & broadcasting diffs
 
 var app = builder.Build();
