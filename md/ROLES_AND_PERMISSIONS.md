@@ -226,3 +226,5 @@ Since there is no menu-rights table in SQL, page navigation in the React UI shou
 * **Super Admin**: Access to all tabs (Live Stock, Cycle Count, Void, Tag Management, DC Encoding, etc.).
 * **Store Admin**: Live Stock, Cycle Count, Store Discrepancy.
 * **Warehouse Admin**: DC Encoding, Tag Verification, Dispatch Loading.
+* **Tag Admin**: Exclusively restricted to the **Reports** module with 2 items: **Tag Cleaning** (`/reports/tag-cleaning`) and **Stock Take** (`/reports/stock-take`). All other modules (Dashboard, Store, Authentication) are hidden.
+* **Dispatch Admin**: Full backend and frontend modules to be implemented in a dedicated phase.

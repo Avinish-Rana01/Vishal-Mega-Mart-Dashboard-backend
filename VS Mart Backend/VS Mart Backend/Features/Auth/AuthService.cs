@@ -74,7 +74,7 @@ WHERE u.User_Name = @User_Name
                 if (userType.Equals("Dispatch Admin", StringComparison.OrdinalIgnoreCase))
                     redirectPage = "Dispatch_Tracking";
                 else if (userType.Equals("Tag Admin", StringComparison.OrdinalIgnoreCase))
-                    redirectPage = "Tag_Cycle_Count";
+                    redirectPage = "Tag_Cleaning";
 
                 var allowedSections = new List<string>();
                 string normalizedRole = userType.Trim();
@@ -130,7 +130,7 @@ WHERE u.User_Name = @User_Name
 
                     case "Tag Admin":
                         allowedSections.AddRange(new[] {
-                            "tag_management", "cycle_count", "tag_cleaning"
+                            "tag_cleaning", "get_sap_stock_take"
                         });
                         break;
 
