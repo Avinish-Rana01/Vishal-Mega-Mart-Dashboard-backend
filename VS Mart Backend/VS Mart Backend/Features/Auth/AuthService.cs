@@ -46,7 +46,7 @@ FROM dbo.User_Registration u WITH (NOLOCK)
 LEFT JOIN dbo.tbl_Store_Master s WITH (NOLOCK) ON u.Store_ID = s.Store_ID 
 LEFT JOIN dbo.tbl_Warehouse_Mst wm WITH (NOLOCK) ON u.WH_ID = wm.WH_ID 
 WHERE u.User_Name = @User_Name 
-  AND (u.Password = @Password OR (u.User_Name = 'Admin' AND (@Password = '123' OR @Password = 'Admin@123')))
+  AND u.Password = @Password
   AND (u.Is_Status = 1 OR u.Is_Status IS NULL);";
 
                 var cmd = new CommandDefinition(loginSql, new { User_Name = uName, Password = uPass }, cancellationToken: cancellationToken);
