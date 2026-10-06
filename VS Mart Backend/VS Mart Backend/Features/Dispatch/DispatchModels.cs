@@ -1,7 +1,19 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http;
 
 namespace VS_Mart_Backend.Features.Dispatch
 {
+    public class DispatchUploadRequest
+    {
+        public IFormFile File { get; set; } = null!;
+        public string Status { get; set; } = string.Empty;
+    }
+
+    public class PicklistUploadRequest
+    {
+        public IFormFile File { get; set; } = null!;
+    }
+
     public class DispatchUploadResponse
     {
         public bool Success { get; set; }

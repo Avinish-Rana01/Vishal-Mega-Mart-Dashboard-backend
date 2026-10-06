@@ -22,6 +22,8 @@ namespace VS_Mart_Backend.Services
         public static TimeSpan RealtimeWarmerInterval { get; private set; } = TimeSpan.FromSeconds(10);
 
         private static readonly System.Threading.SemaphoreSlim _wakeUpSignal = new System.Threading.SemaphoreSlim(0, 1);
+        private static readonly System.Threading.SemaphoreSlim _tier2Lock = new System.Threading.SemaphoreSlim(1, 1);
+        private static volatile bool _forceTier2WarmupNextPass = false;
 
         public static void TriggerImmediateWarmup()
         {
@@ -29,6 +31,12 @@ namespace VS_Mart_Backend.Services
             {
                 try { _wakeUpSignal.Release(); } catch { }
             }
+        }
+
+        public static void TriggerTier2WarmupWithReset()
+        {
+            _forceTier2WarmupNextPass = true;
+            TriggerImmediateWarmup();
         }
 
         private readonly ILogger<CacheWarmerService> _logger;
@@ -136,35 +144,51 @@ namespace VS_Mart_Backend.Services
                         await _diffEngine.ProcessDcValidationDiffAsync(dcValidateData, stoppingToken);
                         await Task.Delay(150, stoppingToken);
 
-                        // 8, 9, 10, 11: Periodic Dashboards (Sale, Void, Return, Tag Cycle Count - refreshed every _periodicInterval, e.g. 60 mins)
-                        bool shouldRunPeriodicWarmup = (DateTime.Now - _lastPeriodicWarmupTime) >= _periodicInterval;
+                        // 8, 9, 10, 11: Periodic Dashboards (Sale, Void, Return, Tag Cycle Count - refreshed every _periodicInterval)
+                        bool shouldRunPeriodicWarmup = _forceTier2WarmupNextPass || ((DateTime.Now - _lastPeriodicWarmupTime) >= _periodicInterval);
 
                         if (shouldRunPeriodicWarmup)
                         {
-                            _logger.LogInformation("CacheWarmerService: Performing periodic refresh for Sale, Void, Return, and Tag Cycle Count (Interval: {mins} mins).", _periodicInterval.TotalMinutes);
+                            if (await _tier2Lock.WaitAsync(0, stoppingToken))
+                            {
+                                try
+                                {
+                                    bool wasForced = _forceTier2WarmupNextPass;
+                                    _forceTier2WarmupNextPass = false;
+                                    _logger.LogInformation("CacheWarmerService: Performing Tier 2 refresh for Sale, Void, Return, and Tag Cycle Count (Interval: {mins} mins, Forced: {forced}).", _periodicInterval.TotalMinutes, wasForced);
 
-                            // 8. Sale Dashboard
-                            var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                            await liveStockService.GetSaleDashboardAsync(saleDashboardRequest, forceRefresh: true);
-                            await Task.Delay(150, stoppingToken);
+                                    // 8. Sale Dashboard
+                                    var saleDashboardRequest = new SaleDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                                    await liveStockService.GetSaleDashboardAsync(saleDashboardRequest, forceRefresh: true);
+                                    await Task.Delay(2500, stoppingToken);
 
-                            // 9. Void Dashboard
-                            var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                            await liveStockService.GetVoidDashboardAsync(voidDashboardRequest, forceRefresh: true);
-                            await Task.Delay(150, stoppingToken);
+                                    // 9. Void Dashboard
+                                    var voidDashboardRequest = new VoidDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                                    await liveStockService.GetVoidDashboardAsync(voidDashboardRequest, forceRefresh: true);
+                                    await Task.Delay(2500, stoppingToken);
 
-                            // 10. Return Dashboard
-                            var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
-                            await liveStockService.GetReturnDashboardAsync(returnDashboardRequest, forceRefresh: true);
-                            await Task.Delay(150, stoppingToken);
+                                    // 10. Return Dashboard
+                                    var returnDashboardRequest = new ReturnDashboardQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000 };
+                                    await liveStockService.GetReturnDashboardAsync(returnDashboardRequest, forceRefresh: true);
+                                    await Task.Delay(2500, stoppingToken);
 
-                            // 11. Tag Cycle Count (Slow-moving lifetime recycling statistics)
-                            var tagCycleCountRequest = new TagCycleCountQueryRequest { SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "CYCLE_COUNT", SortDirection = "DESC" };
-                            await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest, forceRefresh: true);
-                            await Task.Delay(150, stoppingToken);
+                                    // 11. Tag Cycle Count (Slow-moving lifetime recycling statistics)
+                                    var tagCycleCountRequest = new TagCycleCountQueryRequest { SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "CYCLE_COUNT", SortDirection = "DESC" };
+                                    await liveStockService.GetTagCycleCountDataAsync(tagCycleCountRequest, forceRefresh: true);
+                                    await Task.Delay(2500, stoppingToken);
 
-                            _lastPeriodicWarmupTime = DateTime.Now;
-                            LastPeriodicWarmupTime = _lastPeriodicWarmupTime;
+                                    _lastPeriodicWarmupTime = DateTime.Now;
+                                    LastPeriodicWarmupTime = _lastPeriodicWarmupTime;
+                                }
+                                finally
+                                {
+                                    _tier2Lock.Release();
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogInformation("CacheWarmerService: Tier 2 warmup already in progress, skipping duplicate pass.");
+                            }
                         }
 
                         TotalRuns++;

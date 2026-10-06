@@ -1,11 +1,14 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using VS_Mart_Backend.Features.Base;
+using VS_Mart_Backend.Services;
 
 namespace VS_Mart_Backend.Features.Master
 {
@@ -13,12 +16,14 @@ namespace VS_Mart_Backend.Features.Master
     {
         private readonly string _connectionString;
         private readonly ILogger<MasterService> _logger;
+        private readonly IMemoryCache _cache;
 
-        public MasterService(IConfiguration configuration, ILogger<MasterService> logger)
+        public MasterService(IConfiguration configuration, ILogger<MasterService> logger, IMemoryCache cache)
         {
             _connectionString = configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task<MasterResponse> ExecuteMasterAsync(MasterRequest request)
@@ -86,6 +91,25 @@ namespace VS_Mart_Backend.Features.Master
                 if (string.IsNullOrEmpty(message))
                 {
                     message = rows.Count > 0 ? $"Retrieved {rows.Count} record(s) successfully." : "Operation executed.";
+                }
+
+                // If store status was updated/deleted/inserted, immediately evict Tier 2 caches and trigger background refresh
+                if (isSuccess && !string.IsNullOrEmpty(request.Status) &&
+                    (request.Status.Equals("Delete_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
+                     request.Status.Equals("Update_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
+                     request.Status.Equals("Insert_tbl_Store_Master", StringComparison.OrdinalIgnoreCase)))
+                {
+                    _logger.LogInformation("MasterService: Store master modified with status {Status}. Evicting Tier 2 dashboard caches and triggering warmup.", request.Status);
+
+                    // Evict ONLY Tier 2 cache keys (leaving Tier 1 untouched as agreed)
+                    BaseDashboardService.InvalidateKeysByPrefix(_cache, 
+                        "SaleDashboard_Master_", 
+                        "VoidDashboard_Master_", 
+                        "ReturnDashboard_Master_", 
+                        "TagCycleCount_Master_");
+
+                    // Trigger collision-free Tier 2 warmup with timer reset
+                    CacheWarmerService.TriggerTier2WarmupWithReset();
                 }
 
                 return new MasterResponse

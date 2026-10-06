@@ -20,20 +20,21 @@ namespace VS_Mart_Backend.Features.Dispatch
         /// Master Upload API for RDC Master and HU Input (and Picklist if passed with status='PICKLIST')
         /// </summary>
         [HttpPost("upload")]
+        [Consumes("multipart/form-data")]
         [RequestSizeLimit(50 * 1024 * 1024)] // 50MB limit
-        public async Task<IActionResult> UploadMaster([FromForm] IFormFile file, [FromForm] string status, CancellationToken cancellationToken)
+        public async Task<IActionResult> UploadMaster([FromForm] DispatchUploadRequest request, CancellationToken cancellationToken)
         {
-            if (file == null || file.Length == 0)
+            if (request.File == null || request.File.Length == 0)
             {
                 return BadRequest(new { success = false, message = "No file was uploaded." });
             }
 
-            if (string.IsNullOrWhiteSpace(status))
+            if (string.IsNullOrWhiteSpace(request.Status))
             {
                 return BadRequest(new { success = false, message = "Upload status is required ('RDC_MASTER' or 'HU_INPUT')." });
             }
 
-            var result = await _dispatchService.ProcessUploadAsync(file, status, cancellationToken);
+            var result = await _dispatchService.ProcessUploadAsync(request.File, request.Status, cancellationToken);
             if (!result.Success)
             {
                 return BadRequest(result);
@@ -46,15 +47,16 @@ namespace VS_Mart_Backend.Features.Dispatch
         /// Picklist Excel Upload API
         /// </summary>
         [HttpPost("picklist-upload")]
+        [Consumes("multipart/form-data")]
         [RequestSizeLimit(50 * 1024 * 1024)]
-        public async Task<IActionResult> UploadPicklist([FromForm] IFormFile file, CancellationToken cancellationToken)
+        public async Task<IActionResult> UploadPicklist([FromForm] PicklistUploadRequest request, CancellationToken cancellationToken)
         {
-            if (file == null || file.Length == 0)
+            if (request.File == null || request.File.Length == 0)
             {
                 return BadRequest(new { success = false, message = "No file was uploaded." });
             }
 
-            var result = await _dispatchService.ProcessPicklistUploadAsync(file, cancellationToken);
+            var result = await _dispatchService.ProcessPicklistUploadAsync(request.File, cancellationToken);
             if (!result.Success)
             {
                 return BadRequest(result);

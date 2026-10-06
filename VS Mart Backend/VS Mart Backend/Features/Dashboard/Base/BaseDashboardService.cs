@@ -28,6 +28,7 @@ namespace VS_Mart_Backend.Features.Base
         private static bool? _cacheOverride = null;
         private static readonly ConcurrentDictionary<string, bool> _refreshingKeys = new();
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _keyLocks = new();
+        private static readonly ConcurrentDictionary<string, bool> _allCacheKeys = new();
 
         public class CacheItem<T>
         {
@@ -37,7 +38,24 @@ namespace VS_Mart_Backend.Features.Base
 
         public static void SetCacheItem<T>(IMemoryCache cache, string key, T data, TimeSpan? ttl = null)
         {
+            _allCacheKeys.TryAdd(key, true);
             cache.Set(key, new CacheItem<T> { Data = data, CreatedAt = DateTime.UtcNow }, ttl ?? TimeSpan.FromMinutes(10));
+        }
+
+        public static void InvalidateKeysByPrefix(IMemoryCache cache, params string[] prefixes)
+        {
+            foreach (var key in _allCacheKeys.Keys)
+            {
+                foreach (var prefix in prefixes)
+                {
+                    if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        cache.Remove(key);
+                        _allCacheKeys.TryRemove(key, out _);
+                        break;
+                    }
+                }
+            }
         }
 
         protected BaseDashboardService(IConfiguration configuration, IMemoryCache cache)
@@ -74,6 +92,7 @@ namespace VS_Mart_Backend.Features.Base
             if (forceRefresh)
             {
                 var freshData = await databaseQuery();
+                _allCacheKeys.TryAdd(cacheKey, true);
                 _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, ttl);
                 return freshData;
             }
@@ -89,6 +108,7 @@ namespace VS_Mart_Backend.Features.Base
                             try
                             {
                                 var freshData = await databaseQuery();
+                                _allCacheKeys.TryAdd(cacheKey, true);
                                 _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, ttl);
                             }
                             finally
@@ -113,6 +133,7 @@ namespace VS_Mart_Backend.Features.Base
                 }
 
                 var initialData = await databaseQuery();
+                _allCacheKeys.TryAdd(cacheKey, true);
                 _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, ttl);
                 return initialData;
             }
