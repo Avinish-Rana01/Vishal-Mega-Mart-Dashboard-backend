@@ -17,6 +17,7 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
             _logger = logger;
         }
 
+        [HttpGet("tag-details")]
         [HttpGet("GetTagDetails")]
         [HttpGet("/GetTagDetails")]
         public async Task<IActionResult> GetTagDetails([FromQuery] TagDetailsRequest request)
@@ -24,16 +25,16 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
             try
             {
                 var result = await _service.GetTagDetailsAsync(request);
-
                 return Ok(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error fetching tag details.");
                 return StatusCode(
                     500,
                     new
                     {
-                        message = ex.Message
+                        message = "An error occurred while fetching tag details."
                     });
             }
         }
