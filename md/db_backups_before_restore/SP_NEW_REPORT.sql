@@ -1,7 +1,7 @@
-﻿
 
 
-CREATE PROCEDURE [dbo].[SP_NEW_REPORT]
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_NEW_REPORT]
 @Status varchar(500)='',
 @Store_Id int =0,
 @WH_ID INT='',

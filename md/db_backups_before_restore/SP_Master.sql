@@ -1,4 +1,4 @@
-﻿
+
 
 
 
@@ -7,7 +7,7 @@
 -- Create date: <Create Date,,>
 -- Description:	<Description,,>
 -- =============================================
-CREATE PROCEDURE [dbo].[SP_Master]	
+CREATE OR ALTER PROCEDURE [dbo].[SP_Master]	
 	 @Status varchar(50)='',
 	 @Store_Code nvarchar(10)='',
 	 @Store_Name nvarchar(max)='',

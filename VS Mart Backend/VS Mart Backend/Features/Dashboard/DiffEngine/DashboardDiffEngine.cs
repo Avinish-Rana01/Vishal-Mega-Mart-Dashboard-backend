@@ -84,6 +84,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
         // ── 6. Tag Management Snapshots ──────────────────────────────────────
         private int _lastTagStoreCount = 0;
         private int _lastTagWarehouseCount = 0;
+        private int _lastTagNewTags = 0;
         private bool _isTagManagementInitialized = false;
 
         // ── 7. DC Validation Snapshots ───────────────────────────────────────
@@ -830,22 +831,26 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
             {
                 int storeCount = response.Summary.StoreCount;
                 int warehouseCount = response.Summary.WarehouseCount;
+                int newTags = response.Summary.NewTags;
 
                 if (!_isTagManagementInitialized)
                 {
                     _lastTagStoreCount = storeCount;
                     _lastTagWarehouseCount = warehouseCount;
+                    _lastTagNewTags = newTags;
                     _isTagManagementInitialized = true;
                     return;
                 }
 
-                if (storeCount != _lastTagStoreCount || warehouseCount != _lastTagWarehouseCount)
+                if (storeCount != _lastTagStoreCount || warehouseCount != _lastTagWarehouseCount || newTags != _lastTagNewTags)
                 {
                     int deltaStore = storeCount - _lastTagStoreCount;
                     int deltaWarehouse = warehouseCount - _lastTagWarehouseCount;
+                    int deltaNewTags = newTags - _lastTagNewTags;
 
                     _lastTagStoreCount = storeCount;
                     _lastTagWarehouseCount = warehouseCount;
+                    _lastTagNewTags = newTags;
 
                     var patch = new TagManagementDeltaPatch
                     {
@@ -853,13 +858,15 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         Timestamp = DateTime.UtcNow,
                         StoreCount = storeCount,
                         WarehouseCount = warehouseCount,
+                        NewTags = newTags,
                         RecordCount = response.Summary.RecordCount,
                         AvgRecycle = 0,
                         DeltaStoreCount = deltaStore,
-                        DeltaWarehouseCount = deltaWarehouse
+                        DeltaWarehouseCount = deltaWarehouse,
+                        DeltaNewTags = deltaNewTags
                     };
 
-                    _logger.LogInformation("DashboardDiffEngine: TagManagement patch: Delta Store {DeltaStore:+0;-#}", deltaStore);
+                    _logger.LogInformation("DashboardDiffEngine: TagManagement patch: Delta Store {DeltaStore:+0;-#}, NewTags {DeltaNewTags:+0;-#}", deltaStore, deltaNewTags);
                     await _hubContext.Clients.All.SendAsync("ReceiveTagManagementPatch", patch, cancellationToken);
                 }
             }

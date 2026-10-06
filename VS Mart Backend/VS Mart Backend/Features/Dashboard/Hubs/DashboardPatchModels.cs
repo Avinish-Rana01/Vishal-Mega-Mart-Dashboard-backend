@@ -114,10 +114,12 @@
             public DateTime Timestamp { get; set; } = DateTime.UtcNow;
             public int StoreCount { get; set; }
             public int WarehouseCount { get; set; }
+            public int NewTags { get; set; }
             public int RecordCount { get; set; }
             public double AvgRecycle { get; set; }
             public int DeltaStoreCount { get; set; }
             public int DeltaWarehouseCount { get; set; }
+            public int DeltaNewTags { get; set; }
         }
 
         // ==========================================

@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE [dbo].[SP_New_Dashboard]	
+CREATE OR ALTER PROCEDURE [dbo].[SP_New_Dashboard]	
 	 @Status varchar(50)='DC_VALIDATE_DASHBOARD',
 	 @User_Type NVARCHAR(30)='',
 	 @USER_ID INT=30,
