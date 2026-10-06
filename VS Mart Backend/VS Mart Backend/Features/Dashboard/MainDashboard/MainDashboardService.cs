@@ -1061,6 +1061,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@STORECOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@WHCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                    parameters.Add("@Newtags", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
@@ -1070,7 +1071,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     {
                         RecordCount = parameters.Get<int?>("@RecordCount") ?? 0,
                         StoreCount = parameters.Get<int?>("@STORECOUNT") ?? 0,
-                        WarehouseCount = parameters.Get<int?>("@WHCOUNT") ?? 0
+                        WarehouseCount = parameters.Get<int?>("@WHCOUNT") ?? 0,
+                        NewTags = parameters.Get<int?>("@Newtags") ?? 0,
+
                     };
                     return response;
                 }, forceRefresh);

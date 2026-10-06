@@ -255,6 +255,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
         public int RecordCount { get; set; }
         public int StoreCount { get; set; }
         public int WarehouseCount { get; set; }
+        public int NewTags { get; set; }
     }
 
     public class TagManagementResponse
