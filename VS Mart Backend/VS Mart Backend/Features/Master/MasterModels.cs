@@ -26,6 +26,8 @@ namespace VS_Mart_Backend.Features.Master
         public string? Wh_Code { get; set; } = string.Empty;
         public string? Wh_Name { get; set; } = string.Empty;
         public string? Wh_Address { get; set; } = string.Empty;
+        public int Store_Floor_ID { get; set; } = 0;
+        public string? Store_Floor { get; set; } = string.Empty;
     }
 
     public class MasterResponse

@@ -81,7 +81,7 @@ WHERE u.User_Name = @User_Name
                             "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
                             "store_counter_status", "get_sap_stock_take",
                             "dc_validation", "dc_encoding", "tag_management", "vendor_discrepancy",
-                            "user_registration", "store_registration", "warehouse_registration", "tag_cleaning"
+                            "user_registration", "store_registration", "warehouse_registration", "floor_registration", "tag_cleaning"
                         });
                         break;
 

@@ -65,6 +65,8 @@ namespace VS_Mart_Backend.Features.Master
                 parameters.Add("@Wh_Code", request.Wh_Code?.Trim() ?? string.Empty);
                 parameters.Add("@Wh_Name", request.Wh_Name?.Trim() ?? string.Empty);
                 parameters.Add("@Wh_Address", request.Wh_Address?.Trim() ?? string.Empty);
+                parameters.Add("@Store_Floor_ID", request.Store_Floor_ID);
+                parameters.Add("@Store_Floor", request.Store_Floor?.Trim() ?? string.Empty);
                 parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
                 var rows = (await connection.QueryAsync<dynamic>(

@@ -30,7 +30,9 @@ CREATE OR ALTER PROCEDURE [dbo].[SP_Master]
 	 @Message nvarchar(100)='' OUTPUT,
 	 @Wh_Code nvarchar(30)='',
 	 @Wh_Name nvarchar(50)='',
-	 @Wh_Address nvarchar(100)=''
+	 @Wh_Address nvarchar(100)='',
+	 @Store_Floor_ID int=0,
+	 @Store_Floor nvarchar(50)=''
 
 
 AS
@@ -396,6 +398,56 @@ ELSE IF(@Status='SP_Bind_warehouseMaster')
 BEGIN
 	SELECT Distinct WH_ID,Wh_Code,Wh_Name,Wh_Address,case when Is_Status=1 then 'Active' else 'In-Active' End as Status 
 	from dbo.[tbl_Warehouse_Mst] 
+END
+
+ELSE IF(@Status='SP_Bind_FloorMaster')
+BEGIN
+	SELECT Distinct f.Store_Floor_ID, f.Store_ID, ISNULL(s.Store_Name, 'NA') AS Store_Name, ISNULL(s.Store_Code, '') AS Store_Code, f.Store_Floor,
+	       case when ISNULL(f.Is_Status, 1)=1 then 'Active' else 'In-Active' end as Status
+	FROM dbo.[tbl_Store_Floor_Mst] f
+	LEFT JOIN dbo.[tbl_Store_Master] s ON f.Store_ID = s.Store_ID
+	ORDER BY f.Store_Floor_ID ASC
+END
+
+ELSE IF(@status='Insert_tbl_Store_Floor_Mst')
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM dbo.tbl_Store_Floor_Mst WHERE Store_ID = @Store_ID AND Store_Floor = @Store_Floor)
+	BEGIN
+		INSERT INTO dbo.tbl_Store_Floor_Mst (Store_ID, Store_Floor, C_By, C_Dt, Is_Status)
+		VALUES (@Store_ID, @Store_Floor, @Entry_By, GETDATE(), 1);
+		SET @Message = 'Floor Record Inserted Successfully.';
+	END
+	ELSE
+	BEGIN
+		SET @Message = 'Floor already exists for this store.';
+	END
+END
+
+ELSE IF(@status='Update_tbl_Store_Floor_Mst')
+BEGIN
+	IF EXISTS (SELECT 1 FROM dbo.tbl_Store_Floor_Mst WHERE Store_ID = @Store_ID AND Store_Floor = @Store_Floor AND Store_Floor_ID != @Store_Floor_ID)
+	BEGIN
+		SET @Message = 'Floor already exists for this store.';
+	END
+	ELSE
+	BEGIN
+		UPDATE dbo.tbl_Store_Floor_Mst 
+		SET Store_ID = @Store_ID, Store_Floor = @Store_Floor, U_By = @Modify_By, U_Dt = GETDATE()
+		WHERE Store_Floor_ID = @Store_Floor_ID;
+		SET @Message = 'Floor Details Updated Successfully.';
+	END
+END
+
+ELSE IF(@status='Delete_tbl_Store_Floor_Mst')
+BEGIN
+	IF (SELECT ISNULL(Is_Status, 1) FROM dbo.tbl_Store_Floor_Mst WHERE Store_Floor_ID = @Store_Floor_ID) = 0
+	BEGIN
+		UPDATE dbo.tbl_Store_Floor_Mst SET Is_Status = 1 WHERE Store_Floor_ID = @Store_Floor_ID;
+	END
+	ELSE
+	BEGIN
+		UPDATE dbo.tbl_Store_Floor_Mst SET Is_Status = 0 WHERE Store_Floor_ID = @Store_Floor_ID;
+	END
 END
 
 END----last
