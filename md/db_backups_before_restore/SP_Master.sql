@@ -468,4 +468,27 @@ BEGIN
 	END
 END
 
+ELSE IF(@Status='SP_DDL_Store_Dropdowns_JSON')
+BEGIN
+	SELECT (
+		SELECT DISTINCT State FROM dbo.tbl_Store_Master WHERE State IS NOT NULL AND State <> '' FOR JSON PATH
+	) AS States,
+	(
+		SELECT DISTINCT City, State FROM dbo.tbl_Store_Master WHERE City IS NOT NULL AND City <> '' FOR JSON PATH
+	) AS Cities,
+	(
+		SELECT DISTINCT Area_Manager FROM dbo.tbl_Store_Master WHERE Area_Manager IS NOT NULL AND Area_Manager <> '' FOR JSON PATH
+	) AS AreaManagers,
+	(
+		SELECT DISTINCT ZFM FROM dbo.tbl_Store_Master WHERE ZFM IS NOT NULL AND ZFM <> '' FOR JSON PATH
+	) AS ZFMs,
+	(
+		SELECT DISTINCT LP FROM dbo.tbl_Store_Master WHERE LP IS NOT NULL AND LP <> '' FOR JSON PATH
+	) AS LPs,
+	(
+		SELECT DISTINCT User_Name AS Store_Manager FROM dbo.User_Registration WHERE (User_Type = 'Store Admin' OR Role_ID = 5) AND Is_Status = 1 AND User_Name LIKE '%[A-Za-z]%' FOR JSON PATH
+	) AS StoreManagers;
+END
+
 END----last
+

@@ -49,4 +49,21 @@ namespace VS_Mart_Backend.Features.Master
         public string Message { get; set; } = string.Empty;
         public IEnumerable<dynamic>? Data { get; set; }
     }
+
+    public class StoreDropdownOptionsDto
+    {
+        public List<string> States { get; set; } = new();
+        public List<StateCityDto> Cities { get; set; } = new();
+        public List<string> StoreManagers { get; set; } = new();
+        public List<string> AreaManagers { get; set; } = new();
+        public List<string> ZFMs { get; set; } = new();
+        public List<string> LPs { get; set; } = new();
+    }
+
+    public class StateCityDto
+    {
+        public string State { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+    }
 }
+

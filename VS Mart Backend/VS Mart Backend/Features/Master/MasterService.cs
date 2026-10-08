@@ -135,5 +135,77 @@ namespace VS_Mart_Backend.Features.Master
                 throw;
             }
         }
+
+        public async Task<StoreDropdownOptionsDto> GetStoreDropdownOptionsAsync()
+        {
+            var result = new StoreDropdownOptionsDto();
+            try
+            {
+                using var connection = new SqlConnection(_connectionString);
+
+                // 1. States & Cities
+                var stateCityRows = await connection.QueryAsync<(string? State, string? City)>(
+                    @"SELECT DISTINCT ISNULL(State, '') AS State, ISNULL(City, '') AS City 
+                      FROM dbo.tbl_Store_Master 
+                      WHERE State IS NOT NULL AND State <> ''");
+
+                var states = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var row in stateCityRows)
+                {
+                    if (!string.IsNullOrWhiteSpace(row.State))
+                    {
+                        states.Add(row.State.Trim());
+                        if (!string.IsNullOrWhiteSpace(row.City))
+                        {
+                            result.Cities.Add(new StateCityDto
+                            {
+                                State = row.State.Trim(),
+                                City = row.City.Trim()
+                            });
+                        }
+                    }
+                }
+                result.States = states.OrderBy(s => s).ToList();
+
+                // 2. Area Managers
+                var amRows = await connection.QueryAsync<string>(
+                    @"SELECT DISTINCT Area_Manager 
+                      FROM dbo.tbl_Store_Master 
+                      WHERE Area_Manager IS NOT NULL AND Area_Manager <> ''");
+                result.AreaManagers = amRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
+
+                // 3. ZFMs
+                var zfmRows = await connection.QueryAsync<string>(
+                    @"SELECT DISTINCT ZFM 
+                      FROM dbo.tbl_Store_Master 
+                      WHERE ZFM IS NOT NULL AND ZFM <> ''");
+                result.ZFMs = zfmRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
+
+                // 4. LPs
+                var lpRows = await connection.QueryAsync<string>(
+                    @"SELECT DISTINCT LP 
+                      FROM dbo.tbl_Store_Master 
+                      WHERE LP IS NOT NULL AND LP <> ''");
+                result.LPs = lpRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
+
+                // 5. Store Managers (Store Admin usernames excluding pure numeric employee IDs)
+                var smRows = await connection.QueryAsync<string>(
+                    @"SELECT DISTINCT User_Name 
+                      FROM dbo.User_Registration 
+                      WHERE (User_Type = 'Store Admin' OR Role_ID = 5) 
+                        AND Is_Status = 1 
+                        AND User_Name LIKE '%[A-Za-z]%' 
+                      ORDER BY User_Name");
+                result.StoreManagers = smRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching store dropdown options from database.");
+                return result;
+            }
+        }
     }
 }
+

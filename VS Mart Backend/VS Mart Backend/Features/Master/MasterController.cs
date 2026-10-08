@@ -48,5 +48,29 @@ namespace VS_Mart_Backend.Features.Master
                 });
             }
         }
+
+        [HttpGet("/api/Master/StoreDropdowns")]
+        public async Task<IActionResult> GetStoreDropdowns()
+        {
+            try
+            {
+                var dropdowns = await _masterService.GetStoreDropdownOptionsAsync();
+                return Ok(new
+                {
+                    success = true,
+                    data = dropdowns
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving store form dropdown options.");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Failed to retrieve store dropdown options."
+                });
+            }
+        }
     }
 }
+

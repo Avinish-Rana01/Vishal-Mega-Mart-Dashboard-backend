@@ -5,5 +5,7 @@ namespace VS_Mart_Backend.Features.Master
     public interface IMasterService
     {
         Task<MasterResponse> ExecuteMasterAsync(MasterRequest request);
+        Task<StoreDropdownOptionsDto> GetStoreDropdownOptionsAsync();
     }
 }
+
