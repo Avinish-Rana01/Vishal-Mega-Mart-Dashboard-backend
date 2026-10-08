@@ -627,6 +627,98 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
+
+            // ==============================================================
+            // 27. STOCK TAKE REPORT
+            // ==============================================================
+            Register(new ReportConfig
+            {
+                ReportName = "STOCK_TAKE_REPORT",
+                StoredProcedure = "SP_NEW_REPORT",
+                Status = "VIEW_STOCK_TAKE_REPORT",
+                DefaultSortColumn = "STARTED_ON",
+                DefaultSortDirection = "DESC",
+                ParameterBinder = (cmd, r) =>
+                {
+                    cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
+                }
+            });
+
+            // ==============================================================
+            // 28. TAG CLEANING REPORT (Consolidated Summary)
+            // ==============================================================
+            Register(new ReportConfig
+            {
+                ReportName = "TAG_CLEANING_REPORT",
+                StoredProcedure = "SP_NEW_REPORT",
+                Status = "TAG_CLEANING_CONSOLIDATE_REPORT",
+                DefaultSortColumn = "TAG_CLEANED_DATE",
+                DefaultSortDirection = "DESC",
+                ParameterBinder = (cmd, r) =>
+                {
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
+                }
+            });
+
+            // ==============================================================
+            // 29. TAG CLEANING DETAILS (Store Drilldown Modal)
+            // ==============================================================
+            Register(new ReportConfig
+            {
+                ReportName = "TAG_CLEANING_DETAILS",
+                StoredProcedure = "SP_NEW_REPORT",
+                Status = "TAG_CLEANING_REPORT",
+                DefaultSortColumn = "INWARD_DATE",
+                DefaultSortDirection = "DESC",
+                ParameterBinder = (cmd, r) =>
+                {
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
+                }
+            });
+
+            // ==============================================================
+            // 30. DISPATCH REPORT (Vehicle Summary)
+            // ==============================================================
+            Register(new ReportConfig
+            {
+                ReportName = "DISPATCH_REPORT",
+                StoredProcedure = "SP_NEW_REPORT",
+                Status = "DISPATCH_REPORT_DATA",
+                DefaultSortColumn = "TRANS_DATE",
+                DefaultSortDirection = "DESC",
+                ParameterBinder = (cmd, r) =>
+                {
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, ""));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, ""));
+                    cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
+                }
+            });
+
+            // ==============================================================
+            // 31. DISPATCH REPORT DETAILS (Vehicle Drilldown Modal)
+            // ==============================================================
+            Register(new ReportConfig
+            {
+                ReportName = "DISPATCH_REPORT_DETAILS",
+                StoredProcedure = "SP_NEW_REPORT",
+                Status = "DISPATCH_REPORT_DATA_VIEW",
+                DefaultSortColumn = "TRANS_DATE",
+                DefaultSortDirection = "DESC",
+                ParameterBinder = (cmd, r) =>
+                {
+                    cmd.Parameters.AddWithValue("@VEHICLE_NO", r.VehicleNo ?? "");
+                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, ""));
+                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, ""));
+                    cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
+                }
+            });
         }
 
         private static void Register(ReportConfig config)

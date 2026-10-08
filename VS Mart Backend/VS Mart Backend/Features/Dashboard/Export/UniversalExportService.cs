@@ -94,6 +94,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 AddOutputParam(command, "@HUCOUNT", SqlDbType.Int);
                 AddOutputParam(command, "@STORECOUNT", SqlDbType.Int);
                 AddOutputParam(command, "@WHCOUNT", SqlDbType.Int);
+                AddOutputParam(command, "@TAG_VALIDATED_QTY", SqlDbType.Int);
             }
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);

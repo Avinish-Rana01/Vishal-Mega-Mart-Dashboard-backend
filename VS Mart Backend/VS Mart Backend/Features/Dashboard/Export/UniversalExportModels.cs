@@ -28,6 +28,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
         public string? BillDate { get; set; }
         public string? SortColumn { get; set; }
         public string? SortDirection { get; set; }
+        public string? VehicleNo { get; set; }
         public string? Format { get; set; } = "xlsx";
     }
 }
