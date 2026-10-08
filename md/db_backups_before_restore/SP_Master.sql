@@ -32,7 +32,15 @@ CREATE OR ALTER PROCEDURE [dbo].[SP_Master]
 	 @Wh_Name nvarchar(50)='',
 	 @Wh_Address nvarchar(100)='',
 	 @Store_Floor_ID int=0,
-	 @Store_Floor nvarchar(50)=''
+	 @Store_Floor nvarchar(50)='',
+	 @State nvarchar(100)='',
+	 @City nvarchar(100)='',
+	 @Store_Manager nvarchar(100)='',
+	 @Area_Manager nvarchar(100)='',
+	 @ZFM nvarchar(100)='',
+	 @LP nvarchar(100)='',
+	 @Email_ID nvarchar(150)='',
+	 @Is_Email_Required bit=0
 
 
 AS
@@ -41,8 +49,8 @@ BEGIN
 	Begin	
 		IF NOT EXISTS (SELECT 1 FROM tbl_Store_Master WHERE Store_Code = @Store_Code OR Store_Name=@Store_Name)
 		BEGIN	
-			INSERT INTO tbl_Store_Master(Store_Code,Store_Name,Entry_By) 
-			VALUES (@Store_Code, @Store_Name,@Entry_By);
+			INSERT INTO tbl_Store_Master(Store_Code, Store_Name, State, City, Store_Manager, Area_Manager, ZFM, LP, Entry_By) 
+			VALUES (@Store_Code, @Store_Name, @State, @City, @Store_Manager, @Area_Manager, @ZFM, @LP, @Entry_By);
 			SET @Message = 'Record Insert successfully.';
 		END
 		ELSE
@@ -60,7 +68,7 @@ BEGIN
 	ELSE
 	BEGIN
 		Update tbl_Store_Master Set 
-		Store_Code=@Store_Code,Store_Name=@Store_Name,Modify_Date=GETDATE(),Is_Status=1,Modify_By=@Modify_By
+		Store_Code=@Store_Code, Store_Name=@Store_Name, State=@State, City=@City, Store_Manager=@Store_Manager, Area_Manager=@Area_Manager, ZFM=@ZFM, LP=@LP, Modify_Date=GETDATE(), Is_Status=1, Modify_By=@Modify_By
 		Where Store_ID = @Store_ID
 
 		SET @Message = 'Updated Successfully.'
@@ -118,11 +126,11 @@ END
 	  Select @Store_ID=Store_ID from tbl_Reader_Configuration_Mst where  Reader_Config_ID=@Reader_Config_ID
       IF NOT EXISTS (SELECT * FROM User_Registration WHERE User_Name = @User_Name)
       BEGIN	
-         INSERT INTO User_Registration(User_Name,Password,User_Type,Store_ID,WH_ID,Entry_By) 
+         INSERT INTO User_Registration(User_Name,Password,User_Type,Store_ID,WH_ID,Entry_By,Email_ID,Is_Email_Required) 
          VALUES (@User_Name,@Password,@User_Type,
          CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END, 
          CASE WHEN @WH_ID = 0 THEN NULL ELSE @WH_ID END,
-         @Entry_By)
+         @Entry_By, @Email_ID, @Is_Email_Required)
          SET @Message = 'User Created Successfully.';
       END
       ELSE
@@ -137,6 +145,7 @@ END
 		--Store_ID=@Store_ID,WH_ID=@WH_ID,
 	    Store_ID = CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END,
         WH_ID = CASE WHEN @WH_ID = 0 THEN NULL ELSE @WH_ID END,
+        Email_ID = @Email_ID, Is_Email_Required = @Is_Email_Required,
 		Is_Status=1,Modify_By=@Modify_By,Modify_Date=GETDATE()
 		Where User_ID = @User_ID
        END
@@ -234,7 +243,14 @@ END
 ELSE IF(@Status='SP_Bind_StoreMaster')
 BEGIN
 	SELECT Distinct Store_ID,Store_Code,
-	Store_Name,case when Is_Status=1 then 'Active' else 'In-Active' End as Status 
+	Store_Name,
+	ISNULL(State, '') AS State,
+	ISNULL(City, '') AS City,
+	ISNULL(Store_Manager, '') AS Store_Manager,
+	ISNULL(Area_Manager, '') AS Area_Manager,
+	ISNULL(ZFM, '') AS ZFM,
+	ISNULL(LP, '') AS LP,
+	case when Is_Status=1 then 'Active' else 'In-Active' End as Status
 	from tbl_Store_Master 
 END
 
@@ -260,6 +276,8 @@ BEGIN
      WHERE UR.User_ID = @User_ID
 
 	 SELECT User_ID,User_Name,Password,User_Type,UR.Store_ID,ISNULL(Store_Name,'NA') AS 'Store_Name',ISNULL(WM.Wh_Name,'NA') as 'Warehouse_Name',
+	  ISNULL(UR.Email_ID, '') AS 'Email_ID',
+	  ISNULL(UR.Is_Email_Required, 0) AS 'Is_Email_Required',
 	  case when UR.Is_Status=1 then 'Active' else 'In-active' End as Status FROM   dbo.User_Registration UR 
 	  LEFT JOIN tbl_Store_Master SM on UR.Store_ID=SM.Store_ID
 	  LEFT JOIN tbl_Warehouse_Mst WM on UR.WH_ID=WM.WH_ID
@@ -451,5 +469,3 @@ BEGIN
 END
 
 END----last
-
-

@@ -67,6 +67,14 @@ namespace VS_Mart_Backend.Features.Master
                 parameters.Add("@Wh_Address", request.Wh_Address?.Trim() ?? string.Empty);
                 parameters.Add("@Store_Floor_ID", request.Store_Floor_ID);
                 parameters.Add("@Store_Floor", request.Store_Floor?.Trim() ?? string.Empty);
+                parameters.Add("@State", request.State?.Trim() ?? string.Empty);
+                parameters.Add("@City", request.City?.Trim() ?? string.Empty);
+                parameters.Add("@Store_Manager", request.Store_Manager?.Trim() ?? string.Empty);
+                parameters.Add("@Area_Manager", request.Area_Manager?.Trim() ?? string.Empty);
+                parameters.Add("@ZFM", request.ZFM?.Trim() ?? string.Empty);
+                parameters.Add("@LP", request.LP?.Trim() ?? string.Empty);
+                parameters.Add("@Email_ID", request.Email_ID?.Trim() ?? string.Empty);
+                parameters.Add("@Is_Email_Required", request.Is_Email_Required);
                 parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
                 var rows = (await connection.QueryAsync<dynamic>(

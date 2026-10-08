@@ -28,6 +28,19 @@ namespace VS_Mart_Backend.Features.Master
         public string? Wh_Address { get; set; } = string.Empty;
         public int Store_Floor_ID { get; set; } = 0;
         public string? Store_Floor { get; set; } = string.Empty;
+        public string? State { get; set; } = string.Empty;
+        public string? City { get; set; } = string.Empty;
+        public string? Store_Manager { get; set; } = string.Empty;
+        public string? StoreManager { get => Store_Manager; set => Store_Manager = value; }
+        public string? Area_Manager { get; set; } = string.Empty;
+        public string? AreaManager { get => Area_Manager; set => Area_Manager = value; }
+        public string? ZFM { get; set; } = string.Empty;
+        public string? LP { get; set; } = string.Empty;
+        public string? Email_ID { get; set; } = string.Empty;
+        public string? EmailId { get => Email_ID; set => Email_ID = value; }
+        public string? Email { get => Email_ID; set => Email_ID = value; }
+        public bool Is_Email_Required { get; set; } = false;
+        public bool IsEmailRequired { get => Is_Email_Required; set => Is_Email_Required = value; }
     }
 
     public class MasterResponse
