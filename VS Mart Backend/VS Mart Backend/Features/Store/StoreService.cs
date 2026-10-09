@@ -47,6 +47,9 @@ namespace VS_Mart_Backend.Features.Store
                 var parameters = new DynamicParameters();
                 parameters.Add("@status", "STORENAME_FOR_COUNTER_STATUS");
                 parameters.Add("@User_ID", userId);
+                parameters.Add("@CounterRoleid", isSuperAdmin ? "4" : (assignedStoreId > 0 ? "5" : "4"));
+                parameters.Add("@CounterEmpID", userId);
+                parameters.Add("@CounterStoreID", assignedStoreId);
 
                 var allStores = (await connection.QueryAsync<CounterStatusStoreDto>(
                     "SP_Master",

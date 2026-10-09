@@ -41,6 +41,25 @@ namespace VS_Mart_Backend.Features.Master
         public string? Email { get => Email_ID; set => Email_ID = value; }
         public bool Is_Email_Required { get; set; } = false;
         public bool IsEmailRequired { get => Is_Email_Required; set => Is_Email_Required = value; }
+
+        // Parameters for New UM DB schema (SP_Master)
+        public int State_ID { get; set; } = 0;
+        public int City_ID { get; set; } = 0;
+        public string? State_Name { get; set; } = string.Empty;
+        public int SM_ID { get; set; } = 0;
+        public int AM_ID { get; set; } = 0;
+        public int ZFM_ID { get; set; } = 0;
+        public int LP_ID { get; set; } = 0;
+        public string? MAIL_ID { get; set; } = string.Empty;
+        public int Email_Required_Flag { get; set; } = 0;
+        public int Role_ID { get; set; } = 0;
+        public int Emp_ID { get; set; } = 0;
+        public string? Emp_Code { get; set; } = string.Empty;
+        public string? Emp_Name { get; set; } = string.Empty;
+        public string? RoleName { get; set; } = string.Empty;
+        public string? CounterRoleid { get; set; } = string.Empty;
+        public int CounterEmpID { get; set; } = 0;
+        public int CounterStoreID { get; set; } = 0;
     }
 
     public class MasterResponse
