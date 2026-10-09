@@ -45,7 +45,7 @@ namespace VS_Mart_Backend.Features.Master
                 string status = request.Status?.Trim() ?? string.Empty;
                 string normalizedStatus = status.ToLowerInvariant();
 
-                if (normalizedStatus == "sp_bind_floormaster" || normalizedStatus == "sp_bind_floor_master")
+                if (normalizedStatus == "sp_bind_floormaster")
                     status = "SP_Bind_Store_Floor_Master";
                 else if (normalizedStatus == "insert_tbl_store_floor_mst")
                     status = "Insert_tbl_Store_Floor_Master";
@@ -55,6 +55,8 @@ namespace VS_Mart_Backend.Features.Master
                     status = "Delete_tbl_Store_Floor_Master";
                 else if (normalizedStatus == "sp_bind_usermaster")
                     status = "SP_Bind_User_Master";
+                else if (normalizedStatus == "sp_ddl_storeid")
+                    status = "SP_Bind_DDL_StoreID";
 
                 // 2. Resolve IDs from string names if frontend passed text values
                 int stateId = request.State_ID;
@@ -149,13 +151,7 @@ namespace VS_Mart_Backend.Features.Master
                 parameters.Add("@Store_Floor_ID", request.Store_Floor_ID);
                 parameters.Add("@Store_Floor", request.Store_Floor?.Trim() ?? string.Empty);
 
-                // For user directory, ensure an authorized Super Admin ID is used if 0
-                int effectiveUserId = request.User_ID;
-                if (effectiveUserId <= 0 && status.Equals("SP_Bind_User_Master", StringComparison.OrdinalIgnoreCase))
-                {
-                    effectiveUserId = 26; // Default active Super Admin handle on new DB
-                }
-                parameters.Add("@User_ID", effectiveUserId);
+                parameters.Add("@User_ID", request.User_ID);
 
                 parameters.Add("@Device_ESN", request.Device_ESN?.Trim() ?? string.Empty);
                 parameters.Add("@Encode_DateTime", request.Encode_DateTime?.Trim() ?? string.Empty);
