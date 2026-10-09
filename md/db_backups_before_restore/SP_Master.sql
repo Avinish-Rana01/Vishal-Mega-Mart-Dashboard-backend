@@ -322,10 +322,21 @@ END
 
 ELSE IF(@Status='STORENAME_FOR_COUNTER_STATUS')
 BEGIN
-	SELECT DISTINCT dbo.[tbl_Device_Mst].Store_ID,dbo.[tbl_Store_Master].Store_Name FROM dbo.[tbl_Device_Mst] 
-    JOIN dbo.[tbl_Store_Master] on dbo.[tbl_Device_Mst].Store_ID = dbo.[tbl_Store_Master].Store_ID
+    DECLARE @ReqUserType NVARCHAR(50), @ReqStoreId INT = 0;
+    SELECT @ReqUserType = ISNULL(User_Type, ''), @ReqStoreId = ISNULL(Store_ID, 0)
+    FROM dbo.User_Registration WITH (NOLOCK)
+    WHERE User_ID = @User_ID;
+
+    SELECT DISTINCT dbo.[tbl_Device_Mst].Store_ID, dbo.[tbl_Store_Master].Store_Name 
+    FROM dbo.[tbl_Device_Mst] WITH (NOLOCK)
+    JOIN dbo.[tbl_Store_Master] WITH (NOLOCK) on dbo.[tbl_Device_Mst].Store_ID = dbo.[tbl_Store_Master].Store_ID
     WHERE dbo.[tbl_Store_Master].Is_Status = 1
-	--and dbo.[tbl_Device_Mst].Cash_Counter_No<> 'VALIDATION'
+      AND (
+          @ReqUserType = 'Super Admin' 
+          OR @ReqStoreId = 0 
+          OR @User_ID = 0
+          OR dbo.[tbl_Store_Master].Store_ID = @ReqStoreId
+      )
 END
 
 ELSE IF(@Status='COUNTER_STATUS_DETAILS')

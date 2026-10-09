@@ -88,7 +88,7 @@ WHERE u.User_Name = @User_Name
                     case "Store Admin":
                         allowedSections.AddRange(new[] {
                             "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
-                            "store_counter_status", "get_sap_stock_take", "user_registration"
+                            "store_counter_status", "get_sap_stock_take", "user_registration", "floor_registration"
                         });
                         break;
 
