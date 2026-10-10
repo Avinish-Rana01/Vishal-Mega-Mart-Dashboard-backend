@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using Microsoft.Data.SqlClient;
 using System.Data;
 using System.Globalization;
@@ -52,7 +52,16 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
 
-                parameters.Add("@User_ID", request.User ?? 0, DbType.Int32);
+                int userIdVal = 0;
+                if (request.User.HasValue && request.User.Value > 0)
+                {
+                    userIdVal = request.User.Value;
+                }
+                else
+                {
+                    int.TryParse(request.UserId, out userIdVal);
+                }
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@fromdate", fromDate, DbType.Date);
 
@@ -259,14 +268,9 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 parameters.Add("@todate", toDateValue, DbType.Date);
 
-                // Old code was taking User_ID from Session.
-                //
-                // In ASP.NET Core, don't use HttpContext.Current.
-                // Get it from the authenticated user's claims.
-
-                //int? userId = null;
-
-                //parameters.Add("@User_ID", userId ?? 0, DbType.Int32);
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 var result = await connection.QueryAsync<Username>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
 

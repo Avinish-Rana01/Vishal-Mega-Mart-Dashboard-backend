@@ -19,7 +19,8 @@ namespace VS_Mart_Backend.Features.Store
         /// Retrieves detailed real-time counter status and metrics for a specific store location.
         /// </summary>
         /// <param name="storeId">The unique identifier of the store to inspect.</param>
+        /// <param name="userId">The unique identifier of the user making the request.</param>
         /// <returns>A response containing POS counter active/inactive statuses and card metrics.</returns>
-        Task<CounterStatusResponse<CounterStatusDetailDto>> GetCounterStatusDetailsAsync(int storeId);
+        Task<CounterStatusResponse<CounterStatusDetailDto>> GetCounterStatusDetailsAsync(int storeId, int userId = 0);
     }
 }

@@ -47,6 +47,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
                 if (!string.IsNullOrEmpty(request.StoreCode))
                     parameters.Add("@Store_code", request.StoreCode, DbType.String, size: 50);
 
+                parameters.Add("@USER_ID", request.UserId, DbType.Int32);
+
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
@@ -96,6 +98,7 @@ namespace VS_Mart_Backend.Features.CycleCountReport
                 parameters.Add("@ref_No", request.RefNo ?? "", DbType.String, size: 50);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STORE_CODE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+                parameters.Add("@USER_ID", request.UserId, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);

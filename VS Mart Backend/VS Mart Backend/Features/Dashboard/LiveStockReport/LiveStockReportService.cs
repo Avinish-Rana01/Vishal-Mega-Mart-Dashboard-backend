@@ -114,6 +114,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                 parameters.Add("@Material", request.ArticleNo ?? "", DbType.String, size: 50);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "STOCK_DATE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+                parameters.Add("@USER_ID", request.UserId, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);

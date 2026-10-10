@@ -10,6 +10,7 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
     public class GrcHuSearchRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
         public string? GrcStatus { get; set; }
         public string? FromDate { get; set; }
@@ -19,6 +20,7 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
     public class GrcDetailsRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 10;
@@ -40,6 +42,7 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
     public class GrcModalDetailsRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 10;
@@ -97,6 +100,7 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
     public class StoreGrcReportQueryRequest
     {
+        public string? UserId { get; set; }
         public string? StoreCode { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;

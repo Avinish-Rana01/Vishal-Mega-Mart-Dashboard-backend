@@ -6,6 +6,7 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
 
     public class TagDetailsRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
 
         public int PageIndex { get; set; }

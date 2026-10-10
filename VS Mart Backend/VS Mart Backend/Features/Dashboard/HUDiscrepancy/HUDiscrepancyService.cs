@@ -24,7 +24,7 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
 
         public async Task<VendorWiseHUDiscrepancyResponse> GetVendorHUDiscrepancyDataAsync(VendorHUDiscrepancyRequest request)
         {
-            string cacheKey = $"VendorHUDiscrepancy_{request.VendorCode}_{request.SearchTerm}_{request.FromDate}_{request.ToDate}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}";
+            string cacheKey = $"VendorHUDiscrepancy_{request.VendorCode}_{request.SearchTerm}_{request.FromDate}_{request.ToDate}_{request.PageIndex}_{request.PageSize}_{request.SortColumn}_{request.SortDirection}_{request.UserId}";
 
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
@@ -47,6 +47,9 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
                     parameters.Add("@Vendor_Code", vendorCode, DbType.String, size: 50);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     // Output parameters
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

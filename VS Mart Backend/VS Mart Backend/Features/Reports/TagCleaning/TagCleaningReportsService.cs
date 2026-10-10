@@ -54,6 +54,9 @@ namespace VS_Mart_Backend.Features.Reports
                 parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "TAG_CLEANED_DATE" : request.SortColumn, DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "DESC" : request.SortDirection, DbType.String);
+                int userIdValReport = 0;
+                int.TryParse(request.UserId, out userIdValReport);
+                parameters.Add("@User_ID", userIdValReport, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -113,6 +116,9 @@ namespace VS_Mart_Backend.Features.Reports
                 parameters.Add("@todate", toDate, DbType.Date);
                 parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "INWARD_DATE" : request.SortColumn, DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
+                int userIdValData = 0;
+                int.TryParse(request.UserId, out userIdValData);
+                parameters.Add("@User_ID", userIdValData, DbType.Int32);
 
                 // Output parameters
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

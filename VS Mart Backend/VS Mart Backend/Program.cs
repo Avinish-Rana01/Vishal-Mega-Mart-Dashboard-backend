@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
 // Add Swagger / OpenAPI documentation
@@ -54,6 +55,9 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseCors("AllowAll");
+
+// Enforce mandatory userId on all /api/ endpoints
+app.UseMiddleware<VS_Mart_Backend.Features.Base.UserIdValidationMiddleware>();
 
 app.UseAuthorization();
 

@@ -15,6 +15,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         public string? StoreCode { get; set; }
         public string? FromDate { get; set; }
         public string? ToDate { get; set; }
+        public int? UserId { get; set; }
     }
 
     public class ArticleItem
@@ -33,6 +34,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         public string? ArticleNo { get; set; }
         public string? SortColumn { get; set; } = "STOCK_DATE";
         public string? SortDirection { get; set; } = "asc";
+        public int? UserId { get; set; }
     }
 
     public class LiveStockReportResponse

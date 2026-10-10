@@ -4,6 +4,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 {
     public class DCDetailsRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
@@ -29,6 +30,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
     public class HUDetailsRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
@@ -61,6 +63,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
     public class HUReportViewRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; } = "";
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 10;
@@ -83,6 +86,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
     }
     public class HUSummaryRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
 
         public int PageIndex { get; set; }

@@ -43,6 +43,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         public string? ToDate { get; set; } = string.Empty;
         public string? ColumnName { get; set; } = string.Empty;
         public string? Store { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
    
 
@@ -54,6 +55,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         public string? Pos { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class SearchEANSaleRequest : SearchArticlesSaleRequest

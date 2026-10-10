@@ -41,6 +41,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public string? StoreName { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class VoidDetailsResponse
@@ -65,6 +66,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public string? ToDate { get; set; } = string.Empty;
         public string? pos { get; set; } = string.Empty;
         public string? Ean { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class VoidReconciliationResponse
@@ -83,6 +85,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public string? ToDate { get; set; } = string.Empty;
         public string? ColumnName { get; set; } = string.Empty;
         public string? Store { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class POSCounterResponse
@@ -104,6 +107,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public string? Pos { get; set; } = string.Empty;
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
+        public string? UserId { get; set; } = string.Empty;
     }
     public class VoidReconciliationModelRequest
     {
@@ -124,6 +128,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         public string? SortColumn { get; set; } = "VOID_DATE";
 
         public string? SortDirection { get; set; } = "ASC";
+
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class VoidReconciliationModelResponse

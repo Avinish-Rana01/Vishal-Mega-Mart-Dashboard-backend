@@ -13,6 +13,7 @@ namespace VS_Mart_Backend.Features.CycleCountReport
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
         public string? StoreCode { get; set; } = string.Empty;
+        public int? UserId { get; set; }
     }
 
     public class CycleCountReportViewSummary
@@ -39,6 +40,7 @@ namespace VS_Mart_Backend.Features.CycleCountReport
         public string? FromDate { get; set; } = string.Empty;
         public string? ToDate { get; set; } = string.Empty;
         public string? RefNo { get; set; } = string.Empty;
+        public int? UserId { get; set; }
     }
 
     public class CycleCountDetailsSummary

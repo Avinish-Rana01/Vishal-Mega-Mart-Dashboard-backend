@@ -34,6 +34,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
     public class TagCycleCountQueryRequest
     {
+        public string? UserId { get; set; } = string.Empty;
         public string? SearchTerm { get; set; } = string.Empty;
         public int PageIndex { get; set; } = 1;
         public int PageSize { get; set; } = 100;
@@ -248,6 +249,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
     public class TagManagementQueryRequest
     {
+        public string? UserId { get; set; } = string.Empty;
     }
 
     public class TagManagementSummary
@@ -266,6 +268,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
     public class WarehouseEncodingQueryRequest
     {
+        public string? UserId { get; set; } = string.Empty;
         public string FromDate { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
         public string ToDate { get; set; } = DateTime.Now.ToString("yyyy-MM-dd");
     }

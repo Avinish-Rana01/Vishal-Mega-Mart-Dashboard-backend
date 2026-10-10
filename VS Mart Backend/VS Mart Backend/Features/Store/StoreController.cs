@@ -18,7 +18,7 @@ namespace VS_Mart_Backend.Features.Store
         }
 
         [HttpGet("/api/Store/counter-status-stores")]
-        public async Task<IActionResult> GetCounterStatusStores([FromQuery] int userId = 26)
+        public async Task<IActionResult> GetCounterStatusStores([FromQuery] int userId)
         {
             try
             {
@@ -37,7 +37,7 @@ namespace VS_Mart_Backend.Features.Store
         }
 
         [HttpGet("/api/Store/counter-status")]
-        public async Task<IActionResult> GetCounterStatus([FromQuery] int storeId)
+        public async Task<IActionResult> GetCounterStatus([FromQuery] int storeId, [FromQuery] int userId = 0)
         {
             if (storeId <= 0)
             {
@@ -50,7 +50,7 @@ namespace VS_Mart_Backend.Features.Store
 
             try
             {
-                var response = await _storeService.GetCounterStatusDetailsAsync(storeId);
+                var response = await _storeService.GetCounterStatusDetailsAsync(storeId, userId);
                 return Ok(response);
             }
             catch (Exception ex)

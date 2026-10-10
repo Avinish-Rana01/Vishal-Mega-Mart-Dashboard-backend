@@ -1,4 +1,4 @@
-﻿namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
+namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 {
     public class WHEncodingModels
     {
@@ -6,6 +6,7 @@
 
     public class WHEncodingRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
         public int PageIndex { get; set; }
         public int PageSize { get; set; }
@@ -63,6 +64,7 @@
 
     public class UsernameRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
 
         public string? FromDate { get; set; }

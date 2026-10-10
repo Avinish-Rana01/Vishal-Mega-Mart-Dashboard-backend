@@ -33,8 +33,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                 using var connection = new SqlConnection(_connectionString);
                 var parameters = new DynamicParameters();
-                
-                parameters.Add("@status", "LAST7DAY_SALE_DASHBOARD", DbType.String, size: 50);
+                                parameters.Add("@status", "LAST7DAY_SALE_DASHBOARD", DbType.String, size: 50);
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
@@ -43,6 +42,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                 parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@DPOS_SALE", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -71,7 +73,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                 return response;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 return new StoreSaleReportResponse();
             }
@@ -79,7 +81,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<List<DropdownItem>> BindPOSCounterAsync(BindPOSCounterRequest request)
         {
-            string cacheKey = $"BindPOSCounter_{request.ColumnName}_{request.Store}_{request.FromDate}_{request.ToDate}";
+            string cacheKey = $"BindPOSCounter_{request.ColumnName}_{request.Store}_{request.FromDate}_{request.ToDate}_{request.UserId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -96,6 +98,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
                     parameters.Add("@store_code", request.Store ?? "");
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
                     
@@ -117,7 +122,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<List<DropdownItem>> SearchArticlesSaleAsync(SearchArticlesSaleRequest request)
         {
-            string cacheKey = $"SearchArticlesSale_{request.ColumnName}_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}";
+            string cacheKey = $"SearchArticlesSale_{request.ColumnName}_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}_{request.UserId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -139,7 +144,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@COUNTER_NO", request.Pos ?? "");
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
-                    parameters.Add("@User_ID", 0, DbType.Int32);
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -158,7 +165,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
         public async Task<List<DropdownItem>> SearchEANSaleAsync(SearchEANSaleRequest request)
         {
-            string cacheKey = $"SearchEANSale_{request.ColumnName}_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}_{request.Material}";
+            string cacheKey = $"SearchEANSale_{request.ColumnName}_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}_{request.Material}_{request.UserId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -181,7 +188,9 @@ namespace VS_Mart_Backend.Features.SaleDashboard
                     parameters.Add("@fromdate", request.FromDate ?? "");
                     parameters.Add("@todate", string.IsNullOrEmpty(request.ToDate) ? request.FromDate : request.ToDate);
                     parameters.Add("@Material", request.Material ?? "");
-                    parameters.Add("@User_ID", 0, DbType.Int32);
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 

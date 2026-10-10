@@ -14,6 +14,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public string? SortColumn { get; set; } = "";
         public string? SortDirection { get; set; } = "";
+        public int? UserId { get; set; }
     }
 
     public class ReturnDetailsResponse
@@ -42,6 +43,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public string? SortColumn { get; set; } = "";
         public string? SortDirection { get; set; } = "";
+        public int? UserId { get; set; }
     }
 
     public class ReturnReconciliationResponse
@@ -66,6 +68,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         public string? Ean { get; set; } = string.Empty;
         public string? SortColumn { get; set; } = "BILL_DATE";
         public string? SortDirection { get; set; } = "ASC";
+        public int? UserId { get; set; }
     }
 
     public class ReturnReconciliationModel

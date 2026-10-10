@@ -17,7 +17,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
         Task<DCDetailsResponse> GetDCDetailsAsync(DCDetailsRequest request);
         Task<HUDetailsResponse> GetHUDetailsAsync(HUDetailsRequest request);
         Task<HUReportViewResponse> GetHUReportViewDetailsAsync(HUReportViewRequest request);
-        Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm);
+        Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm, string? userId = null);
         Task<HUSummaryResponse> GetHUSummaryDetailsAsync(HUSummaryRequest request);
     }
 
@@ -33,7 +33,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
         public async Task<DCDetailsResponse> GetDCDetailsAsync(DCDetailsRequest request)
         {
-            string cacheKey = $"DCDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
+            string cacheKey = $"DCDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}_{request.UserId}";
 
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
@@ -55,6 +55,9 @@ namespace VS_Mart_Backend.Features.DcDashboard
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@PROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -106,6 +109,9 @@ namespace VS_Mart_Backend.Features.DcDashboard
                 parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@HUCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -134,7 +140,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
             }
         }
 
-        public async Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm)
+        public async Task<List<HuNumberItem>> SearchValidationHuNumbersAsync(string? huStatus, string? receivingPlant, string? fromDate, string? toDate, string? searchTerm, string? userId = null)
         {
             try
             {
@@ -158,6 +164,10 @@ namespace VS_Mart_Backend.Features.DcDashboard
                 {
                     parameters.Add("@SearchTerm", searchTerm ?? "", DbType.String, size: 200);
                 }
+
+                int userIdVal = 0;
+                int.TryParse(userId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -214,6 +224,9 @@ namespace VS_Mart_Backend.Features.DcDashboard
                 parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "ENCODE_DATE" : request.SortColumn, DbType.String);
 
                 parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
+                int userIdSummary = 0;
+                int.TryParse(request.UserId, out userIdSummary);
+                parameters.Add("@User_ID", userIdSummary, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
@@ -275,6 +288,9 @@ namespace VS_Mart_Backend.Features.DcDashboard
 
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "HU_Number" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+                int userIdReport = 0;
+                int.TryParse(request.UserId, out userIdReport);
+                parameters.Add("@User_ID", userIdReport, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@ACTUALQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);

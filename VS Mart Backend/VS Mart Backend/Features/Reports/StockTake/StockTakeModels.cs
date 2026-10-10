@@ -6,6 +6,7 @@ namespace VS_Mart_Backend.Features.Reports.StockTake
 
     public class StockTakeRequest
     {
+        public string? UserId { get; set; }
         public string? SearchTerm { get; set; }
         public int PageIndex { get; set; }
         public int PageSize { get; set; }

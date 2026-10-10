@@ -69,6 +69,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                    parameters.Add("@User_ID", request.UserId, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -136,6 +137,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@EAN", request.Ean ?? "", DbType.String, size: 50);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "BILL_DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+                    parameters.Add("@User_ID", request.UserId, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -296,6 +298,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                 parameters.Add("@EAN", (request.Ean ?? "").Trim(), DbType.String);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "BILL_DATE" : request.SortColumn.Trim(), DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection.Trim(), DbType.String);
+                parameters.Add("@User_ID", request.UserId, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace VS_Mart_Backend.Features.Reports.StockTake
 {
@@ -21,10 +21,17 @@ namespace VS_Mart_Backend.Features.Reports.StockTake
         {
             try
             {
-                // Later get this from JWT claims
-                int userId = 30;
+                int userId = 0;
+                if (!string.IsNullOrWhiteSpace(request?.UserId) && int.TryParse(request.UserId, out int parsedId))
+                {
+                    userId = parsedId;
+                }
+                else if (HttpContext.Items.TryGetValue("UserId", out var ctxUserId) && ctxUserId is int idVal)
+                {
+                    userId = idVal;
+                }
 
-                var result = await _stockTake.GetStockTakeDataAsync(request, userId);
+                var result = await _stockTake.GetStockTakeDataAsync(request ?? new StockTakeRequest(), userId);
 
                 return Ok(result);
             }

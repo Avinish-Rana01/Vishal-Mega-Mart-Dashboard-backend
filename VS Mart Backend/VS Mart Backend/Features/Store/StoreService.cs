@@ -101,7 +101,7 @@ namespace VS_Mart_Backend.Features.Store
             }
         }
 
-        public async Task<CounterStatusResponse<CounterStatusDetailDto>> GetCounterStatusDetailsAsync(int storeId)
+        public async Task<CounterStatusResponse<CounterStatusDetailDto>> GetCounterStatusDetailsAsync(int storeId, int userId = 0)
         {
             try
             {
@@ -109,6 +109,7 @@ namespace VS_Mart_Backend.Features.Store
                 var parameters = new DynamicParameters();
                 parameters.Add("@status", "COUNTER_STATUS_DETAILS");
                 parameters.Add("@Store_ID", storeId);
+                parameters.Add("@User_ID", userId);
 
                 var rows = (await connection.QueryAsync<CounterStatusDetailDto>(
                     "SP_Master",

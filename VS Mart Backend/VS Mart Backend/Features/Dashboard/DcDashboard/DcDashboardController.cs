@@ -53,11 +53,12 @@ namespace VS_Mart_Backend.Features.DcDashboard
             [FromQuery] string? receivingPlant,
             [FromQuery] string? fromDate,
             [FromQuery] string? toDate,
-            [FromQuery] string? searchTerm)
+            [FromQuery] string? searchTerm,
+            [FromQuery] string? userId = null)
         {
             try
             {
-                var result = await _dcDashboardService.SearchValidationHuNumbersAsync(huStatus, receivingPlant, fromDate, toDate, searchTerm);
+                var result = await _dcDashboardService.SearchValidationHuNumbersAsync(huStatus, receivingPlant, fromDate, toDate, searchTerm, userId);
                 return Ok(result);
             }
             catch (Exception ex)

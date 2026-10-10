@@ -66,6 +66,9 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                     parameters.Add("@FromDate", request.FromDate ?? "", DbType.String, size: 20);
                     parameters.Add("@Todate", request.ToDate ?? "", DbType.String, size: 20);
                     parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
+                    int userIdVal = 0;
+                    int.TryParse(request.UserId, out userIdVal);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -133,6 +136,9 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                 parameters.Add("@HU_NO", request.HuNo ?? "", DbType.String, size: 50);
                 parameters.Add("@SortColumn", request.SortColumn ?? "GRC_DATE", DbType.String, size: 50);
                 parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
@@ -223,6 +229,9 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
 
                 parameters.Add("@FromDate", formattedDate, DbType.String);
                 parameters.Add("@ToDate", formattedDate, DbType.String);
+                int userIdValModal = 0;
+                int.TryParse(request.UserId, out userIdValModal);
+                parameters.Add("@User_ID", userIdValModal, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -271,6 +280,9 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
                 parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "GRC_DATE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                int userIdValReport = 0;
+                int.TryParse(request.UserId, out userIdValReport);
+                parameters.Add("@User_ID", userIdValReport, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);

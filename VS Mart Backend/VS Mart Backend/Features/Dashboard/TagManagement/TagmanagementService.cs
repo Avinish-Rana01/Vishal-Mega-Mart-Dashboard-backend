@@ -38,7 +38,9 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
                 parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "CYCLE_COUNT" : request.SortColumn, DbType.String);
 
                 parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
-
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 // Output parameters
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

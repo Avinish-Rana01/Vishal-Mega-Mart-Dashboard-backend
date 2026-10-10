@@ -77,6 +77,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
+                    int? uid1 = int.TryParse(request.UserId, out int u1) && u1 > 0 ? u1 : null;
+                    parameters.Add("@User_ID", uid1, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -128,6 +130,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@EAN", request.Ean ?? "", DbType.String, size: 50);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
+                    int? uid2 = int.TryParse(request.UserId, out int u2) && u2 > 0 ? u2 : null;
+                    parameters.Add("@User_ID", uid2, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -170,6 +174,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@fromDate", fromDate, DbType.DateTime);
                     parameters.Add("@todate", toDate, DbType.DateTime);
                     parameters.Add("@STORE_CODE", request.Store ?? "", DbType.String, size: 50);
+                    int? uid3 = int.TryParse(request.UserId, out int u3) && u3 > 0 ? u3 : null;
+                    parameters.Add("@User_ID", uid3, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -207,6 +213,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@fromDate", fromDate, DbType.DateTime);
                     parameters.Add("@toDate", toDate, DbType.DateTime);
                     parameters.Add("@COUNTER_NO", request.Pos ?? "", DbType.String, size: 50);
+                    int? uid4 = int.TryParse(request.UserId, out int u4) && u4 > 0 ? u4 : null;
+                    parameters.Add("@User_ID", uid4, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -272,7 +280,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn.Trim(), DbType.String);
 
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection.Trim(), DbType.String);
-
+                int? uid5 = int.TryParse(request.UserId, out int u5) && u5 > 0 ? u5 : null;
+                parameters.Add("@User_ID", uid5, DbType.Int32);
 
                 // =========================================
                 // Output Parameters

@@ -173,6 +173,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@PageSize", 1000, DbType.Int32);
                 parameters.Add("@SortColumn", sortCol, DbType.String, size: 50);
                 parameters.Add("@SortDirection", sortDir, DbType.String, size: 10);
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -832,6 +835,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters2.Add("@fromdate", "", DbType.String, size: 20);
             parameters2.Add("@todate", "", DbType.String, size: 20);
             parameters2.Add("@ref_No", "", DbType.String, size: 50);
+            parameters2.Add("@USER_ID", userId, DbType.Int32);
             parameters2.Add("@SortColumn", "DATE", DbType.String, size: 50);
             parameters2.Add("@SortDirection", "desc", DbType.String, size: 10);
             parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -1044,7 +1048,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
-                string cacheKey = $"TagManagementLocation";
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                string cacheKey = $"TagManagementLocation_{userIdVal}";
                 return await GetOrCreateWithSWRAsync(cacheKey, async () =>
                 {
                     var response = new TagManagementResponse();
@@ -1057,6 +1063,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@PageSize", 100, DbType.Int32);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "asc", DbType.String, size: 10);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@STORECOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -1088,7 +1095,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
-                string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}";
+                int userIdVal = 0;
+                int.TryParse(request.UserId, out userIdVal);
+                string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}_{userIdVal}";
                 return await GetOrCreateWithSWRAsync(cacheKey, async () =>
                 {
                     var response = new WarehouseEncodingResponse();
@@ -1098,7 +1107,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@status", "SHOW_WAREHOUSE_ENCODE_DATA", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.FromDate, DbType.String, size: 20);
                     parameters.Add("@todate", request.ToDate, DbType.String, size: 20);
-                    parameters.Add("@User_ID", 0, DbType.Int32);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
                     parameters.Add("@SearchTerm", "", DbType.String, size: 200);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "", DbType.String, size: 10);
