@@ -34,6 +34,7 @@ namespace VS_Mart_Backend.Features.Dispatch
         public int PageSize { get; set; } = 50;
         public string? SortColumn { get; set; } = "TRANS_DATE";
         public string? SortDirection { get; set; } = "asc";
+        public int? UserId { get; set; } = 0;
     }
 
     public class DispatchReportResponse
@@ -56,6 +57,7 @@ namespace VS_Mart_Backend.Features.Dispatch
         public int PageSize { get; set; } = 50;
         public string? SortColumn { get; set; } = "TRANS_DATE";
         public string? SortDirection { get; set; } = "asc";
+        public int? UserId { get; set; } = 0;
     }
 
     public class PicklistUploadResponse

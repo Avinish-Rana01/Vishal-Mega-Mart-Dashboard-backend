@@ -35,5 +35,6 @@ namespace VS_Mart_Backend.Features.SystemUtility
         public string? FromDate { get; set; } = "";
         public string? ToDate { get; set; } = "";
         public string? SearchTerm { get; set; } = "";
+        public int? UserId { get; set; } = 0;
     }
 }

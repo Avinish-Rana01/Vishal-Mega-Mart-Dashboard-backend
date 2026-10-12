@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using System;
+using VS_Mart_Backend.Features.Base;
 
 namespace VS_Mart_Backend.Features.VoidDashboard
 {
@@ -25,6 +26,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.GetVoidDashboardAsync(query);
                 return Ok(result);
             }
@@ -41,6 +44,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.GetVoidDetailsAsync(request);
                 return Ok(result);
             }
@@ -57,6 +62,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.GetVoidReconciliationDataAsync(request);
                 return Ok(result);
             }
@@ -72,6 +79,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.VoidBindPOSCounter(request);
                 return Ok(result);
             }
@@ -88,6 +97,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.SearchEAN(request);
                 return Ok(result);
             }
@@ -104,6 +115,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _voidDashboardService.GetVoidReconciliationDataModelAsync(request);
                 return Ok(result);
             }

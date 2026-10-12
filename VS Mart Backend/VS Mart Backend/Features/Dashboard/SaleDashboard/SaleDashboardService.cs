@@ -73,7 +73,7 @@ namespace VS_Mart_Backend.Features.SaleDashboard
 
                 return response;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new StoreSaleReportResponse();
             }

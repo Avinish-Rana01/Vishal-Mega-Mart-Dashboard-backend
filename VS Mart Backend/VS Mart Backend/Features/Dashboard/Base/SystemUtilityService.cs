@@ -79,7 +79,8 @@ namespace VS_Mart_Backend.Features.SystemUtility
 
         public async Task<object> GetEncodingStoreSearchEANAsync(EncodingStoreSearchRequest request)
         {
-            string cacheKey = $"EncodingStoreEAN_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}";
+            int userId = request.UserId ?? 0;
+            string cacheKey = $"EncodingStoreEAN_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{userId}";
 
             return await GetOrCreateWithSWRAsync<object>(cacheKey, async () =>
             {
@@ -95,6 +96,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
                     parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                    parameters.Add("@User_ID", userId, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 60);
                     var eans = items.Select(x => new
@@ -116,7 +118,8 @@ namespace VS_Mart_Backend.Features.SystemUtility
 
         public async Task<object> GetEncodingStoreSearchArticleAsync(EncodingStoreSearchRequest request)
         {
-            string cacheKey = $"EncodingStoreArticle_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}";
+            int userId = request.UserId ?? 0;
+            string cacheKey = $"EncodingStoreArticle_{request.StoreName}_{request.FromDate}_{request.ToDate}_{request.SearchTerm}_{userId}";
 
             return await GetOrCreateWithSWRAsync<object>(cacheKey, async () =>
             {
@@ -132,6 +135,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
                     parameters.Add("@fromdate", fromDate.HasValue ? fromDate.Value.Date : null, DbType.Date);
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
+                    parameters.Add("@User_ID", userId, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 60);
                     var articles = items.Select(x => new
@@ -176,6 +180,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
                 parameters.Add("@Store_Code", request.StoreName ?? "", DbType.String, size: 50);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "ARTICLE" : request.SortColumn, DbType.String, size: 50);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String, size: 10);
+                parameters.Add("@User_ID", request.UserId ?? 0, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@TotalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

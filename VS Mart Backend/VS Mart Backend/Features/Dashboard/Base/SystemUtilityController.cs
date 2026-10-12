@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
+using VS_Mart_Backend.Features.Base;
 
 namespace VS_Mart_Backend.Features.SystemUtility
 {
@@ -71,6 +72,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var result = await _systemUtilityService.GetEncodingStoreDataAsync(request);
                 return Ok(result);
             }
@@ -88,6 +90,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var result = await _systemUtilityService.GetEncodingStoreSearchEANAsync(request);
                 return Ok(result);
             }
@@ -102,6 +105,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var result = await _systemUtilityService.GetEncodingStoreSearchArticleAsync(request);
                 return Ok(result);
             }
@@ -117,6 +121,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var result = await _systemUtilityService.GetEncodingReportDetailsModalAsync(request);
                 return Ok(result);
             }
@@ -131,6 +136,7 @@ namespace VS_Mart_Backend.Features.SystemUtility
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var result = await _systemUtilityService.GetEncodingReportDetailsModalAsync(request);
                 return Ok(result);
             }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
+using VS_Mart_Backend.Features.Base;
 
 namespace VS_Mart_Backend.Features.LiveStockReport
 {
@@ -23,7 +24,9 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         {
             try
             {
-                var stores = await _liveStockReportService.GetStoresAsync(userId);
+                int resolvedUid = HttpContext.GetResolvedUserId(userId);
+                string effectiveUserId = resolvedUid > 0 ? resolvedUid.ToString() : (userId ?? "");
+                var stores = await _liveStockReportService.GetStoresAsync(effectiveUserId);
                 return Ok(stores);
             }
             catch (Exception ex)
@@ -38,6 +41,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var articles = await _liveStockReportService.SearchArticlesAsync(request);
                 return Ok(articles);
             }
@@ -59,6 +63,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId);
                 var response = await _liveStockReportService.GetLiveStockDetailsAsync(request);
                 return Ok(response);
             }

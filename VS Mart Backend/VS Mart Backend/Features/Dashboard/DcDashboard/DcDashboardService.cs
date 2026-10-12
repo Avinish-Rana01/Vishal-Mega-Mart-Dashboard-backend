@@ -255,7 +255,7 @@ namespace VS_Mart_Backend.Features.DcDashboard
                     }
                 };
             }
-            catch(Exception ex)
+            catch (Exception)
             {
                 return new HUSummaryResponse();
             }

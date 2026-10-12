@@ -57,7 +57,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
 
         public async Task<List<ArticleItem>> SearchArticlesAsync(ArticleSearchRequest request)
         {
-            string cacheKey = $"SearchArticles_LiveStock_{request.SearchTerm}_{request.StoreCode}_{request.FromDate}_{request.ToDate}";
+            string cacheKey = $"SearchArticles_LiveStock_{request.SearchTerm}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.UserId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -72,6 +72,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                     parameters.Add("@Store_Code", request.StoreCode ?? "", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.FromDate ?? "", DbType.String, size: 20);
                     parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
+                    parameters.Add("@USER_ID", request.UserId ?? 0, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 

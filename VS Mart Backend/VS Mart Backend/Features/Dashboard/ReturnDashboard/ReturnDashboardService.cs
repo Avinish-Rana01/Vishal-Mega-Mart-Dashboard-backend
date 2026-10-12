@@ -31,7 +31,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public async Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request)
         {
-            string cacheKey = $"ReturnDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
+            int userId = request.UserId ?? 0;
+            string cacheKey = $"ReturnDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}_{userId}";
 
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
@@ -69,7 +70,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@todate", toDate.HasValue ? toDate.Value.Date : null, DbType.Date);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection, DbType.String, size: 10);
-                    parameters.Add("@User_ID", request.UserId, DbType.Int32);
+                    parameters.Add("@User_ID", userId, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -97,7 +98,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public async Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request)
         {
-            string cacheKey = $"ReturnReconciliation_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.Pos}_{request.Ean}_{request.SortColumn}_{request.SortDirection}";
+            int userId = request.UserId ?? 0;
+            string cacheKey = $"ReturnReconciliation_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.Pos}_{request.Ean}_{request.SortColumn}_{request.SortDirection}_{userId}";
 
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
@@ -137,7 +139,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@EAN", request.Ean ?? "", DbType.String, size: 50);
                     parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "BILL_DATE" : request.SortColumn, DbType.String, size: 50);
                     parameters.Add("@SortDirection", request.SortDirection ?? "asc", DbType.String, size: 10);
-                    parameters.Add("@User_ID", request.UserId, DbType.Int32);
+                    parameters.Add("@User_ID", userId, DbType.Int32);
 
                     parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
@@ -165,7 +167,9 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public async Task<List<POSCounterResponse>> ReturnBindPOSCounter(BindPOSCounterRequest request)
         {
-            string cacheKey = $"ReturnBindPOSCounter_{request.Store}_{request.FromDate}_{request.ToDate}";
+            int userIdVal = 0;
+            int.TryParse(request.UserId, out userIdVal);
+            string cacheKey = $"ReturnBindPOSCounter_{request.Store}_{request.FromDate}_{request.ToDate}_{userIdVal}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -196,6 +200,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@fromDate", fromDate, DbType.DateTime);
                     parameters.Add("@todate", toDate, DbType.DateTime);
                     parameters.Add("@STORE_CODE", cleanStore, DbType.String, size: 50);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -214,7 +219,9 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public async Task<List<EANItem>> ReturnSearchEAN(SearchEANRequest request)
         {
-            string cacheKey = $"ReturnSearchEAN_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}";
+            int userIdVal = 0;
+            int.TryParse(request.UserId, out userIdVal);
+            string cacheKey = $"ReturnSearchEAN_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}_{userIdVal}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
             {
                 try
@@ -249,6 +256,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@fromDate", fromDate, DbType.DateTime);
                     parameters.Add("@toDate", toDate, DbType.DateTime);
                     parameters.Add("@COUNTER_NO", request.Pos ?? "", DbType.String, size: 50);
+                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                     var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
@@ -298,7 +306,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                 parameters.Add("@EAN", (request.Ean ?? "").Trim(), DbType.String);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "BILL_DATE" : request.SortColumn.Trim(), DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection.Trim(), DbType.String);
-                parameters.Add("@User_ID", request.UserId, DbType.Int32);
+                parameters.Add("@User_ID", request.UserId ?? 0, DbType.Int32);
 
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);

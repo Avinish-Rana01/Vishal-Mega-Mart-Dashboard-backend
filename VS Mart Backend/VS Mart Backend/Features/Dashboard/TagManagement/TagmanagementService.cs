@@ -80,7 +80,7 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw;
             }

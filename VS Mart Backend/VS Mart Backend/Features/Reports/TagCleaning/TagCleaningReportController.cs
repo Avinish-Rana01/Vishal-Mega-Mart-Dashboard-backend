@@ -1,6 +1,6 @@
-
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
+using VS_Mart_Backend.Features.Base;
 using VS_Mart_Backend.Features.Master;
 
 namespace VS_Mart_Backend.Features.Reports
@@ -9,7 +9,6 @@ namespace VS_Mart_Backend.Features.Reports
     [Route("api/[controller]")]
     public class TagCleaningReportController : ControllerBase
     {
-
         private readonly ITagCleaningReport _tagCleaningService;
         private readonly ILogger<TagCleaningReportController> _logger;
 
@@ -19,13 +18,12 @@ namespace VS_Mart_Backend.Features.Reports
             _logger = logger;
         }
 
-
-
         [HttpPost("GetTagCleaningReport")]
         public async Task<IActionResult> GetTagCleaningReport([FromBody] TagCleaningReportRequest request)
         {
             try
             {
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId).ToString();
                 var result = await _tagCleaningService.GetTagCleaningReportAsync(request);
 
                 return Ok(result);
@@ -39,7 +37,6 @@ namespace VS_Mart_Backend.Features.Reports
                     Message = "An internal server error occurred while executing the GetTagCleaningReport operation."
                 });
             }
-
         }
 
         [HttpGet("GetTagCleaningData")]
@@ -47,7 +44,9 @@ namespace VS_Mart_Backend.Features.Reports
         {
             try
             {
-                var result = await _tagCleaningService.GetTagCleaningDataAsync(request ?? new TagCleaningRequest());
+                request ??= new TagCleaningRequest();
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId).ToString();
+                var result = await _tagCleaningService.GetTagCleaningDataAsync(request);
 
                 return Ok(result);
             }
@@ -68,7 +67,9 @@ namespace VS_Mart_Backend.Features.Reports
         {
             try
             {
-                var result = await _tagCleaningService.GetTagCleaningDataAsync(request ?? new TagCleaningRequest());
+                request ??= new TagCleaningRequest();
+                request.UserId = HttpContext.GetResolvedUserId(request.UserId).ToString();
+                var result = await _tagCleaningService.GetTagCleaningDataAsync(request);
 
                 return Ok(result);
             }

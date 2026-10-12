@@ -206,7 +206,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 return response;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new WHEncodingResponse();
             }
@@ -276,7 +276,7 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 return result.ToList();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new List<Username>();
             }

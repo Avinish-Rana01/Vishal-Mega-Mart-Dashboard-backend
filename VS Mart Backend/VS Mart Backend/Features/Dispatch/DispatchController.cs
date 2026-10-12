@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading;
 using System.Threading.Tasks;
+using VS_Mart_Backend.Features.Base;
 
 namespace VS_Mart_Backend.Features.Dispatch
 {
@@ -71,6 +72,7 @@ namespace VS_Mart_Backend.Features.Dispatch
         [HttpGet("report")]
         public async Task<IActionResult> GetReport([FromQuery] DispatchReportRequest request, CancellationToken cancellationToken)
         {
+            request.UserId = HttpContext.GetResolvedUserId(request.UserId);
             var result = await _dispatchService.GetDispatchReportAsync(request, cancellationToken);
             return Ok(result);
         }
@@ -86,6 +88,7 @@ namespace VS_Mart_Backend.Features.Dispatch
                 return BadRequest(new { success = false, message = "Vehicle No is required for details modal." });
             }
 
+            request.UserId = HttpContext.GetResolvedUserId(request.UserId);
             var result = await _dispatchService.GetDispatchReportModalAsync(request, cancellationToken);
             return Ok(result);
         }

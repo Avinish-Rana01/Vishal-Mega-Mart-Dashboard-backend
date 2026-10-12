@@ -591,6 +591,7 @@ namespace VS_Mart_Backend.Features.Dispatch
                 parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "TRANS_DATE" : request.SortColumn, DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String);
+                parameters.Add("@User_ID", request.UserId ?? 0, DbType.Int32);
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var rows = (await connection.QueryAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure)).ToList();
@@ -647,6 +648,7 @@ namespace VS_Mart_Backend.Features.Dispatch
                 parameters.Add("@PageSize", pageSize, DbType.Int32);
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "TRANS_DATE" : request.SortColumn, DbType.String);
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection, DbType.String);
+                parameters.Add("@User_ID", request.UserId ?? 0, DbType.Int32);
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 var rows = (await connection.QueryAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure)).ToList();
