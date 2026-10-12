@@ -34,8 +34,11 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             string format = string.IsNullOrWhiteSpace(request.Format) ? "xlsx" : request.Format.Trim().ToLowerInvariant();
 
+            // Resolve SP status dynamically (supports single-date vs date-range branching)
+            string resolvedStatus = config.ResolveStatus(request);
+
             _logger.LogInformation("Starting export for report: {ReportName} in format {Format} using SP: {StoredProcedure} (@status='{Status}')",
-                config.ReportName, format, config.StoredProcedure, config.Status);
+                config.ReportName, format, config.StoredProcedure, resolvedStatus);
 
             await using var connection = new SqlConnection(_connectionString);
             await connection.OpenAsync(cancellationToken);
@@ -45,7 +48,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             command.CommandTimeout = 300; // 5 minute safety timeout for massive datasets
 
             // Standard SP base inputs
-            command.Parameters.AddWithValue("@status", config.Status);
+            command.Parameters.AddWithValue("@status", resolvedStatus);
             command.Parameters.AddWithValue("@PageIndex", 1);
             command.Parameters.AddWithValue("@PageSize", 10_000_000); // 10 Million (safe from integer overflow in SQL Server)
 

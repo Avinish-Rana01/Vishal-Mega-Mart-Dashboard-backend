@@ -13,6 +13,19 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
         public string DefaultSortColumn { get; set; } = "DATE";
         public string DefaultSortDirection { get; set; } = "DESC";
         public Action<SqlCommand, UniversalExportRequest> ParameterBinder { get; set; } = (_, _) => { };
+
+        /// <summary>
+        /// Optional delegate for dynamic status resolution (e.g. single-date vs date-range branching).
+        /// When set, takes precedence over the static <see cref="Status"/> property.
+        /// </summary>
+        public Func<UniversalExportRequest, string>? StatusResolver { get; set; }
+
+        /// <summary>
+        /// Returns the effective SP status for a given request.
+        /// Uses <see cref="StatusResolver"/> if available, otherwise falls back to <see cref="Status"/>.
+        /// </summary>
+        public string ResolveStatus(UniversalExportRequest request) =>
+            StatusResolver != null ? StatusResolver(request) : Status;
     }
 
     public static class ReportRegistry
@@ -53,6 +66,18 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             static string EffectiveStore(UniversalExportRequest r) =>
                 !string.IsNullOrWhiteSpace(r.StoreCode) ? r.StoreCode.Trim() : (r.StoreName ?? "").Trim();
+
+            static bool IsSingleDate(string? fromDate, string? toDate)
+            {
+                if (string.IsNullOrWhiteSpace(fromDate) || string.IsNullOrWhiteSpace(toDate)) return false;
+                string f = fromDate.Trim().Trim('"');
+                string t = toDate.Trim().Trim('"');
+                if (f.Contains('T')) f = f.Split('T')[0].Trim();
+                if (t.Contains('T')) t = t.Split('T')[0].Trim();
+                if (DateTime.TryParse(f, out var df) && DateTime.TryParse(t, out var dt))
+                    return df.Date == dt.Date;
+                return string.Equals(f, t, StringComparison.OrdinalIgnoreCase);
+            }
 
             // ==============================================================
             // 1. VENDOR HU DISCREPANCY SUMMARY
@@ -343,6 +368,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 ReportName = "RETURN_RECONCILIATION_SUMMARY",
                 StoredProcedure = "SP_NEW_REPORT",
                 Status = "SHOW_SUMMARY_FOR_RETURN",
+                StatusResolver = r => IsSingleDate(r.FromDate, r.ToDate) ? "1DAY_SHOW_SUMMARY_FOR_RETURN" : "SHOW_SUMMARY_FOR_RETURN",
                 DefaultSortColumn = "BILL_DATE",
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
@@ -363,7 +389,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 ReportName = "RETURN_RECONCILIATION_ITEM_DETAILS",
                 StoredProcedure = "SP_NEW_REPORT",
-                Status = "SHOW_SUMMARY_DATA_FOR_RETURN",
+                Status = "1DAY_SHOW_SUMMARY_DATA_FOR_RETURN",
                 DefaultSortColumn = "BILL_DATE",
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>

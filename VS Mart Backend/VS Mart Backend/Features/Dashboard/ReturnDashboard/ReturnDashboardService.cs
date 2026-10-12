@@ -128,7 +128,12 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                         if (DateTime.TryParse(dStr, out var d)) toDate = d;
                     }
 
-                    parameters.Add("@status", "SHOW_SUMMARY_FOR_RETURN", DbType.String, size: 50);
+                    // Single-date mode: use carryover encoding match (re-encodings counted from bill date → today)
+                    // Date-range mode: use strict same-day encoding match (BILL_DATE must equal ENCODE_DATE)
+                    bool isSingleDay = fromDate.HasValue && toDate.HasValue && fromDate.Value.Date == toDate.Value.Date;
+                    string status = isSingleDay ? "1DAY_SHOW_SUMMARY_FOR_RETURN" : "SHOW_SUMMARY_FOR_RETURN";
+
+                    parameters.Add("@status", status, DbType.String, size: 50);
                     parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
                     parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
                     parameters.Add("@PageSize", request.PageSize, DbType.Int32);
@@ -280,7 +285,9 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
-                parameters.Add("@status", "SHOW_SUMMARY_DATA_FOR_RETURN", DbType.String);
+                // Modal drill-down is always single-date context — use carryover encoding match
+                // so items returned on this date but re-encoded the next day still show COMPLETE
+                parameters.Add("@status", "1DAY_SHOW_SUMMARY_DATA_FOR_RETURN", DbType.String);
                 parameters.Add("@SearchTerm", (request.SearchTerm ?? "").Trim(), DbType.String);
                 parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
                 parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
