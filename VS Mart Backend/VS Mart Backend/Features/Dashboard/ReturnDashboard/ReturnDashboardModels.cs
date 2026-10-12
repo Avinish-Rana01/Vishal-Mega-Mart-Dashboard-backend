@@ -43,6 +43,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         public string? SortColumn { get; set; } = "";
         public string? SortDirection { get; set; } = "";
+        public string? Mode { get; set; } = "single";
         public int? UserId { get; set; }
     }
 
@@ -68,6 +69,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         public string? Ean { get; set; } = string.Empty;
         public string? SortColumn { get; set; } = "BILL_DATE";
         public string? SortDirection { get; set; } = "ASC";
+        public string? Mode { get; set; } = "single";
         public int? UserId { get; set; }
     }
 

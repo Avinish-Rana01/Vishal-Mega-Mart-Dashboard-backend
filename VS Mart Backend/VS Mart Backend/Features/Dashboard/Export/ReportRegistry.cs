@@ -368,7 +368,16 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 ReportName = "RETURN_RECONCILIATION_SUMMARY",
                 StoredProcedure = "SP_NEW_REPORT",
                 Status = "SHOW_SUMMARY_FOR_RETURN",
-                StatusResolver = r => IsSingleDate(r.FromDate, r.ToDate) ? "1DAY_SHOW_SUMMARY_FOR_RETURN" : "SHOW_SUMMARY_FOR_RETURN",
+                StatusResolver = r =>
+                {
+                    bool isSingle = string.Equals(r.Mode, "single", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(r.Mode, "singleDay", StringComparison.OrdinalIgnoreCase);
+                    if (string.IsNullOrWhiteSpace(r.Mode))
+                    {
+                        isSingle = IsSingleDate(r.FromDate, r.ToDate);
+                    }
+                    return isSingle ? "1DAY_SHOW_SUMMARY_FOR_RETURN" : "SHOW_SUMMARY_FOR_RETURN";
+                },
                 DefaultSortColumn = "BILL_DATE",
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
@@ -389,7 +398,17 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 ReportName = "RETURN_RECONCILIATION_ITEM_DETAILS",
                 StoredProcedure = "SP_NEW_REPORT",
-                Status = "1DAY_SHOW_SUMMARY_DATA_FOR_RETURN",
+                Status = "EXPORT_1DAY_SHOW_SUMMARY_DATA_FOR_RETURN",
+                StatusResolver = r =>
+                {
+                    bool isSingle = string.Equals(r.Mode, "single", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(r.Mode, "singleDay", StringComparison.OrdinalIgnoreCase);
+                    if (string.IsNullOrWhiteSpace(r.Mode))
+                    {
+                        isSingle = true;
+                    }
+                    return isSingle ? "EXPORT_1DAY_SHOW_SUMMARY_DATA_FOR_RETURN" : "EXPORT_SHOW_SUMMARY_DATA_FOR_RETURN";
+                },
                 DefaultSortColumn = "BILL_DATE",
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
