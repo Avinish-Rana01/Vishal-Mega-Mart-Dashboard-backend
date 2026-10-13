@@ -70,7 +70,9 @@ namespace VS_Mart_Backend.Features.Store
                     // Store-restricted user (Store Admin or Store User with an assigned store) only sees their authorized store
                     filteredStores = allStores.Where(s => s.Store_ID == assignedStoreId).ToList();
 
-                    // Fallback: If SP_Master didn't return their assigned store (e.g. no devices active yet), include it from store profile
+                    // Fallback: ONLY if SP_Master didn't return their assigned store (e.g. no devices active yet), include it from store profile
+                    if (filteredStores.Count == 0)
+                    {
                         string? fallbackStoreName = Convert.ToString(userProfile?.Store_Name);
                         if (!string.IsNullOrWhiteSpace(fallbackStoreName))
                         {
@@ -80,12 +82,19 @@ namespace VS_Mart_Backend.Features.Store
                                 Store_Name = fallbackStoreName
                             });
                         }
+                    }
                 }
                 else
                 {
                     // Other roles without assigned stores or permissions
                     filteredStores = isSuperAdmin ? allStores : new List<CounterStatusStoreDto>();
                 }
+
+                // Ensure distinct stores by Store_ID to prevent duplicates
+                filteredStores = filteredStores
+                    .GroupBy(s => s.Store_ID)
+                    .Select(g => g.First())
+                    .ToList();
 
                 return new CounterStatusResponse<CounterStatusStoreDto>
                 {
