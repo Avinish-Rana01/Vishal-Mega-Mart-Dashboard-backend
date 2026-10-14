@@ -113,15 +113,42 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 return false;
             }
 
+            Func<Task<SqlDataReader?>>? secondaryReaderFactory = null;
+            if (string.Equals(config.ReportName, "TAG_INVENTORY_DISTRIBUTION", StringComparison.OrdinalIgnoreCase))
+            {
+                secondaryReaderFactory = async () =>
+                {
+                    var secondaryConn = new SqlConnection(_connectionString);
+                    await secondaryConn.OpenAsync(cancellationToken);
+
+                    const string vmmQuery = @"
+SELECT 
+    CAST(ISNULL(MAX(ReadTime), GETDATE()) AS DATE) AS [DATE],
+    EPC AS [TID],
+    0 AS [CYCLE_COUNT],
+    'Warehouse' AS [LOCATION],
+    'VMM LUHARI' AS [LOCATION_NAME],
+    'New Tag Inward' AS [STATUS]
+FROM [dbo].[VMM_TAG_MST]
+WHERE (@SearchTerm = '' OR EPC LIKE '%' + @SearchTerm + '%' OR 'Warehouse' LIKE '%' + @SearchTerm + '%' OR 'VMM LUHARI' LIKE '%' + @SearchTerm + '%' OR 'New Tag Inward' LIKE '%' + @SearchTerm + '%')
+GROUP BY EPC;";
+
+                    var vmmCmd = new SqlCommand(vmmQuery, secondaryConn);
+                    vmmCmd.CommandTimeout = 300;
+                    vmmCmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
+                    return await vmmCmd.ExecuteReaderAsync(CommandBehavior.CloseConnection, cancellationToken);
+                };
+            }
+
             bool hasData;
             if (format == "csv")
             {
-                hasData = await ExportCsvAsync(reader, outputStream, cancellationToken);
+                hasData = await ExportCsvAsync(reader, secondaryReaderFactory, outputStream, cancellationToken);
             }
             else
             {
                 // Default: Professional XLSX Workbook
-                hasData = await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
+                hasData = await ExportXlsxAsync(reader, secondaryReaderFactory, outputStream, config.ReportName, cancellationToken);
             }
 
             if (hasData)
@@ -131,7 +158,12 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             return hasData;
         }
 
-        private async Task<bool> ExportXlsxAsync(SqlDataReader reader, Stream outputStream, string reportName, CancellationToken cancellationToken)
+        private async Task<bool> ExportXlsxAsync(
+            SqlDataReader reader,
+            Func<Task<SqlDataReader?>>? secondaryReaderFactory,
+            Stream outputStream,
+            string reportName,
+            CancellationToken cancellationToken)
         {
             using var workbook = new XLWorkbook();
             string sheetTitle = reportName.Length > 28 ? reportName.Substring(0, 28) : reportName;
@@ -162,6 +194,56 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             }
 
             int rowIdx = 2;
+            rowIdx = await WriteReaderRowsToWorksheetAsync(reader, worksheet, validColIndices, rowIdx, cancellationToken);
+
+            // Read secondary supplementary stream if present (e.g. VMM_TAG_MST for Tag Inventory Distribution)
+            if (secondaryReaderFactory != null && rowIdx <= 1_048_570)
+            {
+                await using var secondaryReader = await secondaryReaderFactory();
+                if (secondaryReader != null)
+                {
+                    var secondaryColIndices = new List<int>();
+                    for (int i = 0; i < secondaryReader.FieldCount; i++)
+                    {
+                        string colName = secondaryReader.GetName(i);
+                        if (string.Equals(colName, "RowNumber", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        secondaryColIndices.Add(i);
+                    }
+                    rowIdx = await WriteReaderRowsToWorksheetAsync(secondaryReader, worksheet, secondaryColIndices, rowIdx, cancellationToken);
+                }
+            }
+
+            if (rowIdx == 2)
+            {
+                return false;
+            }
+
+            if (validColIndices.Count > 0)
+            {
+                worksheet.SheetView.FreezeRows(1);
+                worksheet.Range(1, 1, rowIdx - 1, validColIndices.Count).SetAutoFilter();
+                // Fast fixed column width avoids expensive per-cell font measurement on large datasets
+                worksheet.Columns(1, validColIndices.Count).Width = 18;
+            }
+
+            using var ms = new MemoryStream();
+            workbook.SaveAs(ms);
+            ms.Position = 0;
+            await ms.CopyToAsync(outputStream, cancellationToken);
+            return true;
+        }
+
+        private static async Task<int> WriteReaderRowsToWorksheetAsync(
+            SqlDataReader reader,
+            IXLWorksheet worksheet,
+            List<int> validColIndices,
+            int startRowIdx,
+            CancellationToken cancellationToken)
+        {
+            int rowIdx = startRowIdx;
             while (await reader.ReadAsync(cancellationToken))
             {
                 for (int c = 0; c < validColIndices.Count; c++)
@@ -199,32 +281,17 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 rowIdx++;
                 if (rowIdx > 1_048_570)
                 {
-                    _logger.LogWarning("Reached maximum Excel worksheet row capacity (1,048,570 rows) for {ReportName}", reportName);
                     break;
                 }
             }
-
-            if (rowIdx == 2)
-            {
-                return false;
-            }
-
-            if (validColIndices.Count > 0)
-            {
-                worksheet.SheetView.FreezeRows(1);
-                worksheet.Range(1, 1, rowIdx - 1, validColIndices.Count).SetAutoFilter();
-                // Fast fixed column width avoids expensive per-cell font measurement on large datasets
-                worksheet.Columns(1, validColIndices.Count).Width = 18;
-            }
-
-            using var ms = new MemoryStream();
-            workbook.SaveAs(ms);
-            ms.Position = 0;
-            await ms.CopyToAsync(outputStream, cancellationToken);
-            return true;
+            return rowIdx;
         }
 
-        private async Task<bool> ExportCsvAsync(SqlDataReader reader, Stream outputStream, CancellationToken cancellationToken)
+        private async Task<bool> ExportCsvAsync(
+            SqlDataReader reader,
+            Func<Task<SqlDataReader?>>? secondaryReaderFactory,
+            Stream outputStream,
+            CancellationToken cancellationToken)
         {
             if (reader.FieldCount == 0)
             {
@@ -249,7 +316,38 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             await writer.WriteLineAsync(string.Join(",", headers));
 
-            long rowCount = 0;
+            long rowCount = await WriteReaderRowsToCsvAsync(reader, writer, validColIndices, cancellationToken);
+
+            if (secondaryReaderFactory != null)
+            {
+                await using var secondaryReader = await secondaryReaderFactory();
+                if (secondaryReader != null)
+                {
+                    var secondaryColIndices = new List<int>();
+                    for (int i = 0; i < secondaryReader.FieldCount; i++)
+                    {
+                        string colName = secondaryReader.GetName(i);
+                        if (string.Equals(colName, "RowNumber", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        secondaryColIndices.Add(i);
+                    }
+                    rowCount += await WriteReaderRowsToCsvAsync(secondaryReader, writer, secondaryColIndices, cancellationToken);
+                }
+            }
+
+            await writer.FlushAsync(cancellationToken);
+            return rowCount > 0;
+        }
+
+        private static async Task<long> WriteReaderRowsToCsvAsync(
+            SqlDataReader reader,
+            StreamWriter writer,
+            List<int> validColIndices,
+            CancellationToken cancellationToken)
+        {
+            long count = 0;
             var rowBuffer = new string[validColIndices.Count];
 
             while (await reader.ReadAsync(cancellationToken))
@@ -275,16 +373,14 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 }
 
                 await writer.WriteLineAsync(string.Join(",", rowBuffer));
-                rowCount++;
+                count++;
 
-                if (rowCount % 1000 == 0)
+                if (count % 1000 == 0)
                 {
-                    await writer.FlushAsync();
+                    await writer.FlushAsync(cancellationToken);
                 }
             }
-
-            await writer.FlushAsync();
-            return rowCount > 0;
+            return count;
         }
 
         private static void AddOutputParam(SqlCommand cmd, string paramName, SqlDbType type)

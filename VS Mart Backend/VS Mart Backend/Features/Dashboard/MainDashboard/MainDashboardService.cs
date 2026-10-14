@@ -1095,9 +1095,18 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
-                int userIdVal = 0;
-                int.TryParse(request.UserId, out userIdVal);
-                string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}_{userIdVal}";
+                var profile = await GetUserProfileAsync(request.UserId);
+                int filterUserId = 0;
+                // Only filter by specific encoder if user is a standard non-admin operator
+                if (!profile.IsSuperAdmin && 
+                    !string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase) && 
+                    !string.Equals(profile.UserType, "Admin", StringComparison.OrdinalIgnoreCase) && 
+                    !string.IsNullOrEmpty(profile.StoreCode))
+                {
+                    int.TryParse(request.UserId, out filterUserId);
+                }
+
+                string cacheKey = $"WarehouseEncoding_{request.FromDate}_{request.ToDate}_{filterUserId}";
                 return await GetOrCreateWithSWRAsync(cacheKey, async () =>
                 {
                     var response = new WarehouseEncodingResponse();
@@ -1107,7 +1116,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@status", "SHOW_WAREHOUSE_ENCODE_DATA", DbType.String, size: 50);
                     parameters.Add("@fromdate", request.FromDate, DbType.String, size: 20);
                     parameters.Add("@todate", request.ToDate, DbType.String, size: 20);
-                    parameters.Add("@User_ID", userIdVal, DbType.Int32);
+                    parameters.Add("@User_ID", filterUserId, DbType.Int32);
                     parameters.Add("@SearchTerm", "", DbType.String, size: 200);
                     parameters.Add("@SortColumn", "", DbType.String, size: 50);
                     parameters.Add("@SortDirection", "", DbType.String, size: 10);
