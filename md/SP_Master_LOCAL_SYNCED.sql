@@ -1,4 +1,4 @@
-﻿-- =============================================
+-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
 -- Description:	<Description,,>
@@ -154,7 +154,12 @@ END
   Begin	
 	  Select @Store_ID=Store_ID from tbl_Reader_Configuration_Mst where  Reader_Config_ID=@Reader_Config_ID
       IF NOT EXISTS (SELECT * FROM User_Registration WHERE (User_Name=@User_Name))
-      BEGIN	
+      BEGIN
+         IF (@Role_ID IS NULL OR @Role_ID = 0) AND (@User_Type IS NOT NULL AND @User_Type <> '')
+         BEGIN
+             SELECT @Role_ID = Role_ID FROM dbo.Role_Master WHERE Role_Name = @User_Type;
+         END
+	
          --INSERT INTO User_Registration(User_Name,Password,User_Type,Store_ID,WH_ID,Entry_By,Role_ID,Emp_ID) 
          --VALUES (@User_Name,@Password,@User_Type,
          --CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END, 
@@ -179,6 +184,11 @@ END
 
   ELSE IF(@status='Update_user_registration')
        BEGIN
+        IF (@Role_ID IS NULL OR @Role_ID = 0) AND (@User_Type IS NOT NULL AND @User_Type <> '')
+        BEGIN
+            SELECT @Role_ID = Role_ID FROM dbo.Role_Master WHERE Role_Name = @User_Type;
+        END
+
 	    Update User_Registration Set user_name=@User_Name,Password=@Password,User_Type=@User_Type,
 	    Store_ID = CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END,
         WH_ID = CASE WHEN @WH_ID = 0 THEN NULL ELSE @WH_ID END,
@@ -394,10 +404,10 @@ case when UR.Is_Status=1 then 'Active' else 'In-active' End as Status
 		FROM dbo.User_Registration UR
 	    LEFT JOIN dbo.Role_Master RM ON RM.Role_ID = UR.Role_ID
 		LEFT JOIN dbo.tbl_Store_Master SM ON SM.Store_ID = UR.Store_ID
-		LEFT JOIN dbo.tbl_Warehouse_Mst WM ON WM.WH_ID = UR.WH_ID WHERE UR.IS_Status = '1'
-        AND
+		LEFT JOIN dbo.tbl_Warehouse_Mst WM ON WM.WH_ID = UR.WH_ID 
+        WHERE
 	    (
-			@LoginRoleID = 4
+			@LoginRoleID = 4 OR @LoginRoleID IS NULL OR @LoginRoleID = 0
 			OR
 			(@LoginRoleID = 1 AND UR.Store_ID IN (SELECT S.Store_ID FROM dbo.tbl_Store_Master S WHERE S.AM_ID = @LoginUserID AND S.Is_Status = '1'))
 			OR
@@ -487,9 +497,7 @@ END
 
 ELSE IF(@Status='BIND_USER_TYPE' OR @Status='SELECT_ROLE_TYPE')
 BEGIN
-	--SELECT DISTINCT dbo.[User_Registration].User_Type FROM dbo.[User_Registration] 
-      SELECT 'Super Admin' AS User_Type UNION ALL SELECT 'Warehouse Admin' UNION ALL SELECT 'Store Admin' UNION ALL SELECT 'Warehouse' UNION ALL SELECT 'Store'
-	  UNION ALL SELECT 'Dispatch Admin' UNION ALL SELECT 'Tag Admin';
+    SELECT Role_ID, Role_Name AS User_Type FROM dbo.Role_Master WHERE Is_Status = 1 ORDER BY Role_ID ASC;
 END
 
 ELSE If(@status='Insert_tbl_Warehouse_Master')
@@ -732,7 +740,57 @@ SELECT SFM.Store_Floor_ID, ISNULL(SM.Store_Name,'NA') as 'Store_Name', ISNULL(SM
 END
 ------------------------------------------------for Store Floor Master----------------------------------------------
 
-END----last
 
+------------------------------------------------ Store Dropdowns JSON ----------------------------------------------
+ELSE IF(@Status='SP_DDL_Store_Dropdowns_JSON')
+BEGIN
+	SELECT (
+		SELECT DISTINCT State FROM (
+			SELECT DISTINCT State_Name AS State FROM dbo.tbl_State_Mst WITH (NOLOCK) WHERE State_Name IS NOT NULL AND State_Name <> ''
+			UNION
+			SELECT DISTINCT State FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE State IS NOT NULL AND State <> ''
+		) T_State FOR JSON PATH
+	) AS States,
+	(
+		SELECT DISTINCT City, State FROM (
+			SELECT DISTINCT CM.City_Name AS City, STM.State_Name AS State 
+			FROM dbo.tbl_City_Mst CM WITH (NOLOCK)
+			JOIN dbo.tbl_State_Mst STM WITH (NOLOCK) ON CM.State_ID = STM.State_ID
+			WHERE CM.City_Name IS NOT NULL AND CM.City_Name <> ''
+			UNION
+			SELECT DISTINCT City, State FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE City IS NOT NULL AND City <> ''
+		) T_City FOR JSON PATH
+	) AS Cities,
+	(
+		SELECT DISTINCT Area_Manager FROM (
+			SELECT DISTINCT User_Name AS Area_Manager FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 1 OR User_Type LIKE '%Area%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT Area_Manager FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE Area_Manager IS NOT NULL AND Area_Manager <> ''
+		) T_AM FOR JSON PATH
+	) AS AreaManagers,
+	(
+		SELECT DISTINCT ZFM FROM (
+			SELECT DISTINCT User_Name AS ZFM FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 2 OR User_Type LIKE '%ZFM%' OR User_Type LIKE '%Zonal%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT ZFM FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE ZFM IS NOT NULL AND ZFM <> ''
+		) T_ZFM FOR JSON PATH
+	) AS ZFMs,
+	(
+		SELECT DISTINCT LP FROM (
+			SELECT DISTINCT User_Name AS LP FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 3 OR User_Type LIKE '%LP%' OR User_Type LIKE '%Loss%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT LP FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE LP IS NOT NULL AND LP <> ''
+		) T_LP FOR JSON PATH
+	) AS LPs,
+	(
+		SELECT DISTINCT Store_Manager FROM (
+			SELECT DISTINCT User_Name AS Store_Manager FROM dbo.User_Registration WITH (NOLOCK) WHERE (User_Type = 'Store Admin' OR Role_ID = 5) AND Is_Status = 1 AND User_Name LIKE '%[A-Za-z]%'
+			UNION
+			SELECT DISTINCT Store_Manager FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE Store_Manager IS NOT NULL AND Store_Manager <> '' AND Store_Manager LIKE '%[A-Za-z]%'
+		) T_SM FOR JSON PATH
+	) AS StoreManagers;
+END
+
+END----last
 
 

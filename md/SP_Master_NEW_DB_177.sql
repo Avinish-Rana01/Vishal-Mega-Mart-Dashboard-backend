@@ -1,4 +1,4 @@
-﻿-- =============================================
+-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
 -- Description:	<Description,,>
@@ -154,7 +154,12 @@ END
   Begin	
 	  Select @Store_ID=Store_ID from tbl_Reader_Configuration_Mst where  Reader_Config_ID=@Reader_Config_ID
       IF NOT EXISTS (SELECT * FROM User_Registration WHERE (User_Name=@User_Name))
-      BEGIN	
+      BEGIN
+         IF (@Role_ID IS NULL OR @Role_ID = 0) AND (@User_Type IS NOT NULL AND @User_Type <> '')
+         BEGIN
+             SELECT @Role_ID = Role_ID FROM dbo.Role_Master WHERE Role_Name = @User_Type;
+         END
+	
          --INSERT INTO User_Registration(User_Name,Password,User_Type,Store_ID,WH_ID,Entry_By,Role_ID,Emp_ID) 
          --VALUES (@User_Name,@Password,@User_Type,
          --CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END, 
@@ -179,11 +184,16 @@ END
 
   ELSE IF(@status='Update_user_registration')
        BEGIN
+        IF (@Role_ID IS NULL OR @Role_ID = 0) AND (@User_Type IS NOT NULL AND @User_Type <> '')
+        BEGIN
+            SELECT @Role_ID = Role_ID FROM dbo.Role_Master WHERE Role_Name = @User_Type;
+        END
+
 	    Update User_Registration Set user_name=@User_Name,Password=@Password,User_Type=@User_Type,
 	    Store_ID = CASE WHEN @Store_ID = 0 THEN NULL ELSE @Store_ID END,
         WH_ID = CASE WHEN @WH_ID = 0 THEN NULL ELSE @WH_ID END,
 		Is_Status=1,Modify_By=@Modify_By,Modify_Date=GETDATE(),Role_ID=@Role_ID, 
-		User_Email_ID=@MAIL_ID, Email_Required_Flag=@Email_Required_Flag
+		User_Email_ID=@MAIL_ID, Email_ID=@MAIL_ID, Email_Required_Flag=@Email_Required_Flag, Is_Email_Required=@Email_Required_Flag
 		Where User_ID = @User_ID;
        END
 
@@ -289,7 +299,7 @@ BEGIN
 	END
 END
 
-ELSE IF(@Status='SP_Bind_StoreMaster')
+ELSE IF(@Status='SP_Bind_StoreMaster' OR @Status='VIEW_STORE_MASTER')
 BEGIN
 	--SELECT Distinct Store_ID,Store_Code,
 	--Store_Name,case when Is_Status=1 then 'Active' else 'In-Active' End as Status 
@@ -305,10 +315,26 @@ BEGIN
 	--LEFT JOIN dbo.tbl_Employee_Mst EZFM ON EZFM.Emp_ID = SM.ZFM_ID
 	--LEFT JOIN dbo.tbl_Employee_Mst ELP ON ELP.Emp_ID = SM.LP_ID;
 
-	SELECT SM.Store_ID, SM.Store_Code, SM.Store_Name, SM.State_ID, STM.State_Name, CM.City_ID, CM.City_Name, SM.SM_ID,
-	USM.User_Name AS SM_NAME, SM.AM_ID, UAM.User_Name AS AM_NAME,
-    SM.ZFM_ID, UZFM.User_Name AS ZFM_NAME, SM.LP_ID, ULP.User_Name AS LP_NAME,
-    CASE WHEN SM.Is_Status = 1 THEN 'Active' ELSE 'In-Active' END AS Status
+SELECT SM.Store_ID, SM.Store_Code, SM.Store_Name, 
+ISNULL(SM.State_ID, 0) as State_ID, 
+ISNULL(STM.State_Name, ISNULL(SM.State, 'NA')) as State, 
+ISNULL(STM.State_Name, ISNULL(SM.State, 'NA')) as State_Name, 
+ISNULL(SM.City_ID, 0) as City_ID, 
+ISNULL(CM.City_Name, ISNULL(SM.City, 'NA')) as City, 
+ISNULL(CM.City_Name, ISNULL(SM.City, 'NA')) as City_Name, 
+ISNULL(SM.SM_ID, 0) as SM_ID, 
+ISNULL(USM.User_Name, ISNULL(SM.Store_Manager, 'NA')) as Store_Manager, 
+ISNULL(USM.User_Name, ISNULL(SM.Store_Manager, 'NA')) as SM_NAME, 
+ISNULL(SM.AM_ID, 0) as AM_ID, 
+ISNULL(UAM.User_Name, ISNULL(SM.Area_Manager, 'NA')) as Area_Manager, 
+ISNULL(UAM.User_Name, ISNULL(SM.Area_Manager, 'NA')) as AM_NAME,
+ISNULL(SM.ZFM_ID, 0) as ZFM_ID, 
+ISNULL(UZFM.User_Name, ISNULL(SM.ZFM, 'NA')) as ZFM, 
+ISNULL(UZFM.User_Name, ISNULL(SM.ZFM, 'NA')) as ZFM_NAME, 
+ISNULL(SM.LP_ID, 0) as LP_ID, 
+ISNULL(ULP.User_Name, ISNULL(SM.LP, 'NA')) as LP, 
+ISNULL(ULP.User_Name, ISNULL(SM.LP, 'NA')) as LP_NAME,
+CASE WHEN SM.Is_Status = 1 THEN 'Active' ELSE 'In-Active' END AS Status
 	FROM dbo.tbl_Store_Master SM LEFT JOIN dbo.tbl_State_Mst STM ON STM.State_ID = SM.State_ID
 	LEFT JOIN dbo.tbl_City_Mst CM ON CM.City_ID = SM.City_ID
 	LEFT JOIN dbo.User_Registration USM ON USM.User_ID = SM.SM_ID
@@ -332,7 +358,7 @@ BEGIN
 END
 
 
-ELSE IF(@Status='SP_Bind_User_Master')
+ELSE IF(@Status='SP_Bind_User_Master' OR @Status='VIEW_USER_REGISTRATION')
 BEGIN
   --   SELECT @Store_ID = SM.Store_ID,@WH_ID = WM.WH_ID FROM User_Registration UR
   --   LEFT JOIN tbl_Store_Master SM ON UR.Store_ID = SM.Store_ID
@@ -367,15 +393,21 @@ BEGIN
 	   FROM dbo.User_Registration UR WHERE UR.User_ID=@User_ID ;
 
 
-        SELECT User_ID, User_Name, Password,RM.Role_ID, User_Type, UR.Store_ID, ISNULL(SM.Store_Name,'NA') as 'STORE_NAME', 
-	    UR.WH_ID, IsNull(Wh_Name,'NA') as 'WH_NAME',UR.User_Email_ID, UR.Email_Required_Flag,case when UR.Is_Status=1 then 'Active' else 'In-active' End as Status 
+SELECT User_ID, User_Name, Password, RM.Role_ID, User_Type, UR.Store_ID, 
+ISNULL(SM.Store_Name,'NA') as 'Store_Name', ISNULL(SM.Store_Name,'NA') as 'STORE_NAME',
+UR.WH_ID, IsNull(Wh_Name,'NA') as 'Warehouse_Name', IsNull(Wh_Name,'NA') as 'Wh_Name', IsNull(Wh_Name,'NA') as 'WH_NAME',
+ISNULL(NULLIF(UR.User_Email_ID, ''), ISNULL(UR.Email_ID, '')) as 'Email_ID',
+ISNULL(NULLIF(UR.User_Email_ID, ''), ISNULL(UR.Email_ID, '')) as 'User_Email_ID',
+COALESCE(UR.Email_Required_Flag, UR.Is_Email_Required, 0) as 'Is_Email_Required',
+COALESCE(UR.Email_Required_Flag, UR.Is_Email_Required, 0) as 'Email_Required_Flag', 
+case when UR.Is_Status=1 then 'Active' else 'In-active' End as Status
 		FROM dbo.User_Registration UR
 	    LEFT JOIN dbo.Role_Master RM ON RM.Role_ID = UR.Role_ID
 		LEFT JOIN dbo.tbl_Store_Master SM ON SM.Store_ID = UR.Store_ID
-		LEFT JOIN dbo.tbl_Warehouse_Mst WM ON WM.WH_ID = UR.WH_ID WHERE UR.IS_Status = '1'
-        AND
+		LEFT JOIN dbo.tbl_Warehouse_Mst WM ON WM.WH_ID = UR.WH_ID 
+        WHERE
 	    (
-			@LoginRoleID = 4
+			@LoginRoleID = 4 OR @LoginRoleID IS NULL OR @LoginRoleID = 0
 			OR
 			(@LoginRoleID = 1 AND UR.Store_ID IN (SELECT S.Store_ID FROM dbo.tbl_Store_Master S WHERE S.AM_ID = @LoginUserID AND S.Is_Status = '1'))
 			OR
@@ -394,28 +426,16 @@ BEGIN
 END
 
 
---ELSE IF(@Status='SP_DDL_StoreID')
---BEGIN
---   IF(@User_Type='Super Admin')
---   BEGIN
---	  SELECT Distinct Store_Name,Store_ID from tbl_Store_Master WHERE IS_STATUS =1
---   END
---   ELSE 
---   BEGIN
---      SELECT ISNULL(Store_Name,'NA') AS 'Store_Name',SM.Store_ID FROM  dbo.User_Registration UR LEFT JOIN tbl_Store_Master SM on UR.Store_ID=SM.Store_ID where UR.User_ID=@User_ID   
---   END
---END
-
-ELSE IF(@Status='SP_DDL_StoreID') ------------------------------------------------------
+ELSE IF(@Status='SP_DDL_StoreID' OR @Status='SP_Bind_DDL_StoreID' OR @Status='SELECT_STORE_CODE')
 BEGIN
-   IF(@Role_ID=5 or @Role_ID=6)
+   IF(@Role_ID=7 or @Role_ID=8)
    BEGIN
-	  SELECT Distinct Store_ID as 'ID', Store_Name as 'Name', 'ST' as 'TYPE' from tbl_Store_Master WHERE IS_STATUS =1 order by Store_Name;
+      SELECT distinct WH_ID as 'ID', WH_ID as 'Store_ID', Wh_Name as 'Name', Wh_Name as 'Store_Name', 'WH' as 'TYPE' from tbl_Warehouse_Mst where Is_Status=1 order by Wh_Name;
    END
-   else if(@Role_ID=7 or @Role_ID=8)
-   begin
-	SELECT distinct WH_ID as 'ID', Wh_Name as 'Name', 'WH' as 'TYPE' from tbl_Warehouse_Mst where Is_Status=1 order by Wh_Name;
-   end
+   ELSE
+   BEGIN
+      SELECT Distinct Store_ID as 'ID', Store_ID as 'Store_ID', Store_Name as 'Name', Store_Name as 'Store_Name', 'ST' as 'TYPE' from tbl_Store_Master WHERE IS_STATUS =1 order by Store_Name;
+   END
 END
 
 
@@ -424,24 +444,9 @@ BEGIN
 	SELECT distinct Reader_ID,Reader_MAC  from tbl_Reader_Mst WHERE IS_STATUS = 1
 END
 
---ELSE IF(@Status='SP_DDL_WarehouseID')
---BEGIN
---   IF(@User_Type='Super Admin')
---   BEGIN
---	  SELECT distinct WH_ID,Wh_Name from tbl_Warehouse_Mst where Is_Status=1
---   END
---   ELSE
---   BEGIN
---    SELECT ISNULL(WM.Wh_Name,'NA') as 'Wh_Name',WM.WH_ID FROM  dbo.User_Registration UR LEFT JOIN tbl_Warehouse_Mst WM on UR.WH_ID=WM.WH_ID where UR.User_ID=@User_ID --and WM.Is_Status=1
---   END
---END
-
-ELSE IF(@Status='SP_DDL_WarehouseID')---------------------------------------------------
+ELSE IF(@Status='SP_DDL_WarehouseID' OR @Status='SELECT_WH_NAME')
 BEGIN
-   IF(@Role_ID=7 and @Role_ID=8)
-   BEGIN
-	  SELECT distinct WH_ID,Wh_Name from tbl_Warehouse_Mst where Is_Status=1
-   END
+   SELECT distinct WH_ID, WH_ID as 'ID', Wh_Name, Wh_Name as 'Name', 'WH' as 'TYPE' from tbl_Warehouse_Mst where Is_Status=1 order by Wh_Name;
 END
 
 ELSE IF(@Status='STORENAME_FOR_COUNTER_STATUS')
@@ -490,11 +495,9 @@ select BB.[Cash_Counter]
 END
 
 
-ELSE IF(@Status='BIND_USER_TYPE')
+ELSE IF(@Status='BIND_USER_TYPE' OR @Status='SELECT_ROLE_TYPE')
 BEGIN
-	--SELECT DISTINCT dbo.[User_Registration].User_Type FROM dbo.[User_Registration] 
-      SELECT 'Super Admin' AS User_Type UNION ALL SELECT 'Warehouse Admin' UNION ALL SELECT 'Store Admin' UNION ALL SELECT 'Warehouse' UNION ALL SELECT 'Store'
-	  UNION ALL SELECT 'Dispatch Admin' UNION ALL SELECT 'Tag Admin';
+    SELECT Role_ID, Role_Name AS User_Type FROM dbo.Role_Master WHERE Is_Status = 1 ORDER BY Role_ID ASC;
 END
 
 ELSE If(@status='Insert_tbl_Warehouse_Master')
@@ -539,7 +542,7 @@ BEGIN
 	end
 END
 
-ELSE IF(@Status='SP_Bind_warehouseMaster')
+ELSE IF(@Status='SP_Bind_warehouseMaster' OR @Status='VIEW_WH_MASTER')
 BEGIN
 	SELECT Distinct WH_ID,Wh_Code,Wh_Name,Wh_Address,case when Is_Status=1 then 'Active' else 'In-Active' End as Status 
 	from dbo.[tbl_Warehouse_Mst] 
@@ -552,7 +555,9 @@ END
 
 ELSE IF(@Status='Bind_City_Id')
 BEGIN
-	SELECT DISTINCT City_ID, City_Name FROM dbo.[tbl_City_Mst] C JOIN dbo.[tbl_State_Mst] S ON C.State_ID=S.State_ID WHERE S.State_Name=@State_Name;
+   SELECT DISTINCT City_ID, City_Name FROM dbo.[tbl_City_Mst] C
+   WHERE (@State_ID > 0 AND C.State_ID = @State_ID)
+      OR (ISNULL(@State_Name, '') <> '' AND C.State_ID IN (SELECT S.State_ID FROM dbo.[tbl_State_Mst] S WHERE S.State_Name = @State_Name));
 END
 
 ELSE IF(@Status = 'Bind_Employee_By_Role')
@@ -561,22 +566,28 @@ BEGIN
 END
 
 ELSE IF(@Status = 'Bind_AM_By_Role')
-BEGIN    
-	--select E.Emp_ID, E.Emp_Code +' - '+E.Emp_Name as 'EMP_NAME' from tbl_Employee_Mst E where Emp_Role_ID=1 and Is_Status='1' order by E.Emp_Name;
-	select U.User_ID, U.User_Name  as 'USER_NAME' from User_Registration U where Role_ID=1 and Is_Status='1' order by U.User_Name;
+BEGIN
+   IF EXISTS (SELECT 1 FROM User_Registration WHERE Role_ID = 1 AND Is_Status = '1')
+      SELECT U.User_ID, U.User_Name as 'USER_NAME' FROM User_Registration U WHERE Role_ID = 1 AND Is_Status = '1' ORDER BY U.User_Name;
+   ELSE
+      SELECT E.Emp_ID as 'User_ID', E.Emp_Name as 'USER_NAME' FROM tbl_Employee_Mst E WHERE Emp_Role_ID = 1 AND Is_Status = '1' ORDER BY E.Emp_Name;
 END
 
 --ELSE IF(@Status = 'Bind_ZM_By_Role')
 ELSE IF(@Status = 'Bind_ZFM_By_Role')
-BEGIN  
-	--select E.Emp_ID, E.Emp_Code +' - '+E.Emp_Name as 'EMP_NAME' from tbl_Employee_Mst E where Emp_Role_ID=2 and Is_Status='1' order by E.Emp_Name;
-	select U.User_ID, U.User_Name  as 'USER_NAME' from User_Registration U where Role_ID=2 and Is_Status='1' order by U.User_Name;
+BEGIN
+   IF EXISTS (SELECT 1 FROM User_Registration WHERE Role_ID = 2 AND Is_Status = '1')
+      SELECT U.User_ID, U.User_Name as 'USER_NAME' FROM User_Registration U WHERE Role_ID = 2 AND Is_Status = '1' ORDER BY U.User_Name;
+   ELSE
+      SELECT E.Emp_ID as 'User_ID', E.Emp_Name as 'USER_NAME' FROM tbl_Employee_Mst E WHERE Emp_Role_ID = 2 AND Is_Status = '1' ORDER BY E.Emp_Name;
 END
 
 ELSE IF(@Status = 'Bind_LP_By_Role')
-BEGIN    
-	--select E.Emp_ID, E.Emp_Code +' - '+E.Emp_Name as 'EMP_NAME' from tbl_Employee_Mst E where Emp_Role_ID=3 and Is_Status='1' order by E.Emp_Name;
-	select U.User_ID, U.User_Name  as 'USER_NAME' from User_Registration U where Role_ID=3 and Is_Status='1' order by U.User_Name;
+BEGIN
+   IF EXISTS (SELECT 1 FROM User_Registration WHERE Role_ID = 3 AND Is_Status = '1')
+      SELECT U.User_ID, U.User_Name as 'USER_NAME' FROM User_Registration U WHERE Role_ID = 3 AND Is_Status = '1' ORDER BY U.User_Name;
+   ELSE
+      SELECT E.Emp_ID as 'User_ID', E.Emp_Name as 'USER_NAME' FROM tbl_Employee_Mst E WHERE Emp_Role_ID = 3 AND Is_Status = '1' ORDER BY E.Emp_Name;
 END
 
 ELSE IF(@Status = 'Bind_SM_By_Role')
@@ -706,7 +717,7 @@ BEGIN
 	  --order by Store_Name;
 END
 
-ELSE IF(@Status='SP_Bind_Store_Floor_Master')
+ELSE IF(@Status='SP_Bind_Store_Floor_Master' OR @Status='VIEW_STORE_FLOOR_MASTER')
 BEGIN
 
 	--DECLARE @LoginUserID INT,@LoginRoleID INT,@LoginStoreID INT,@LoginWHID INT;
@@ -714,7 +725,7 @@ BEGIN
 	   SELECT @LoginUserID = UR.User_ID,@LoginRoleID = UR.Role_ID, @LoginStoreID = UR.Store_ID,@LoginWHID = UR.WH_ID
 	   FROM dbo.User_Registration UR WHERE UR.User_ID=@User_ID ;
 
-	SELECT SFM.Store_Floor_ID,ISNULL(SM.Store_Name,'NA') as 'STORE_NAME',SFM.Store_Floor,case when SFM.Is_Status=1 then 'Active' else 'In-Active' End as Status  
+SELECT SFM.Store_Floor_ID, ISNULL(SM.Store_Name,'NA') as 'Store_Name', ISNULL(SM.Store_Name,'NA') as 'STORE_NAME', SFM.Store_Floor, case when SFM.Is_Status=1 then 'Active' else 'In-Active' End as Status
 	from tbl_Store_Floor_Mst SFM
 	--LEFT JOIN dbo.User_Registration UR ON SFM.Store_ID = UR.Store_ID
 	LEFT JOIN dbo.tbl_Store_Master SM ON SM.Store_ID = SFM.Store_ID WHERE-- SFM.IS_Status = '1'
@@ -728,6 +739,57 @@ BEGIN
 
 END
 ------------------------------------------------for Store Floor Master----------------------------------------------
+
+
+------------------------------------------------ Store Dropdowns JSON ----------------------------------------------
+ELSE IF(@Status='SP_DDL_Store_Dropdowns_JSON')
+BEGIN
+	SELECT (
+		SELECT DISTINCT State FROM (
+			SELECT DISTINCT State_Name AS State FROM dbo.tbl_State_Mst WITH (NOLOCK) WHERE State_Name IS NOT NULL AND State_Name <> ''
+			UNION
+			SELECT DISTINCT State FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE State IS NOT NULL AND State <> ''
+		) T_State FOR JSON PATH
+	) AS States,
+	(
+		SELECT DISTINCT City, State FROM (
+			SELECT DISTINCT CM.City_Name AS City, STM.State_Name AS State 
+			FROM dbo.tbl_City_Mst CM WITH (NOLOCK)
+			JOIN dbo.tbl_State_Mst STM WITH (NOLOCK) ON CM.State_ID = STM.State_ID
+			WHERE CM.City_Name IS NOT NULL AND CM.City_Name <> ''
+			UNION
+			SELECT DISTINCT City, State FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE City IS NOT NULL AND City <> ''
+		) T_City FOR JSON PATH
+	) AS Cities,
+	(
+		SELECT DISTINCT Area_Manager FROM (
+			SELECT DISTINCT User_Name AS Area_Manager FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 1 OR User_Type LIKE '%Area%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT Area_Manager FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE Area_Manager IS NOT NULL AND Area_Manager <> ''
+		) T_AM FOR JSON PATH
+	) AS AreaManagers,
+	(
+		SELECT DISTINCT ZFM FROM (
+			SELECT DISTINCT User_Name AS ZFM FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 2 OR User_Type LIKE '%ZFM%' OR User_Type LIKE '%Zonal%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT ZFM FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE ZFM IS NOT NULL AND ZFM <> ''
+		) T_ZFM FOR JSON PATH
+	) AS ZFMs,
+	(
+		SELECT DISTINCT LP FROM (
+			SELECT DISTINCT User_Name AS LP FROM dbo.User_Registration WITH (NOLOCK) WHERE (Role_ID = 3 OR User_Type LIKE '%LP%' OR User_Type LIKE '%Loss%') AND Is_Status = 1
+			UNION
+			SELECT DISTINCT LP FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE LP IS NOT NULL AND LP <> ''
+		) T_LP FOR JSON PATH
+	) AS LPs,
+	(
+		SELECT DISTINCT Store_Manager FROM (
+			SELECT DISTINCT User_Name AS Store_Manager FROM dbo.User_Registration WITH (NOLOCK) WHERE (User_Type = 'Store Admin' OR Role_ID = 5) AND Is_Status = 1 AND User_Name LIKE '%[A-Za-z]%'
+			UNION
+			SELECT DISTINCT Store_Manager FROM dbo.tbl_Store_Master WITH (NOLOCK) WHERE Store_Manager IS NOT NULL AND Store_Manager <> '' AND Store_Manager LIKE '%[A-Za-z]%'
+		) T_SM FOR JSON PATH
+	) AS StoreManagers;
+END
 
 END----last
 

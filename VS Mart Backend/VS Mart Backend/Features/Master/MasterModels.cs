@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace VS_Mart_Backend.Features.Master
 {
@@ -75,7 +76,11 @@ namespace VS_Mart_Backend.Features.Master
         public List<StateCityDto> Cities { get; set; } = new();
         public List<string> StoreManagers { get; set; } = new();
         public List<string> AreaManagers { get; set; } = new();
+
+        [JsonPropertyName("zfms")]
         public List<string> ZFMs { get; set; } = new();
+
+        [JsonPropertyName("lps")]
         public List<string> LPs { get; set; } = new();
     }
 

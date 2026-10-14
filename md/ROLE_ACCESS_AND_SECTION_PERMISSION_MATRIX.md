@@ -137,17 +137,26 @@ This matrix defines what SQL Server stored procedures (`SP_New_Dashboard`, `SP_N
 ---
 
 #### 2. `SP_Master` (Stored Procedure Filter Logic)
-* **User Management (`SP_Bind_User_Master`)** (Lines 284–290):
+* **User Management (`SP_Bind_User_Master`)**:
   ```sql
   WHERE (
-      (@User_Type = 'Store Admin' AND UR.User_Type IN ('Store', 'Store Admin') AND UR.Store_ID = @Store_ID)
-      OR
-      (@User_Type = 'Warehouse Admin' AND UR.User_Type IN ('Warehouse', 'Warehouse Admin') AND UR.WH_ID = @WH_ID)
-      OR
-      (@User_Type = 'Super Admin')
+      @LoginRoleID = 4 OR @LoginRoleID IS NULL OR @LoginRoleID = 0
+      OR (@LoginRoleID = 1 AND UR.Store_ID IN (SELECT S.Store_ID FROM dbo.tbl_Store_Master S WHERE S.AM_ID = @LoginUserID))
+      OR (@LoginRoleID = 2 AND UR.Store_ID IN (SELECT S.Store_ID FROM dbo.tbl_Store_Master S WHERE S.ZFM_ID = @LoginUserID))
+      OR (@LoginRoleID = 3 AND UR.Store_ID IN (SELECT S.Store_ID FROM dbo.tbl_Store_Master S WHERE S.LP_ID = @LoginUserID))
+      OR (@LoginRoleID = 5 AND UR.Store_ID = @LoginStoreID)
+      OR (@LoginRoleID = 6 AND UR.User_ID = @LoginUserID)
+      OR (@LoginRoleID = 7 AND UR.User_ID = @LoginUserID)
+      OR (@LoginRoleID = 8 AND UR.WH_ID = @LoginWHID)
   );
   ```
-  > ✅ Super Admin sees all users. Store Admin only sees users within their store. Warehouse Admin only sees users within their warehouse. Junior users (`Store`, `Warehouse`, `Tag Admin`) match none of these branches and get 0 rows.
+  > ✅ **Active & In-Active Users Visibility**: The procedure returns all registered users (both `Is_Status = 1` Active and `Is_Status = 0` In-Active) matching role scope. Disabled users are preserved in the table with `Status = 'In-active'`, allowing administrators to inspect and re-enable them via the UI toggle switch.
+
+* **User Type / Role Binding (`BIND_USER_TYPE`)**:
+  ```sql
+  SELECT Role_ID, Role_Name AS User_Type FROM dbo.Role_Master WHERE Is_Status = 1 ORDER BY Role_ID ASC;
+  ```
+  > ✅ Dynamically binds all 10 active roles from `dbo.Role_Master` (Area Manager, ZFM, LP, Super Admin, Store Admin, Store, Warehouse, Warehouse Admin, Tag Admin, Dispatch Admin), removing legacy hardcoded UNION ALL limitations. Also automatically populates Store Registration dropdowns for Area Managers, ZFMs, LPs, and Store Managers by unioning `dbo.User_Registration` with `dbo.tbl_Store_Master`.
 
 * **Store Dropdown (`SP_DDL_StoreID`)** (Lines 296–305):
   ```sql
