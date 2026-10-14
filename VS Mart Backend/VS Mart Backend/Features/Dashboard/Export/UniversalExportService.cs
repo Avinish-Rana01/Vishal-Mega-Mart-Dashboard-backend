@@ -213,14 +213,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 worksheet.SheetView.FreezeRows(1);
                 worksheet.Range(1, 1, rowIdx - 1, validColIndices.Count).SetAutoFilter();
-                if (rowIdx <= 10_000)
-                {
-                    worksheet.Columns(1, validColIndices.Count).AdjustToContents(10.0, 50.0);
-                }
-                else
-                {
-                    worksheet.Columns(1, validColIndices.Count).Width = 18;
-                }
+                // Fast fixed column width avoids expensive per-cell font measurement on large datasets
+                worksheet.Columns(1, validColIndices.Count).Width = 18;
             }
 
             using var ms = new MemoryStream();

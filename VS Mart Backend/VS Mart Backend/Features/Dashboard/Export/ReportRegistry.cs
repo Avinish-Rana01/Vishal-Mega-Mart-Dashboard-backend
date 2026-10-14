@@ -585,11 +585,15 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 DefaultSortDirection = "DESC",
                 ParameterBinder = (cmd, r) =>
                 {
-                    int uid = 0;
-                    if (!string.IsNullOrWhiteSpace(r.User) && int.TryParse(r.User, out var parsed)) uid = parsed;
-                    else if (r.UserId.HasValue) uid = r.UserId.Value;
+                    // In Warehouse Encoding Summary, @User_ID is the specific encoder filter, NOT the session user ID.
+                    // Only filter if an explicit encoder (r.User) > 0 is selected; otherwise pass 0 for all encoders.
+                    int encoderId = 0;
+                    if (!string.IsNullOrWhiteSpace(r.User) && int.TryParse(r.User, out var parsed) && parsed > 0)
+                    {
+                        encoderId = parsed;
+                    }
 
-                    cmd.Parameters.AddWithValue("@User_ID", uid);
+                    cmd.Parameters.AddWithValue("@User_ID", encoderId);
                     cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
                     cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
