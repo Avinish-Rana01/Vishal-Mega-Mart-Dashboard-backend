@@ -64,6 +64,23 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             static string CleanDate(string? d, string fallback) =>
                 string.IsNullOrWhiteSpace(d) ? fallback : d.Trim().Trim('"');
 
+            static string FormatIsoDate(string? d, string fallback)
+            {
+                if (string.IsNullOrWhiteSpace(d)) return fallback;
+                string s = d.Trim().Trim('"');
+                if (s.Contains('T')) s = s.Split('T')[0].Trim();
+                string[] formats = { "yyyy-MM-dd", "dd-MM-yyyy", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy/MM/dd", "dd-MMM-yyyy" };
+                if (DateTime.TryParseExact(s, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime dt))
+                {
+                    return dt.ToString("yyyy-MM-dd");
+                }
+                if (DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime dtParsed))
+                {
+                    return dtParsed.ToString("yyyy-MM-dd");
+                }
+                return s;
+            }
+
             static string EffectiveStore(UniversalExportRequest r) =>
                 !string.IsNullOrWhiteSpace(r.StoreCode) ? r.StoreCode.Trim() : (r.StoreName ?? "").Trim();
 
@@ -92,8 +109,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 ParameterBinder = (cmd, r) =>
                 {
                     cmd.Parameters.AddWithValue("@Vendor_Code", string.IsNullOrWhiteSpace(r.VendorCode) ? "0" : r.VendorCode.Trim());
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -105,15 +122,15 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 ReportName = "HU_SUMMARY_VALIDATION",
                 StoredProcedure = "SP_NEW_REPORT",
-                Status = "HU_VALIDATION_REPORT",
+                Status = "SHOW_VALIDATE_HU_DATA",
                 DefaultSortColumn = "ENCODE_DATE",
                 DefaultSortDirection = "DESC",
                 ParameterBinder = (cmd, r) =>
                 {
                     string hu = (r.HuNo == "ALL HU" || string.IsNullOrWhiteSpace(r.HuNo)) ? "" : r.HuNo.Trim();
-                    cmd.Parameters.AddWithValue("@HU", hu);
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@HU_NO", hu);
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -125,16 +142,16 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             {
                 ReportName = "HU_DETAILS",
                 StoredProcedure = "SP_NEW_REPORT",
-                Status = "HU_DETAILS",
+                Status = "HU_REPORT",
                 DefaultSortColumn = "HU_Number",
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
                 {
                     cmd.Parameters.AddWithValue("@Reciving_Plant", r.ReceivingPlant ?? "");
-                    cmd.Parameters.AddWithValue("@CI_STATUS", r.HuStatus ?? "");
+                    cmd.Parameters.AddWithValue("@CI_STATUS", string.IsNullOrWhiteSpace(r.HuStatus) ? "1" : r.HuStatus.Trim());
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -154,8 +171,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                     cmd.Parameters.AddWithValue("@ref_No", r.RefNo ?? "");
                     cmd.Parameters.AddWithValue("@CI_STATUS", r.HuStatus ?? "1");
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -166,15 +183,15 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             Register(new ReportConfig
             {
                 ReportName = "DC_VALIDATION_DETAILS",
-                StoredProcedure = "SP_NEW_REPORT",
-                Status = "DC_VALIDATION_DETAILS",
+                StoredProcedure = "SP_NEW_DASHBOARD",
+                Status = "LAST7DAY_DC_VALIDATE_DASHBOARD",
                 DefaultSortColumn = "DATE",
                 DefaultSortDirection = "DESC",
                 ParameterBinder = (cmd, r) =>
                 {
-                    cmd.Parameters.AddWithValue("@Store_code", EffectiveStore(r));
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -434,8 +451,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 ParameterBinder = (cmd, r) =>
                 {
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
-                    cmd.Parameters.AddWithValue("@fromdate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@todate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@fromdate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@todate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });
@@ -452,15 +469,30 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 DefaultSortDirection = "ASC",
                 ParameterBinder = (cmd, r) =>
                 {
-                    string grcStatus = r.GrcStatus ?? "1";
-                    if (grcStatus == "0" || grcStatus == "2")
+                    string grcStatus = r.GrcStatus ?? "";
+                    if (grcStatus == "" || grcStatus == "1")
+                    {
+                        cmd.Parameters["@status"].Value = "SHOW_GRC_DATA";
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", grcStatus);
+                    }
+                    else if (grcStatus == "0")
                     {
                         cmd.Parameters["@status"].Value = "SHOW_HHTGRC_DATA";
-                        cmd.Parameters.AddWithValue("@GRC_STATUS", grcStatus == "0" ? "2" : "1");
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", "2");
+                    }
+                    else if (grcStatus == "2")
+                    {
+                        cmd.Parameters["@status"].Value = "SHOW_HHTGRC_DATA";
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", "1");
                     }
                     else if (grcStatus == "3")
                     {
                         cmd.Parameters["@status"].Value = "SHOW_STORE_PENDING_GRC_DATA";
+                    }
+                    else if (grcStatus == "4")
+                    {
+                        cmd.Parameters["@status"].Value = "SHOW_GRC_DATA";
+                        cmd.Parameters.AddWithValue("@GRC_STATUS", "");
                     }
                     else
                     {
@@ -469,8 +501,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
                     cmd.Parameters.AddWithValue("@Store_Code", EffectiveStore(r));
                     cmd.Parameters.AddWithValue("@HU_NO", r.HuNo ?? "");
-                    cmd.Parameters.AddWithValue("@FromDate", CleanDate(r.FromDate, "2000-01-01"));
-                    cmd.Parameters.AddWithValue("@ToDate", CleanDate(r.ToDate, "2099-12-31"));
+                    cmd.Parameters.AddWithValue("@FromDate", FormatIsoDate(r.FromDate, "2024-01-01"));
+                    cmd.Parameters.AddWithValue("@ToDate", FormatIsoDate(r.ToDate, DateTime.Today.ToString("yyyy-MM-dd")));
                     cmd.Parameters.AddWithValue("@SearchTerm", r.SearchTerm ?? "");
                 }
             });

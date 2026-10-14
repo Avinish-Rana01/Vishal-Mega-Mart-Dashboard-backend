@@ -75,11 +75,16 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             if (string.Equals(config.StoredProcedure, "SP_NEW_DASHBOARD", StringComparison.OrdinalIgnoreCase))
             {
                 AddOutputParam(command, "@RecordCount", SqlDbType.Int);
+                AddOutputParam(command, "@TotalCount", SqlDbType.Int);
+                AddOutputParam(command, "@PROCESSED_HU", SqlDbType.Int);
+                AddOutputParam(command, "@UNPROCESSED_HU", SqlDbType.Int);
+                AddOutputParam(command, "@PROCESSED_ARTICLE_QTY", SqlDbType.Int);
                 AddOutputParam(command, "@QTY", SqlDbType.Int);
                 AddOutputParam(command, "@HU_VALIDATED_QTY", SqlDbType.Int);
                 AddOutputParam(command, "@HU_WRONG_QTY", SqlDbType.Int);
                 AddOutputParam(command, "@HHT_VALIDATE_QTY", SqlDbType.Int);
                 AddOutputParam(command, "@ENCODED_QTY", SqlDbType.Int);
+                AddOutputParam(command, "@DIFF_QTY", SqlDbType.Int);
                 AddOutputParam(command, "@DPOS_SALE", SqlDbType.Int);
                 AddOutputParam(command, "@RFID_CHECKOUT", SqlDbType.Int);
                 AddOutputParam(command, "@TAFFETA_SALE", SqlDbType.Int);
@@ -95,6 +100,8 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 AddOutputParam(command, "@DIFFQTY", SqlDbType.Int);
                 AddOutputParam(command, "@Excess_Qty", SqlDbType.Int);
                 AddOutputParam(command, "@HUCOUNT", SqlDbType.Int);
+                AddOutputParam(command, "@MATERIALCOUNT", SqlDbType.Int);
+                AddOutputParam(command, "@TAGQTY", SqlDbType.Int);
                 AddOutputParam(command, "@STORECOUNT", SqlDbType.Int);
                 AddOutputParam(command, "@WHCOUNT", SqlDbType.Int);
                 AddOutputParam(command, "@TAG_VALIDATED_QTY", SqlDbType.Int);
