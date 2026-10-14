@@ -57,10 +57,6 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
                 {
                     userIdVal = request.User.Value;
                 }
-                else
-                {
-                    int.TryParse(request.UserId, out userIdVal);
-                }
                 parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
                 parameters.Add("@fromdate", fromDate, DbType.Date);
@@ -255,22 +251,10 @@ namespace VS_Mart_Backend.Features.Dashboard.DCEncoding
 
                 parameters.Add("@SearchTerm", string.IsNullOrWhiteSpace(request.SearchTerm) ? "" : request.SearchTerm.Trim(), DbType.String);
 
-                parameters.Add("@fromdate", fromDateValue, DbType.Date);
+                parameters.Add("@fromdate", fromDate, DbType.Date);
+                parameters.Add("@todate", toDate, DbType.Date);
 
-                // Old code:
-                //
-                // if (toDate == "")
-                //     @todate = fromDate
-                //
-                // Same behavior here.
-
-               // string toDate = string.IsNullOrWhiteSpace(request.ToDate) ? request.FromDate ?? "" : request.ToDate;
-
-                parameters.Add("@todate", toDateValue, DbType.Date);
-
-                int userIdVal = 0;
-                int.TryParse(request.UserId, out userIdVal);
-                parameters.Add("@User_ID", userIdVal, DbType.Int32);
+                parameters.Add("@User_ID", 0, DbType.Int32);
 
                 var result = await connection.QueryAsync<Username>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
 
