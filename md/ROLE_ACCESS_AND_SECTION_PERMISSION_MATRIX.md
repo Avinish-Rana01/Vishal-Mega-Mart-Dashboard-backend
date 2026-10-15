@@ -9,27 +9,27 @@
 
 This matrix defines what sections, navigation tabs, and API endpoints are exposed or permitted at the **Application / Frontend & API Gateway Layer** (`AuthService.cs`, `AuthContext.jsx`, `Sidebar.jsx`).
 
-| Section Key | Section / Sidebar Item | Super Admin | Store Admin | Store User | WH Admin | WH User | Tag Admin | Dispatch Admin |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `live_stock` | Live Stock Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `cycle_count` | Tag Cycle Count Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `store_validation` | Store Discrepancy Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `sale` | Sale Dashboard Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `void` | Void Dashboard Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `return` | Return Dashboard Tab | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `dc_validation` | DC Validation Tab | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| `dc_encoding` | DC Encoding Tab | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| `tag_management` | Tag Management Tab | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `vendor_discrepancy` | Vendor Discrepancy Tab | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `store_counter_status` | Store Counter Status | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `tag_cleaning` | Tag Cleaning Report | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `get_sap_stock_take` | SAP Stock Take Report | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| `dispatch_tracking` | Dispatch Tracking | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `picklist_creation` | Picklist Creation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| `user_registration` | User Registration | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| `store_registration` | Store Registration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `warehouse_registration` | Warehouse Registration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `floor_registration` | Floor Registration | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Section Key | Section / Sidebar Item | Super Admin | Store Admin | Store User | LP | ZFM | Area Manager | WH Admin | WH User | Tag Admin | Dispatch Admin |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `live_stock` | Live Stock Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `cycle_count` | Tag Cycle Count Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `store_validation` | Store Discrepancy Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `sale` | Sale Dashboard Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `void` | Void Dashboard Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `return` | Return Dashboard Tab | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `dc_validation` | DC Validation Tab | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| `dc_encoding` | DC Encoding Tab | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| `tag_management` | Tag Management Tab | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `vendor_discrepancy` | Vendor Discrepancy Tab | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `store_counter_status` | Store Counter Status | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `tag_cleaning` | Tag Cleaning Report | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `get_sap_stock_take` | SAP Stock Take Report | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| `dispatch_tracking` | Dispatch Tracking | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `picklist_creation` | Picklist Creation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| `user_registration` | User Registration | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `store_registration` | Store Registration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `warehouse_registration` | Warehouse Registration | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `floor_registration` | Floor Registration | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -63,6 +63,18 @@ This matrix defines what sections, navigation tabs, and API endpoints are expose
 ### 7. Tag Admin
 * **Scope**: RFID tag lifecycle and audit reports.
 * **Sections**: Exclusively `tag_cleaning` and `get_sap_stock_take`.
+
+### 8. LP (Loss Prevention)
+* **Scope**: Store audit, loss tracking, inventory shrinkage, and POS reconciliation.
+* **Sections**: Store Dashboard tabs (`live_stock`, `cycle_count`, `store_validation`, `sale`, `void`, `return`), Store Counter Status, and SAP Stock Take.
+
+### 9. ZFM (Zonal Facility / Floor Manager)
+* **Scope**: Zonal store operations and facility monitoring.
+* **Sections**: Store Dashboard tabs (`live_stock`, `cycle_count`, `store_validation`, `sale`, `void`, `return`), Store Counter Status, and SAP Stock Take.
+
+### 10. Area Manager
+* **Scope**: Multi-store regional oversight and sales/validation audits.
+* **Sections**: Store Dashboard tabs (`live_stock`, `cycle_count`, `store_validation`, `sale`, `void`, `return`), Store Counter Status, and SAP Stock Take.
 
 ---
 

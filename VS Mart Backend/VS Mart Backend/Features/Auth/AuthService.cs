@@ -99,6 +99,27 @@ WHERE u.User_Name = @User_Name
                             "store_counter_status"
                         });
                         break;
+                    
+                    case "LP":
+                        allowedSections.AddRange(new[] {
+                             "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "store_counter_status", "get_sap_stock_take"
+                        });
+                        break;
+
+                    case "ZFM":
+                        allowedSections.AddRange(new[] {
+                            "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "store_counter_status", "get_sap_stock_take"
+                        });
+                        break;
+
+                    case "Area Manager":
+                        allowedSections.AddRange(new[] {
+                             "live_stock", "cycle_count", "store_validation", "sale", "void", "return",
+                            "store_counter_status", "get_sap_stock_take"
+                        });
+                        break;
 
                     case "Warehouse Admin":
                     case "WH Admin":
