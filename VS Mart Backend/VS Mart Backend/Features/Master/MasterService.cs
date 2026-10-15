@@ -172,7 +172,6 @@ namespace VS_Mart_Backend.Features.Master
                 parameters.Add("@ZFM_ID", zfmId);
                 parameters.Add("@LP_ID", lpId);
                 parameters.Add("@RoleName", request.RoleName?.Trim() ?? string.Empty);
-                parameters.Add("@State_Name", !string.IsNullOrWhiteSpace(request.State_Name) ? request.State_Name.Trim() : (request.State?.Trim() ?? string.Empty));
                 parameters.Add("@Emp_Code", request.Emp_Code?.Trim() ?? string.Empty);
                 parameters.Add("@Emp_Name", request.Emp_Name?.Trim() ?? string.Empty);
 
@@ -245,7 +244,7 @@ namespace VS_Mart_Backend.Features.Master
                     if (dict.TryGetValue("LP_NAME", out var lName))
                         dict["LP"] = lName;
 
-                    // User Directory mappings
+                    // User & Floor Directory mappings
                     if (dict.TryGetValue("User_Email_ID", out var uEmail))
                     {
                         dict["Email_ID"] = uEmail;
@@ -257,9 +256,17 @@ namespace VS_Mart_Backend.Features.Master
                         dict["IsEmailRequired"] = eFlag;
                     }
 
-                    // Floor Directory mappings
-                    if (dict.TryGetValue("STORE_NAME", out var strName) && !dict.ContainsKey("Store_Name"))
+                    if (dict.TryGetValue("STORE_NAME", out var strName))
+                    {
                         dict["Store_Name"] = strName;
+                        dict["StoreName"] = strName;
+                    }
+
+                    if (dict.TryGetValue("WH_NAME", out var whName))
+                    {
+                        dict["Warehouse_Name"] = whName;
+                        dict["WarehouseName"] = whName;
+                    }
 
                     mappedRows.Add(dict);
                 }
@@ -357,15 +364,12 @@ namespace VS_Mart_Backend.Features.Master
                 }
                 result.States = states.OrderBy(s => s).ToList();
 
-                // 2. Area Managers (Registered users with Area Manager role UNION distinct existing in tbl_Store_Master)
+                // 2. Area Managers (Role_ID = 1 in User_Registration)
                 try
                 {
                     var amRows = await connection.QueryAsync<string>(
                         @"SELECT DISTINCT User_Name FROM dbo.User_Registration WITH (NOLOCK)
-                          WHERE (Role_ID = 1 OR User_Type LIKE '%Area%') AND Is_Status = 1
-                          UNION
-                          SELECT DISTINCT Area_Manager FROM dbo.tbl_Store_Master WITH (NOLOCK)
-                          WHERE Area_Manager IS NOT NULL AND Area_Manager <> ''");
+                          WHERE (Role_ID = 1 OR User_Type LIKE '%Area%') AND Is_Status = '1'");
                     result.AreaManagers = amRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
                 }
                 catch (Exception ex)
@@ -373,15 +377,12 @@ namespace VS_Mart_Backend.Features.Master
                     _logger.LogWarning(ex, "Could not fetch Area Managers for store dropdowns.");
                 }
 
-                // 3. ZFMs (Registered users with ZFM role UNION distinct existing in tbl_Store_Master)
+                // 3. ZFMs (Role_ID = 2 in User_Registration)
                 try
                 {
                     var zfmRows = await connection.QueryAsync<string>(
                         @"SELECT DISTINCT User_Name FROM dbo.User_Registration WITH (NOLOCK)
-                          WHERE (Role_ID = 2 OR User_Type LIKE '%ZFM%' OR User_Type LIKE '%Zonal%') AND Is_Status = 1
-                          UNION
-                          SELECT DISTINCT ZFM FROM dbo.tbl_Store_Master WITH (NOLOCK)
-                          WHERE ZFM IS NOT NULL AND ZFM <> ''");
+                          WHERE (Role_ID = 2 OR User_Type LIKE '%ZFM%' OR User_Type LIKE '%Zonal%') AND Is_Status = '1'");
                     result.ZFMs = zfmRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
                 }
                 catch (Exception ex)
@@ -389,15 +390,12 @@ namespace VS_Mart_Backend.Features.Master
                     _logger.LogWarning(ex, "Could not fetch ZFMs for store dropdowns.");
                 }
 
-                // 4. LPs (Registered users with LP role UNION distinct existing in tbl_Store_Master)
+                // 4. LPs (Role_ID = 3 in User_Registration)
                 try
                 {
                     var lpRows = await connection.QueryAsync<string>(
                         @"SELECT DISTINCT User_Name FROM dbo.User_Registration WITH (NOLOCK)
-                          WHERE (Role_ID = 3 OR User_Type LIKE '%LP%' OR User_Type LIKE '%Loss%') AND Is_Status = 1
-                          UNION
-                          SELECT DISTINCT LP FROM dbo.tbl_Store_Master WITH (NOLOCK)
-                          WHERE LP IS NOT NULL AND LP <> ''");
+                          WHERE (Role_ID = 3 OR User_Type LIKE '%LP%' OR User_Type LIKE '%Loss%') AND Is_Status = '1'");
                     result.LPs = lpRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
                 }
                 catch (Exception ex)
@@ -405,19 +403,14 @@ namespace VS_Mart_Backend.Features.Master
                     _logger.LogWarning(ex, "Could not fetch LPs for store dropdowns.");
                 }
 
-                // 5. Store Managers (Store Admin usernames UNION distinct existing in tbl_Store_Master)
+                // 5. Store Managers (Role_ID = 5 in User_Registration)
                 try
                 {
                     var smRows = await connection.QueryAsync<string>(
                         @"SELECT DISTINCT User_Name 
                           FROM dbo.User_Registration WITH (NOLOCK)
                           WHERE (User_Type = 'Store Admin' OR Role_ID = 5) 
-                            AND Is_Status = 1 
-                            AND User_Name LIKE '%[A-Za-z]%' 
-                          UNION
-                          SELECT DISTINCT Store_Manager 
-                          FROM dbo.tbl_Store_Master WITH (NOLOCK)
-                          WHERE Store_Manager IS NOT NULL AND Store_Manager <> '' AND Store_Manager LIKE '%[A-Za-z]%'");
+                            AND Is_Status = '1'");
                     result.StoreManagers = smRows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim()).Distinct().OrderBy(x => x).ToList();
                 }
                 catch (Exception ex)
