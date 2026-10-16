@@ -18,20 +18,33 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
         }
 
-        private static bool MatchStore(IDictionary<string, object?> row, string storeCode)
+        private static bool MatchStore(IDictionary<string, object?> row, IEnumerable<string>? storeCodes)
         {
-            if (string.IsNullOrEmpty(storeCode)) return false;
+            if (storeCodes == null) return false;
 
-            if (row.TryGetValue("STORE_CODE", out var sc) && sc != null && string.Equals(sc.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (row.TryGetValue("STORE", out var st) && st != null && string.Equals(st.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (row.TryGetValue("Store_Code", out var sc2) && sc2 != null && string.Equals(sc2.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (row.TryGetValue("Reciving_Plant", out var rp) && rp != null && string.Equals(rp.ToString(), storeCode, StringComparison.OrdinalIgnoreCase))
-                return true;
+            var codesSet = storeCodes as ISet<string> ?? new HashSet<string>(storeCodes, StringComparer.OrdinalIgnoreCase);
+            if (codesSet.Count == 0) return false;
+
+            string?[] candidates = {
+                row.TryGetValue("STORE_CODE", out var sc) && sc != null ? sc.ToString()?.Trim() : null,
+                row.TryGetValue("STORE", out var st) && st != null ? st.ToString()?.Trim() : null,
+                row.TryGetValue("Store_Code", out var sc2) && sc2 != null ? sc2.ToString()?.Trim() : null,
+                row.TryGetValue("Reciving_Plant", out var rp) && rp != null ? rp.ToString()?.Trim() : null
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (!string.IsNullOrEmpty(candidate) && codesSet.Contains(candidate))
+                    return true;
+            }
 
             return false;
+        }
+
+        private static bool MatchStore(IDictionary<string, object?> row, string storeCode)
+        {
+            if (string.IsNullOrWhiteSpace(storeCode)) return false;
+            return MatchStore(row, new[] { storeCode.Trim() });
         }
 
         private async Task<LiveStockResponse> QueryLiveStockFromDbAsync(LiveStockQueryRequest request, int userIdInt)
@@ -94,8 +107,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh);
 
-            // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -114,42 +127,39 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            // 2. User assigned to a specific store: serve sliced in-memory data instantly from RAM
-            if (!string.IsNullOrEmpty(profile.StoreCode))
+            // 2. User assigned to authorized store(s): serve sliced in-memory data
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items
+                .Where(x => MatchStore(x, storeCodes))
+                .ToList();
+
+            int sapQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("SAP_STOCK", out var s) && s != null ? s : 0));
+            int rfidQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_STOCK", out var r) && r != null ? r : 0));
+            int diffQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE", out var d) && d != null ? d : 0));
+            string? storeName = storeItems.Count == 1 && storeItems[0].TryGetValue("STORE_NAME", out var sn) == true 
+                ? sn?.ToString() 
+                : (storeItems.Count > 1 ? $"{storeItems.Count} Assigned Stores" : profile.StoreName);
+
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new LiveStockResponse
             {
-                var storeItems = masterData.Items
-                    .Where(x => MatchStore(x, profile.StoreCode))
-                    .ToList();
-
-                if (storeItems.Count > 0)
+                Items = pagedStoreItems,
+                Summary = new LiveStockSummary
                 {
-                    int sapQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("SAP_STOCK", out var s) && s != null ? s : 0));
-                    int rfidQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_STOCK", out var r) && r != null ? r : 0));
-                    int diffQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE", out var d) && d != null ? d : 0));
-                    string? storeName = storeItems.FirstOrDefault()?.TryGetValue("STORE_NAME", out var sn) == true ? sn?.ToString() : profile.StoreName;
-
-                    return new LiveStockResponse
-                    {
-                        Items = storeItems,
-                        Summary = new LiveStockSummary
-                        {
-                            PageIndex = 1,
-                            RecordCount = storeItems.Count,
-                            TotalCount = storeItems.Count,
-                            SapQty = sapQty,
-                            RfidQty = rfidQty,
-                            DiffQty = diffQty,
-                            StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
-                            Date = null
-                        }
-                    };
+                    PageIndex = request.PageIndex,
+                    RecordCount = storeItems.Count,
+                    TotalCount = storeItems.Count,
+                    SapQty = sapQty,
+                    RfidQty = rfidQty,
+                    DiffQty = diffQty,
+                    StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
+                    Date = null
                 }
-            }
-
-            // 3. Fallback for unmapped users or specific store queries not found in master snapshot
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryLiveStockFromDbAsync(request, userIdInt);
+            };
         }
 
         public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false)
@@ -182,8 +192,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                 using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
                 
-                var items = await multi.ReadAsync<dynamic>();
-                response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+                // First result set from SP_NEW_REPORT contains raw individual tag items; discard to reach distribution result set
+                await multi.ReadAsync<dynamic>();
 
                 if (!multi.IsConsumed)
                 {
@@ -213,22 +223,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return response;
             }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
-            if (pageIndex == 1 && (pageSize >= masterData.Items.Count || pageSize == 1000))
-            {
-                return masterData;
-            }
-
-            var pagedItems = masterData.Items
-                .Skip((pageIndex - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return new TagCycleCountResponse
-            {
-                Items = pagedItems,
-                Distribution = masterData.Distribution,
-                Summary = masterData.Summary
-            };
+            return masterData;
         }
 
         private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)
@@ -296,8 +291,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryStoreDashboardFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh);
 
-            // 1. Super Admin or unassigned store: serve company-wide master dataset (instantly from RAM)
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -316,40 +311,39 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            // 2. User assigned to a specific store: serve sliced in-memory data instantly from RAM
-            if (!string.IsNullOrEmpty(profile.StoreCode))
+            // 2. User assigned to authorized store(s): serve sliced in-memory data
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
+
+            int huReceived = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_RECEIVED_QTY", out var v) && v != null ? v : 0));
+            int huValidated = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_VALIDATED_QTY", out var v) && v != null ? v : 0));
+            int huWrong = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_WRONG_QTY", out var v) && v != null ? v : 0));
+            int hhtValidate = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HHT_VALIDATE_QTY", out var v) && v != null ? v : 0));
+            string? storeName = storeItems.Count == 1 && storeItems[0].TryGetValue("STORE_NAME", out var sn) == true 
+                ? sn?.ToString() 
+                : (storeItems.Count > 1 ? $"{storeItems.Count} Assigned Stores" : profile.StoreName);
+
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new StoreDashboardResponse
             {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
+                Items = pagedStoreItems,
+                Summary = new StoreDashboardSummary
                 {
-                    int huReceived = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_RECEIVED_QTY", out var v) && v != null ? v : 0));
-                    int huValidated = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_VALIDATED_QTY", out var v) && v != null ? v : 0));
-                    int huWrong = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HU_WRONG_QTY", out var v) && v != null ? v : 0));
-                    int hhtValidate = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("HHT_VALIDATE_QTY", out var v) && v != null ? v : 0));
-                    string? storeName = storeItems.FirstOrDefault()?.TryGetValue("STORE_NAME", out var sn) == true ? sn?.ToString() : profile.StoreName;
-
-                    return new StoreDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new StoreDashboardSummary
-                        {
-                            RecordCount = storeItems.Count,
-                            TotalCount = storeItems.Count,
-                            HuReceivedQty = huReceived,
-                            HuValidatedQty = huValidated,
-                            HuWrongQty = huWrong,
-                            HhtValidateQty = hhtValidate,
-                            EncodedQty = 0,
-                            StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
-                            Date = null
-                        }
-                    };
+                    RecordCount = storeItems.Count,
+                    TotalCount = storeItems.Count,
+                    HuReceivedQty = huReceived,
+                    HuValidatedQty = huValidated,
+                    HuWrongQty = huWrong,
+                    HhtValidateQty = hhtValidate,
+                    EncodedQty = 0,
+                    StoreName = !string.IsNullOrEmpty(storeName) ? storeName : profile.StoreCode,
+                    Date = null
                 }
-            }
-
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryStoreDashboardFromDbAsync(request, userIdInt);
+            };
         }
 
         private async Task<SaleDashboardResponse> QuerySaleDashboardFromDbAsync(SaleDashboardQueryRequest request, int userId)
@@ -437,7 +431,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -456,36 +450,33 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            if (!string.IsNullOrEmpty(profile.StoreCode))
-            {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
-                {
-                    return new SaleDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new SaleDashboardSummary
-                        {
-                            RecordCount = storeItems.Count,
-                            TotalDposSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DPOS_SALE", out var v) && v != null ? v : 0)),
-                            TotalRfidCheckout = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
-                            TotalDposRfidSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_DPOS_SALE", out var v) && v != null ? v : 0)),
-                            TotalRfidCheckoutMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
-                            TotalRfidCheckoutNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
-                            TotalPosSaleNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
-                            TotalTaffetaSale = Math.Max(0, storeItems.Sum(x => Math.Max(0, Convert.ToInt32(x.TryGetValue("TOTAL_TAFFETA_SALE", out var v) && v != null ? v : 0)))),
-                            TotalManualSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_MANUAL_SALE", out var v) && v != null ? v : 0)),
-                            TotalVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_VOID", out var v) && v != null ? v : 0)),
-                            TotalRfidCheckoutMatchDpos = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID", out var v) && v != null ? v : 0)),
-                            TotalDiffVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DIFF_VOID", out var v) && v != null ? v : 0))
-                        }
-                    };
-                }
-            }
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
 
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QuerySaleDashboardFromDbAsync(request, userIdInt);
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new SaleDashboardResponse
+            {
+                Items = pagedStoreItems,
+                Summary = new SaleDashboardSummary
+                {
+                    RecordCount = storeItems.Count,
+                    TotalDposSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DPOS_SALE", out var v) && v != null ? v : 0)),
+                    TotalRfidCheckout = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
+                    TotalDposRfidSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_RFID_DPOS_SALE", out var v) && v != null ? v : 0)),
+                    TotalRfidCheckoutMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
+                    TotalRfidCheckoutNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_NOT_MATCHING_WITH_DPOS_SALE", out var v) && v != null ? v : 0)),
+                    TotalPosSaleNotMatch = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DPOS_SALE_NOT_MATCHING_WITH_RFID_CHECKOUT", out var v) && v != null ? v : 0)),
+                    TotalTaffetaSale = Math.Max(0, storeItems.Sum(x => Math.Max(0, Convert.ToInt32(x.TryGetValue("TOTAL_TAFFETA_SALE", out var v) && v != null ? v : 0)))),
+                    TotalManualSale = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_MANUAL_SALE", out var v) && v != null ? v : 0)),
+                    TotalVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_VOID", out var v) && v != null ? v : 0)),
+                    TotalRfidCheckoutMatchDpos = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RFID_CHECKOUT_MATCHING_WITH_DPOS_VOID", out var v) && v != null ? v : 0)),
+                    TotalDiffVoid = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("TOTAL_DIFF_VOID", out var v) && v != null ? v : 0))
+                }
+            };
         }
 
         private async Task<ReturnDashboardResponse> QueryReturnDashboardFromDbAsync(ReturnDashboardQueryRequest request, int userId)
@@ -549,7 +540,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -568,29 +559,26 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            if (!string.IsNullOrEmpty(profile.StoreCode))
-            {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
-                {
-                    return new ReturnDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new ReturnDashboardSummary
-                        {
-                            RecordCount = storeItems.Count,
-                            TotalCount = storeItems.Count,
-                            ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RETURN_QTY", out var v) && v != null ? v : 0)),
-                            ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
-                            PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
-                        }
-                    };
-                }
-            }
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
 
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryReturnDashboardFromDbAsync(request, userIdInt);
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new ReturnDashboardResponse
+            {
+                Items = pagedStoreItems,
+                Summary = new ReturnDashboardSummary
+                {
+                    RecordCount = storeItems.Count,
+                    TotalCount = storeItems.Count,
+                    ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("RETURN_QTY", out var v) && v != null ? v : 0)),
+                    ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
+                    PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
+                }
+            };
         }
 
         private async Task<VoidDashboardResponse> QueryVoidDashboardFromDbAsync(VoidDashboardQueryRequest request, int userId)
@@ -654,7 +642,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
 
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -673,29 +661,26 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            if (!string.IsNullOrEmpty(profile.StoreCode))
-            {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
-                {
-                    return new VoidDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new VoidDashboardSummary
-                        {
-                            RecordCount = storeItems.Count,
-                            TotalCount = storeItems.Count,
-                            ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("VOID_QTY", out var v) && v != null ? v : 0)),
-                            ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
-                            PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
-                        }
-                    };
-                }
-            }
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
 
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryVoidDashboardFromDbAsync(request, userIdInt);
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new VoidDashboardResponse
+            {
+                Items = pagedStoreItems,
+                Summary = new VoidDashboardSummary
+                {
+                    RecordCount = storeItems.Count,
+                    TotalCount = storeItems.Count,
+                    ReturnQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("VOID_QTY", out var v) && v != null ? v : 0)),
+                    ReturnEncodedQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("ENCODE_QTY", out var v) && v != null ? v : 0)),
+                    PendingQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("DIFFERENCE_QTY", out var v) && v != null ? v : 0))
+                }
+            };
         }
 
         private async Task<DcValidateDashboardResponse> QueryDcValidateFromDbAsync(DcValidateDashboardQueryRequest request, int userId)
@@ -777,29 +762,26 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            // 2. User assigned to a specific store: serve sliced in-memory data if store is assigned
-            if (!string.IsNullOrEmpty(profile.StoreCode) && !profile.IsSuperAdmin && !string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase))
-            {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
-                {
-                    return new DcValidateDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new DcValidateDashboardSummary
-                        {
-                            RecordCount = storeItems.Count,
-                            ProcessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_HU", out var v) && v != null ? v : 0)),
-                            UnprocessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("UNPROCESSED_HU", out var v) && v != null ? v : 0)),
-                            ArticleQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_ARTICLE_QTY", out var v) && v != null ? v : 0))
-                        }
-                    };
-                }
-            }
+            // 2. User assigned to authorized store(s): serve sliced in-memory data
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
 
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryDcValidateFromDbAsync(request, userIdInt);
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new DcValidateDashboardResponse
+            {
+                Items = pagedStoreItems,
+                Summary = new DcValidateDashboardSummary
+                {
+                    RecordCount = storeItems.Count,
+                    ProcessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_HU", out var v) && v != null ? v : 0)),
+                    UnprocessedHu = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("UNPROCESSED_HU", out var v) && v != null ? v : 0)),
+                    ArticleQty = storeItems.Sum(x => Convert.ToInt32(x.TryGetValue("PROCESSED_ARTICLE_QTY", out var v) && v != null ? v : 0))
+                }
+            };
         }
 
         private async Task<CycleCountDashboardResponse> QueryCycleCountFromDbAsync(CycleCountDashboardQueryRequest request, int userId)
@@ -928,7 +910,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 return await QueryCycleCountFromDbAsync(masterRequest, masterAdminId);
             }, forceRefresh);
 
-            if (profile.IsSuperAdmin || string.IsNullOrEmpty(profile.StoreCode))
+            if (profile.IsSuperAdmin)
             {
                 if (request.PageIndex == 1 && (request.PageSize >= masterData.Items.Count || request.PageSize == 100))
                 {
@@ -947,27 +929,24 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 };
             }
 
-            if (!string.IsNullOrEmpty(profile.StoreCode))
-            {
-                var storeItems = masterData.Items.Where(x => MatchStore(x, profile.StoreCode)).ToList();
-                if (storeItems.Count > 0)
-                {
-                    return new CycleCountDashboardResponse
-                    {
-                        Items = storeItems,
-                        Summary = new CycleCountDashboardSummary
-                        {
-                            PageIndex = 1,
-                            RecordCount = storeItems.Count,
-                            RefNo = storeItems.Count
-                        }
-                    };
-                }
-            }
+            var storeCodes = profile.AuthorizedStoreCodes;
+            var storeItems = masterData.Items.Where(x => MatchStore(x, storeCodes)).ToList();
 
-            int userIdInt = 0;
-            int.TryParse(request.UserId, out userIdInt);
-            return await QueryCycleCountFromDbAsync(request, userIdInt);
+            var pagedStoreItems = storeItems
+                .Skip((request.PageIndex - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            return new CycleCountDashboardResponse
+            {
+                Items = pagedStoreItems,
+                Summary = new CycleCountDashboardSummary
+                {
+                    PageIndex = request.PageIndex,
+                    RecordCount = storeItems.Count,
+                    RefNo = storeItems.Count
+                }
+            };
         }
 
         public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false)
@@ -1069,10 +1048,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@STORECOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@WHCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@Newtags", dbType: DbType.Int32, direction: ParameterDirection.Output);
-                    parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
-                    response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
+                    // Discard raw individual tag items result set; only summary output parameters are needed by dashboard
+                    await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
 
                     response.Summary = new TagManagementSummary
                     {

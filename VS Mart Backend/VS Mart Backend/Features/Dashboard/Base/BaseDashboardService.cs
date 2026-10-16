@@ -12,11 +12,13 @@ namespace VS_Mart_Backend.Features.Base
     public class UserProfileDto
     {
         public int UserId { get; set; }
+        public int RoleId { get; set; }
         public string UserType { get; set; } = string.Empty;
         public string StoreCode { get; set; } = string.Empty;
         public string StoreName { get; set; } = string.Empty;
         public string WarehouseCode { get; set; } = string.Empty;
-        public bool IsSuperAdmin => string.Equals(UserType, "Super Admin", StringComparison.OrdinalIgnoreCase);
+        public List<string> AuthorizedStoreCodes { get; set; } = new();
+        public bool IsSuperAdmin => string.Equals(UserType, "Super Admin", StringComparison.OrdinalIgnoreCase) || RoleId == 4;
     }
 
     public abstract class BaseDashboardService
@@ -217,30 +219,53 @@ namespace VS_Mart_Backend.Features.Base
                 return new UserProfileDto { UserType = "Super Admin" }; // Default to Super Admin if unspecified
             }
 
-            string cacheKey = $"UserProfile_{uid}";
-            if (_cache.TryGetValue(cacheKey, out UserProfileDto? cachedProfile) && cachedProfile != null)
-            {
-                return cachedProfile;
-            }
-
             try
             {
                 using var connection = new SqlConnection(_connectionString);
                 var profile = await connection.QueryFirstOrDefaultAsync<UserProfileDto>(@"
                     SELECT 
                         U.User_ID AS UserId, 
+                        ISNULL(U.Role_ID, 0) AS RoleId,
                         ISNULL(U.User_Type, '') AS UserType, 
                         ISNULL(S.Store_Code, '') AS StoreCode, 
                         ISNULL(S.Store_Name, '') AS StoreName,
                         ISNULL(W.WH_Code, '') AS WarehouseCode
-                    FROM dbo.User_Registration U
-                    LEFT JOIN dbo.tbl_Store_Master S ON U.Store_ID = S.Store_ID
-                    LEFT JOIN dbo.tbl_Warehouse_Mst W ON U.WH_ID = W.WH_ID
+                    FROM dbo.User_Registration U WITH (NOLOCK)
+                    LEFT JOIN dbo.tbl_Store_Master S WITH (NOLOCK) ON U.Store_ID = S.Store_ID
+                    LEFT JOIN dbo.tbl_Warehouse_Mst W WITH (NOLOCK) ON U.WH_ID = W.WH_ID
                     WHERE U.User_ID = @Uid", new { Uid = uid });
 
                 if (profile != null)
                 {
-                    _cache.Set(cacheKey, profile, TimeSpan.FromMinutes(60));
+                    if (!profile.IsSuperAdmin)
+                    {
+                        var authorizedStores = (await connection.QueryAsync<string>(@"
+                            SELECT DISTINCT S.Store_Code
+                            FROM dbo.tbl_Store_Master S WITH (NOLOCK)
+                            WHERE S.Is_Status = '1'
+                              AND (
+                                  S.AM_ID = @Uid
+                                  OR S.ZFM_ID = @Uid
+                                  OR S.LP_ID = @Uid
+                                  OR S.SM_ID = @Uid
+                                  OR S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid)
+                              )", new { Uid = uid }))
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                            .Select(s => s.Trim())
+                            .ToList();
+
+                        profile.AuthorizedStoreCodes = authorizedStores;
+
+                        if (!string.IsNullOrEmpty(profile.StoreCode) && !profile.AuthorizedStoreCodes.Contains(profile.StoreCode, StringComparer.OrdinalIgnoreCase))
+                        {
+                            profile.AuthorizedStoreCodes.Add(profile.StoreCode);
+                        }
+                        else if (profile.AuthorizedStoreCodes.Count == 1 && string.IsNullOrEmpty(profile.StoreCode))
+                        {
+                            profile.StoreCode = profile.AuthorizedStoreCodes[0];
+                        }
+                    }
+
                     return profile;
                 }
             }

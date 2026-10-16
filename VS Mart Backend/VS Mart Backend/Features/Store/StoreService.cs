@@ -40,8 +40,9 @@ namespace VS_Mart_Backend.Features.Store
                     WHERE u.User_ID = @UserId", new { UserId = userId });
 
                 string userType = userProfile != null ? Convert.ToString(userProfile.User_Type)?.Trim() ?? "" : "";
+                int roleId = userProfile != null ? Convert.ToInt32(userProfile.Role_ID) : 0;
                 int assignedStoreId = userProfile != null ? Convert.ToInt32(userProfile.Store_ID) : 0;
-                bool isSuperAdmin = userType.Equals("Super Admin", StringComparison.OrdinalIgnoreCase);
+                bool isSuperAdmin = userType.Equals("Super Admin", StringComparison.OrdinalIgnoreCase) || roleId == 4;
 
                 // 2. Fetch distinct stores with configured active cash counters
                 var parameters = new DynamicParameters();
@@ -60,34 +61,34 @@ namespace VS_Mart_Backend.Features.Store
 
                 List<CounterStatusStoreDto> filteredStores;
 
-                if (isSuperAdmin || (assignedStoreId <= 0 && userType.Equals("Store Admin", StringComparison.OrdinalIgnoreCase)))
+                if (isSuperAdmin)
                 {
-                    // Super Admin or roving Store Admin without a single store lock sees all available stores
                     filteredStores = allStores;
-                }
-                else if (assignedStoreId > 0)
-                {
-                    // Store-restricted user (Store Admin or Store User with an assigned store) only sees their authorized store
-                    filteredStores = allStores.Where(s => s.Store_ID == assignedStoreId).ToList();
-
-                    // Fallback: ONLY if SP_Master didn't return their assigned store (e.g. no devices active yet), include it from store profile
-                    if (filteredStores.Count == 0)
-                    {
-                        string? fallbackStoreName = Convert.ToString(userProfile?.Store_Name);
-                        if (!string.IsNullOrWhiteSpace(fallbackStoreName))
-                        {
-                            filteredStores.Add(new CounterStatusStoreDto
-                            {
-                                Store_ID = assignedStoreId,
-                                Store_Name = fallbackStoreName
-                            });
-                        }
-                    }
                 }
                 else
                 {
-                    // Other roles without assigned stores or permissions
-                    filteredStores = isSuperAdmin ? allStores : new List<CounterStatusStoreDto>();
+                    // Query directly for all authorized stores for this user (Area Manager, ZFM, LP, Store Admin, Store User)
+                    var authorizedStores = (await connection.QueryAsync<CounterStatusStoreDto>(@"
+                        SELECT DISTINCT S.Store_ID, S.Store_Name
+                        FROM dbo.tbl_Store_Master S WITH (NOLOCK)
+                        WHERE S.Is_Status = '1'
+                          AND (
+                              S.AM_ID = @UserId
+                              OR S.ZFM_ID = @UserId
+                              OR S.LP_ID = @UserId
+                              OR S.SM_ID = @UserId
+                              OR S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @UserId)
+                          )", new { UserId = userId })).ToList();
+
+                    var authorizedStoreIds = authorizedStores.Select(s => s.Store_ID).ToHashSet();
+
+                    filteredStores = allStores.Where(s => authorizedStoreIds.Contains(s.Store_ID)).ToList();
+
+                    // Fallback: If SP_Master didn't return any active devices for their authorized stores, include from authorized stores
+                    if (filteredStores.Count == 0 && authorizedStores.Count > 0)
+                    {
+                        filteredStores = authorizedStores;
+                    }
                 }
 
                 // Ensure distinct stores by Store_ID to prevent duplicates

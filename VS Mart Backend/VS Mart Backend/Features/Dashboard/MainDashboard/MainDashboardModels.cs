@@ -53,7 +53,6 @@ namespace VS_Mart_Backend.Features.MainDashboard
     public class TagCycleCountResponse
     {
         public TagCycleCountSummary Summary { get; set; } = new TagCycleCountSummary();
-        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
         public List<Dictionary<string, object?>> Distribution { get; set; } = new List<Dictionary<string, object?>>();
     }
 
@@ -263,7 +262,6 @@ namespace VS_Mart_Backend.Features.MainDashboard
     public class TagManagementResponse
     {
         public TagManagementSummary Summary { get; set; } = new TagManagementSummary();
-        public List<Dictionary<string, object?>> Items { get; set; } = new List<Dictionary<string, object?>>();
     }
 
     public class WarehouseEncodingQueryRequest
