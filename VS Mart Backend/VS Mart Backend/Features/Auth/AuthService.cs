@@ -83,9 +83,18 @@ WHERE u.User_Name = @User_Name
                 bool isManagerialRole = userType.Equals("Store Admin", StringComparison.OrdinalIgnoreCase)
                     || userType.Equals("ZFM", StringComparison.OrdinalIgnoreCase)
                     || userType.Equals("Area Manager", StringComparison.OrdinalIgnoreCase)
-                    || userType.Equals("LP", StringComparison.OrdinalIgnoreCase);
+                    || userType.Equals("LP", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("Warehouse Admin", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("WH Admin", StringComparison.OrdinalIgnoreCase);
 
-                string contactTarget = isManagerialRole ? "the Super Admin" : "your Store Admin";
+                bool isWarehouseRole = userType.Equals("Warehouse", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("Warehouse User", StringComparison.OrdinalIgnoreCase);
+
+                string contactTarget = isManagerialRole 
+                    ? "the Super Admin" 
+                    : (isWarehouseRole ? "your Warehouse Admin" : "your Store Admin");
+
+                string assignmentType = isWarehouseRole ? "warehouse" : "store";
 
                 // 2. Account Status Check (Deactivated Account)
                 int isStatus = 1;
@@ -118,7 +127,7 @@ WHERE u.User_Name = @User_Name
                     return new LoginResponse
                     {
                         Success = false,
-                        Message = $"Welcome to the Vishal Mega Mart, You haven't assigned any store yet. Try contacting {contactTarget} for store assignment.",
+                        Message = $"Welcome to the Vishal Mega Mart, You haven't assigned any {assignmentType} yet. Try contacting {contactTarget} for {assignmentType} assignment.",
                         ErrorCode = "NO_STORE_ASSIGNED",
                         UserType = userType,
                         UserName = userName,
