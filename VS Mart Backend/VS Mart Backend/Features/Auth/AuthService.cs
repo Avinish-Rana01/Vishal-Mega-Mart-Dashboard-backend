@@ -76,6 +76,17 @@ WHERE u.User_Name = @User_Name
 
                 var row = (IDictionary<string, object>)items[0];
 
+                string userType = row.ContainsKey("User_Type") && row["User_Type"] != null ? row["User_Type"].ToString()!.Trim() : string.Empty;
+                string userName = row.ContainsKey("User_Name") ? row["User_Name"]?.ToString() ?? request.UserName : request.UserName;
+                string userId = row.ContainsKey("User_ID") ? row["User_ID"]?.ToString() ?? "" : "";
+
+                bool isManagerialRole = userType.Equals("Store Admin", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("ZFM", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("Area Manager", StringComparison.OrdinalIgnoreCase)
+                    || userType.Equals("LP", StringComparison.OrdinalIgnoreCase);
+
+                string contactTarget = isManagerialRole ? "the Super Admin" : "your Store Admin";
+
                 // 2. Account Status Check (Deactivated Account)
                 int isStatus = 1;
                 if (row.ContainsKey("Is_Status") && row["Is_Status"] != null)
@@ -88,8 +99,11 @@ WHERE u.User_Name = @User_Name
                     return new LoginResponse
                     {
                         Success = false,
-                        Message = "Your account has been deactivated. Please contact your administrator.",
+                        Message = $"Your account has been deactivated. Please contact {contactTarget} for your access.",
                         ErrorCode = "ACCOUNT_DEACTIVATED",
+                        UserType = userType,
+                        UserName = userName,
+                        UserID = userId,
                         IsLoginStatus = "0"
                     };
                 }
@@ -104,12 +118,14 @@ WHERE u.User_Name = @User_Name
                     return new LoginResponse
                     {
                         Success = false,
-                        Message = "Access Denied: No store or warehouse is assigned to your account. Please contact your administrator.",
+                        Message = $"Welcome to the Vishal Mega Mart, You haven't assigned any store yet. Try contacting {contactTarget} for store assignment.",
                         ErrorCode = "NO_STORE_ASSIGNED",
+                        UserType = userType,
+                        UserName = userName,
+                        UserID = userId,
                         IsLoginStatus = row.ContainsKey("Is_Login_Status") ? row["Is_Login_Status"]?.ToString() ?? "1" : "1"
                     };
                 }
-                string userType = row.ContainsKey("User_Type") && row["User_Type"] != null ? row["User_Type"].ToString()!.Trim() : string.Empty;
 
                 string redirectPage = "Dashboard";
                 if (userType.Equals("Dispatch Admin", StringComparison.OrdinalIgnoreCase))
