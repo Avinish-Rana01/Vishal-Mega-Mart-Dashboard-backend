@@ -41,28 +41,74 @@ SELECT TOP 1
     u.User_Type, 
     s.Store_Code, 
     wm.Wh_Code,
-    u.Is_Login_Status 
+    u.Is_Login_Status,
+    u.Is_Status,
+    CASE 
+        WHEN u.User_Type = 'Super Admin' THEN 'Allowed'
+        WHEN u.User_Type IN ('Dispatch Admin', 'Tag Admin') THEN 'Allowed'
+        WHEN u.WH_ID IS NOT NULL AND u.WH_ID > 0 THEN 'Allowed'
+        WHEN (SELECT COUNT(1) FROM dbo.tbl_Store_Master sm WITH (NOLOCK) 
+              WHERE sm.Is_Status = '1' 
+                AND (sm.AM_ID = u.User_ID OR sm.ZFM_ID = u.User_ID OR sm.LP_ID = u.User_ID OR sm.SM_ID = u.User_ID OR sm.Store_ID = u.Store_ID)
+             ) > 0 THEN 'Allowed'
+        ELSE 'Not_allowed'
+    END AS Login_Eligibility
 FROM dbo.User_Registration u WITH (NOLOCK) 
 LEFT JOIN dbo.tbl_Store_Master s WITH (NOLOCK) ON u.Store_ID = s.Store_ID 
 LEFT JOIN dbo.tbl_Warehouse_Mst wm WITH (NOLOCK) ON u.WH_ID = wm.WH_ID 
 WHERE u.User_Name = @User_Name 
-  AND u.Password = @Password
-  AND (u.Is_Status = 1 OR u.Is_Status IS NULL);";
+  AND u.Password = @Password;";
 
                 var cmd = new CommandDefinition(loginSql, new { User_Name = uName, Password = uPass }, cancellationToken: cancellationToken);
                 var rawItems = await connection.QueryAsync<dynamic>(cmd);
                 var items = rawItems.ToList();
 
+                // 1. Credentials Check (Username or Password mismatch)
                 if (items == null || items.Count == 0)
                 {
                     return new LoginResponse
                     {
                         Success = false,
-                        Message = "Invalid username or password"
+                        Message = "Invalid username or password",
+                        ErrorCode = "INVALID_CREDENTIALS"
                     };
                 }
 
                 var row = (IDictionary<string, object>)items[0];
+
+                // 2. Account Status Check (Deactivated Account)
+                int isStatus = 1;
+                if (row.ContainsKey("Is_Status") && row["Is_Status"] != null)
+                {
+                    int.TryParse(row["Is_Status"].ToString(), out isStatus);
+                }
+
+                if (isStatus == 0)
+                {
+                    return new LoginResponse
+                    {
+                        Success = false,
+                        Message = "Your account has been deactivated. Please contact your administrator.",
+                        ErrorCode = "ACCOUNT_DEACTIVATED",
+                        IsLoginStatus = "0"
+                    };
+                }
+
+                // 3. Store / Warehouse Assignment Check
+                string loginEligibility = row.ContainsKey("Login_Eligibility") && row["Login_Eligibility"] != null
+                    ? row["Login_Eligibility"].ToString()!.Trim()
+                    : "Not_allowed";
+
+                if (loginEligibility.Equals("Not_allowed", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new LoginResponse
+                    {
+                        Success = false,
+                        Message = "Access Denied: No store or warehouse is assigned to your account. Please contact your administrator.",
+                        ErrorCode = "NO_STORE_ASSIGNED",
+                        IsLoginStatus = row.ContainsKey("Is_Login_Status") ? row["Is_Login_Status"]?.ToString() ?? "1" : "1"
+                    };
+                }
                 string userType = row.ContainsKey("User_Type") && row["User_Type"] != null ? row["User_Type"].ToString()!.Trim() : string.Empty;
 
                 string redirectPage = "Dashboard";

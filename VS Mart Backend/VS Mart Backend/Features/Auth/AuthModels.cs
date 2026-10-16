@@ -22,6 +22,7 @@ namespace VS_Mart_Backend.Features.Auth
         public List<string> AllowedSections { get; set; } = new();
         public bool RequirePasswordChange { get; set; } = false;
         public string? IsLoginStatus { get; set; } = "1";
+        public string? ErrorCode { get; set; }
     }
 
     public class ChangePasswordRequest
