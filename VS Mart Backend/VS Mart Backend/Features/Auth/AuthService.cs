@@ -32,34 +32,19 @@ namespace VS_Mart_Backend.Features.Auth
 
                 using var connection = new SqlConnection(_connectionString);
 
-                const string loginSql = @"
-SELECT TOP 1                                
-    u.User_ID, 
-    u.User_Name, 
-    s.STORE_NAME, 
-    wm.Wh_Name, 
-    u.User_Type, 
-    s.Store_Code, 
-    wm.Wh_Code,
-    u.Is_Login_Status,
-    u.Is_Status,
-    CASE 
-        WHEN u.User_Type = 'Super Admin' THEN 'Allowed'
-        WHEN u.User_Type IN ('Dispatch Admin', 'Tag Admin') THEN 'Allowed'
-        WHEN u.WH_ID IS NOT NULL AND u.WH_ID > 0 THEN 'Allowed'
-        WHEN (SELECT COUNT(1) FROM dbo.tbl_Store_Master sm WITH (NOLOCK) 
-              WHERE sm.Is_Status = '1' 
-                AND (sm.AM_ID = u.User_ID OR sm.ZFM_ID = u.User_ID OR sm.LP_ID = u.User_ID OR sm.SM_ID = u.User_ID OR sm.Store_ID = u.Store_ID)
-             ) > 0 THEN 'Allowed'
-        ELSE 'Not_allowed'
-    END AS Login_Eligibility
-FROM dbo.User_Registration u WITH (NOLOCK) 
-LEFT JOIN dbo.tbl_Store_Master s WITH (NOLOCK) ON u.Store_ID = s.Store_ID 
-LEFT JOIN dbo.tbl_Warehouse_Mst wm WITH (NOLOCK) ON u.WH_ID = wm.WH_ID 
-WHERE u.User_Name = @User_Name 
-  AND u.Password = @Password;";
+                var parameters = new DynamicParameters();
+                parameters.Add("@Status", "SP_Login");
+                parameters.Add("@User_Name", uName);
+                parameters.Add("@Password", uPass);
+                parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
-                var cmd = new CommandDefinition(loginSql, new { User_Name = uName, Password = uPass }, cancellationToken: cancellationToken);
+                var cmd = new CommandDefinition(
+                    "SP_Master",
+                    parameters,
+                    commandType: CommandType.StoredProcedure,
+                    cancellationToken: cancellationToken
+                );
+
                 var rawItems = await connection.QueryAsync<dynamic>(cmd);
                 var items = rawItems.ToList();
 
@@ -295,29 +280,34 @@ WHERE u.User_Name = @User_Name
 
                 using var connection = new SqlConnection(_connectionString);
 
-                const string updateSql = @"
-UPDATE dbo.User_Registration
-SET Password = @NewPassword,
-    Is_Login_Status = '1',
-    Modify_Date = GETDATE()
-WHERE (User_Name = @UserName OR (@UserId <> '' AND User_ID = @UserId))
-  AND Password = @CurrentPassword
-  AND (Is_Status = 1 OR Is_Status IS NULL);";
+                var parameters = new DynamicParameters();
+                parameters.Add("@Status", "Change_Password");
+                parameters.Add("@User_ID", int.TryParse(uId, out int parsedId) ? parsedId : 0);
+                parameters.Add("@User_Name", uName);
+                parameters.Add("@Password", currentPass);
+                parameters.Add("@New_Password", newPass);
+                parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
                 var cmd = new CommandDefinition(
-                    updateSql,
-                    new { NewPassword = newPass, UserName = uName, UserId = uId, CurrentPassword = currentPass },
+                    "SP_Master",
+                    parameters,
+                    commandType: CommandType.StoredProcedure,
                     cancellationToken: cancellationToken
                 );
 
-                int rowsAffected = await connection.ExecuteAsync(cmd);
+                await connection.ExecuteAsync(cmd);
 
-                if (rowsAffected == 0)
+                string message = parameters.Get<string>("@Message") ?? "";
+                bool isSuccess = message.Equals("Password changed successfully.", StringComparison.OrdinalIgnoreCase);
+
+                if (!isSuccess)
                 {
                     return new ChangePasswordResponse
                     {
                         Success = false,
-                        Message = "Current password is incorrect or user account is not active."
+                        Message = string.IsNullOrWhiteSpace(message)
+                            ? "Current password is incorrect or user account is not active."
+                            : message
                     };
                 }
 
