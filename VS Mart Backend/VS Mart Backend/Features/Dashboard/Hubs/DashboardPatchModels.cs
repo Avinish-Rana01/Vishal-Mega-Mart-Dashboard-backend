@@ -54,6 +54,11 @@
             public int NewNoOfArticles { get; set; }
             public int NewShortQty { get; set; }
             public int NewExcessQty { get; set; }
+            public string? TimeTaken { get; set; }
+            public string? StartTime { get; set; }
+            public string? EndTime { get; set; }
+            public string? CycleCountType { get; set; }
+            public string? Date { get; set; }
             public bool IsRemoved { get; set; } = false;
             public CycleCountSummaryDelta? SummaryDelta { get; set; }
         }

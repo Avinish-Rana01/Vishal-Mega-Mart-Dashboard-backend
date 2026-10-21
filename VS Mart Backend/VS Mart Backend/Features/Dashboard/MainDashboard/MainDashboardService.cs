@@ -827,6 +827,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters2.Add("@todate", "", DbType.String, size: 20);
             parameters2.Add("@ref_No", "", DbType.String, size: 50);
             parameters2.Add("@USER_ID", userId, DbType.Int32);
+            parameters2.Add("@PageIndex", 1, DbType.Int32);
+            parameters2.Add("@PageSize", 1000, DbType.Int32);
             parameters2.Add("@SortColumn", "DATE", DbType.String, size: 50);
             parameters2.Add("@SortDirection", "desc", DbType.String, size: 10);
             parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);

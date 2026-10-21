@@ -42,12 +42,20 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
         private class CycleSnapshot
         {
+            public string StoreCode { get; set; } = string.Empty;
+            public string? StoreName { get; set; }
+            public string RefNo { get; set; } = string.Empty;
             public int ScannedQty { get; set; }
             public int SystemStock { get; set; }
             public int NetDiff { get; set; }
             public int NoOfArticles { get; set; }
             public int ShortQty { get; set; }
             public int ExcessQty { get; set; }
+            public string? TimeTaken { get; set; }
+            public string? StartTime { get; set; }
+            public string? EndTime { get; set; }
+            public string? CycleCountType { get; set; }
+            public string? Date { get; set; }
         }
 
         // ── 3. Vendor Discrepancy Snapshots ──────────────────────────────────
@@ -288,26 +296,34 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                 {
                     foreach (var row in response.Items)
                     {
-                        string refNo = GetString(row, "REF_NO");
-                        if (string.IsNullOrEmpty(refNo)) refNo = GetString(row, "Ref_ID");
-                        string storeCode = GetString(row, "STORE_CODE");
-                        string key = !string.IsNullOrEmpty(refNo) ? refNo : storeCode;
-                        if (!string.IsNullOrEmpty(key))
+                        string storeCode = GetString(row, "STORE_CODE") ?? GetString(row, "Store_Code") ?? string.Empty;
+                        if (!string.IsNullOrEmpty(storeCode))
                         {
+                            string refNo = GetString(row, "REF_NO");
+                            if (string.IsNullOrEmpty(refNo) || refNo == "NA" || refNo == "0") refNo = GetString(row, "Ref_ID") ?? string.Empty;
+
                             int netDiff = GetInt(row, "NET_DIFFERENCE");
                             if (netDiff == 0 && row.ContainsKey("NET_DIFF")) netDiff = GetInt(row, "NET_DIFF");
 
                             int noOfArticles = GetInt(row, "NO_OF_ARTICLES");
                             if (noOfArticles == 0 && row.ContainsKey("NO_OF_ARTICLE")) noOfArticles = GetInt(row, "NO_OF_ARTICLE");
 
-                            _cycleSnapshots[key] = new CycleSnapshot
+                            _cycleSnapshots[storeCode] = new CycleSnapshot
                             {
+                                StoreCode = storeCode,
+                                StoreName = GetString(row, "STORE_NAME"),
+                                RefNo = refNo,
                                 ScannedQty = GetInt(row, "SCANNED_QTY"),
                                 SystemStock = GetInt(row, "SYSTEM_STOCK"),
                                 NetDiff = netDiff,
                                 NoOfArticles = noOfArticles,
                                 ShortQty = GetInt(row, "SHORT_QTY"),
-                                ExcessQty = GetInt(row, "EXCESS_QTY")
+                                ExcessQty = GetInt(row, "EXCESS_QTY"),
+                                TimeTaken = GetString(row, "Time_Taken"),
+                                StartTime = GetString(row, "Start_DateTime"),
+                                EndTime = GetString(row, "END_DateTime"),
+                                CycleCountType = GetString(row, "CYCLE_COUNT_TYPE"),
+                                Date = GetString(row, "DATE")
                             };
                         }
                     }
@@ -318,11 +334,11 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                 foreach (var row in response.Items)
                 {
+                    string storeCode = GetString(row, "STORE_CODE") ?? GetString(row, "Store_Code") ?? string.Empty;
+                    if (string.IsNullOrEmpty(storeCode)) continue;
+
                     string refNo = GetString(row, "REF_NO");
-                    if (string.IsNullOrEmpty(refNo)) refNo = GetString(row, "Ref_ID");
-                    string storeCode = GetString(row, "STORE_CODE");
-                    string key = !string.IsNullOrEmpty(refNo) ? refNo : storeCode;
-                    if (string.IsNullOrEmpty(key)) continue;
+                    if (string.IsNullOrEmpty(refNo) || refNo == "NA" || refNo == "0") refNo = GetString(row, "Ref_ID") ?? string.Empty;
 
                     int scannedQty = GetInt(row, "SCANNED_QTY");
                     int systemStock = GetInt(row, "SYSTEM_STOCK");
@@ -336,20 +352,40 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     int shortQty = GetInt(row, "SHORT_QTY");
                     int excessQty = GetInt(row, "EXCESS_QTY");
                     string storeName = GetString(row, "STORE_NAME");
+                    string timeTaken = GetString(row, "Time_Taken");
+                    string startTime = GetString(row, "Start_DateTime");
+                    string endTime = GetString(row, "END_DateTime");
+                    string cycleCountType = GetString(row, "CYCLE_COUNT_TYPE");
+                    string date = GetString(row, "DATE");
 
-                    if (_cycleSnapshots.TryGetValue(key, out var oldSnap))
+                    if (_cycleSnapshots.TryGetValue(storeCode, out var oldSnap))
                     {
-                        if (oldSnap.ScannedQty != scannedQty || oldSnap.NetDiff != netDiff || oldSnap.ShortQty != shortQty || oldSnap.ExcessQty != excessQty || oldSnap.SystemStock != systemStock)
+                        if (oldSnap.ScannedQty != scannedQty ||
+                            oldSnap.NetDiff != netDiff ||
+                            oldSnap.ShortQty != shortQty ||
+                            oldSnap.ExcessQty != excessQty ||
+                            oldSnap.SystemStock != systemStock ||
+                            oldSnap.NoOfArticles != noOfArticles ||
+                            oldSnap.RefNo != refNo ||
+                            oldSnap.TimeTaken != timeTaken ||
+                            oldSnap.EndTime != endTime)
                         {
                             int deltaScanned = scannedQty - oldSnap.ScannedQty;
                             int deltaNetDiff = netDiff - oldSnap.NetDiff;
 
+                            oldSnap.RefNo = refNo;
+                            oldSnap.StoreName = storeName;
                             oldSnap.ScannedQty = scannedQty;
                             oldSnap.SystemStock = systemStock;
                             oldSnap.NetDiff = netDiff;
                             oldSnap.NoOfArticles = noOfArticles;
                             oldSnap.ShortQty = shortQty;
                             oldSnap.ExcessQty = excessQty;
+                            oldSnap.TimeTaken = timeTaken;
+                            oldSnap.StartTime = startTime;
+                            oldSnap.EndTime = endTime;
+                            oldSnap.CycleCountType = cycleCountType;
+                            oldSnap.Date = date;
 
                             var patch = new CycleCountDeltaPatch
                             {
@@ -366,6 +402,11 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                                 NewNoOfArticles = noOfArticles,
                                 NewShortQty = shortQty,
                                 NewExcessQty = excessQty,
+                                TimeTaken = timeTaken,
+                                StartTime = startTime,
+                                EndTime = endTime,
+                                CycleCountType = cycleCountType,
+                                Date = date,
                                 SummaryDelta = new CycleCountSummaryDelta
                                 {
                                     RecordCount = recordCount,
@@ -373,20 +414,28 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                                 }
                             };
 
-                            _logger.LogInformation("DashboardDiffEngine: CycleCount patch for Key {Key}: Delta Scanned {DeltaScanned:+0;-#}", key, deltaScanned);
+                            _logger.LogInformation("DashboardDiffEngine: CycleCount patch for Store {StoreCode} (Ref {RefNo}): Delta Scanned {DeltaScanned:+0;-#}", storeCode, refNo, deltaScanned);
                             await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
                         }
                     }
                     else
                     {
-                        _cycleSnapshots[key] = new CycleSnapshot
+                        _cycleSnapshots[storeCode] = new CycleSnapshot
                         {
+                            StoreCode = storeCode,
+                            StoreName = storeName,
+                            RefNo = refNo,
                             ScannedQty = scannedQty,
                             SystemStock = systemStock,
                             NetDiff = netDiff,
                             NoOfArticles = noOfArticles,
                             ShortQty = shortQty,
-                            ExcessQty = excessQty
+                            ExcessQty = excessQty,
+                            TimeTaken = timeTaken,
+                            StartTime = startTime,
+                            EndTime = endTime,
+                            CycleCountType = cycleCountType,
+                            Date = date
                         };
 
                         var patch = new CycleCountDeltaPatch
@@ -404,15 +453,49 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             NewNoOfArticles = noOfArticles,
                             NewShortQty = shortQty,
                             NewExcessQty = excessQty,
+                            TimeTaken = timeTaken,
+                            StartTime = startTime,
+                            EndTime = endTime,
+                            CycleCountType = cycleCountType,
+                            Date = date,
                             SummaryDelta = new CycleCountSummaryDelta
                             {
                                 RecordCount = recordCount,
                                 TotalRefNo = totalRefNo
                             }
                         };
-                        _logger.LogInformation("DashboardDiffEngine: CycleCount new entry patch for Key {Key}: Scanned {ScannedQty}", key, scannedQty);
+                        _logger.LogInformation("DashboardDiffEngine: CycleCount new entry patch for Store {StoreCode}: Scanned {ScannedQty}", storeCode, scannedQty);
                         await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
                     }
+                }
+
+                // Check for removed / deactivated stores (Parity with LiveStock & StoreValidation)
+                var currentCycleStores = new HashSet<string>(
+                    response.Items.Select(r => GetString(r, "STORE_CODE") ?? GetString(r, "Store_Code"))
+                        .Where(s => !string.IsNullOrEmpty(s))!,
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                var removedCycleStores = _cycleSnapshots.Keys.Where(k => !currentCycleStores.Contains(k)).ToList();
+                foreach (var removedStore in removedCycleStores)
+                {
+                    _cycleSnapshots.TryRemove(removedStore, out var removedSnap);
+                    var removePatch = new CycleCountDeltaPatch
+                    {
+                        Type = "CYCLE_COUNT_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = removedStore,
+                        StoreName = removedSnap?.StoreName,
+                        RefNo = removedSnap?.RefNo ?? string.Empty,
+                        IsRemoved = true,
+                        SummaryDelta = new CycleCountSummaryDelta
+                        {
+                            RecordCount = recordCount,
+                            TotalRefNo = totalRefNo
+                        }
+                    };
+                    _logger.LogInformation("DashboardDiffEngine: CycleCount removed store patch for {StoreCode}", removedStore);
+                    await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", removePatch, cancellationToken);
                 }
             }
             catch (Exception ex)
