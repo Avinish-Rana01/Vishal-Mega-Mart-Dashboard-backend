@@ -84,8 +84,10 @@ namespace VS_Mart_Backend.Features.Base
             Func<Task<T>> databaseQuery, 
             bool forceRefresh = false,
             TimeSpan? customTtl = null,
-            TimeSpan? customStaleDuration = null)
+            TimeSpan? customStaleDuration = null,
+            CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!IsCacheEnabled()) return await databaseQuery();
 
             var ttl = customTtl ?? TimeSpan.FromMinutes(10);
@@ -113,6 +115,10 @@ namespace VS_Mart_Backend.Features.Base
                                 _allCacheKeys.TryAdd(cacheKey, true);
                                 _cache.Set(cacheKey, new CacheItem<T> { Data = freshData, CreatedAt = DateTime.UtcNow }, ttl);
                             }
+                            catch (Exception)
+                            {
+                                // Background refresh swallows errors without failing cached reads
+                            }
                             finally
                             {
                                 _refreshingKeys.TryRemove(cacheKey, out _);
@@ -125,7 +131,7 @@ namespace VS_Mart_Backend.Features.Base
 
             // Single-flight stampede protection: Coalesce concurrent requests for the same cacheKey
             var keyLock = _keyLocks.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
-            await keyLock.WaitAsync();
+            await keyLock.WaitAsync(cancellationToken);
             try
             {
                 // Double-check cache inside lock
@@ -134,6 +140,7 @@ namespace VS_Mart_Backend.Features.Base
                     return doubleCheckItem.Data;
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
                 var initialData = await databaseQuery();
                 _allCacheKeys.TryAdd(cacheKey, true);
                 _cache.Set(cacheKey, new CacheItem<T> { Data = initialData, CreatedAt = DateTime.UtcNow }, ttl);
@@ -212,17 +219,23 @@ namespace VS_Mart_Backend.Features.Base
             return 30;
         }
 
-        public async Task<UserProfileDto> GetUserProfileAsync(string? userId)
+        public async Task<UserProfileDto> GetUserProfileAsync(string? userId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out int uid) || uid <= 0)
             {
                 return new UserProfileDto { UserType = "Super Admin" }; // Default to Super Admin if unspecified
             }
 
+            string cacheKey = $"UserProfile_Dto_{uid}";
+            if (_cache.TryGetValue(cacheKey, out UserProfileDto? cachedProfile) && cachedProfile != null)
+            {
+                return cachedProfile;
+            }
+
             try
             {
                 using var connection = new SqlConnection(_connectionString);
-                var profile = await connection.QueryFirstOrDefaultAsync<UserProfileDto>(@"
+                var profileCmd = new CommandDefinition(@"
                     SELECT 
                         U.User_ID AS UserId, 
                         ISNULL(U.Role_ID, 0) AS RoleId,
@@ -233,13 +246,15 @@ namespace VS_Mart_Backend.Features.Base
                     FROM dbo.User_Registration U WITH (NOLOCK)
                     LEFT JOIN dbo.tbl_Store_Master S WITH (NOLOCK) ON U.Store_ID = S.Store_ID
                     LEFT JOIN dbo.tbl_Warehouse_Mst W WITH (NOLOCK) ON U.WH_ID = W.WH_ID
-                    WHERE U.User_ID = @Uid", new { Uid = uid });
+                    WHERE U.User_ID = @Uid", new { Uid = uid }, cancellationToken: cancellationToken);
+
+                var profile = await connection.QueryFirstOrDefaultAsync<UserProfileDto>(profileCmd);
 
                 if (profile != null)
                 {
                     if (!profile.IsSuperAdmin)
                     {
-                        var authorizedStores = (await connection.QueryAsync<string>(@"
+                        var storesCmd = new CommandDefinition(@"
                             SELECT DISTINCT S.Store_Code
                             FROM dbo.tbl_Store_Master S WITH (NOLOCK)
                             WHERE S.Is_Status = '1'
@@ -249,7 +264,9 @@ namespace VS_Mart_Backend.Features.Base
                                   OR S.LP_ID = @Uid
                                   OR S.SM_ID = @Uid
                                   OR S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid)
-                              )", new { Uid = uid }))
+                              )", new { Uid = uid }, cancellationToken: cancellationToken);
+
+                        var authorizedStores = (await connection.QueryAsync<string>(storesCmd))
                             .Where(s => !string.IsNullOrWhiteSpace(s))
                             .Select(s => s.Trim())
                             .ToList();
@@ -266,8 +283,13 @@ namespace VS_Mart_Backend.Features.Base
                         }
                     }
 
+                    _cache.Set(cacheKey, profile, TimeSpan.FromMinutes(10));
                     return profile;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {

@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using VS_Mart_Backend.Features.Base;
 
@@ -47,7 +48,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return MatchStore(row, new[] { storeCode.Trim() });
         }
 
-        private async Task<LiveStockResponse> QueryLiveStockFromDbAsync(LiveStockQueryRequest request, int userIdInt)
+        private async Task<LiveStockResponse> QueryLiveStockFromDbAsync(LiveStockQueryRequest request, int userIdInt, CancellationToken cancellationToken = default)
         {
             var response = new LiveStockResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -68,7 +69,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new LiveStockSummary
@@ -85,9 +87,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request, bool forceRefresh = false)
+        public async Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             // Universal Master Cache Key: holds company-wide data for all stores in RAM
@@ -104,8 +106,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+                return await QueryLiveStockFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, cancellationToken: cancellationToken);
 
             // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
             if (profile.IsSuperAdmin)
@@ -162,7 +164,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false)
+        public async Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             int pageIndex = request.PageIndex > 0 ? request.PageIndex : 1;
             int pageSize = request.PageSize > 0 ? request.PageSize : 100;
@@ -190,7 +192,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var cmd = new CommandDefinition("[SP_NEW_REPORT]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                using var multi = await connection.QueryMultipleAsync(cmd);
                 
                 // First result set from SP_NEW_REPORT contains raw individual tag items; discard to reach distribution result set
                 await multi.ReadAsync<dynamic>();
@@ -221,12 +224,12 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     AvgTagPercentage = roundedAverage
                 };
                 return response;
-            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval(), cancellationToken: cancellationToken);
 
             return masterData;
         }
 
-        private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId)
+        private async Task<StoreDashboardResponse> QueryStoreDashboardFromDbAsync(StoreDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new StoreDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -249,7 +252,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@HHT_VALIDATE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new StoreDashboardSummary
@@ -265,9 +269,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -288,8 +292,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QueryStoreDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+                return await QueryStoreDashboardFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, cancellationToken: cancellationToken);
 
             // 1. Super Admin: serve company-wide master dataset (instantly from RAM)
             if (profile.IsSuperAdmin)
@@ -346,7 +350,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        private async Task<SaleDashboardResponse> QuerySaleDashboardFromDbAsync(SaleDashboardQueryRequest request, int userId)
+        private async Task<SaleDashboardResponse> QuerySaleDashboardFromDbAsync(SaleDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new SaleDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -374,7 +378,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@RFID_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@DIFF_VOID", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             // Clamp negative values for Taffeta Sale across rows
@@ -405,9 +410,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -428,8 +433,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
+                return await QuerySaleDashboardFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval(), cancellationToken: cancellationToken);
 
             if (profile.IsSuperAdmin)
             {
@@ -479,7 +484,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        private async Task<ReturnDashboardResponse> QueryReturnDashboardFromDbAsync(ReturnDashboardQueryRequest request, int userId)
+        private async Task<ReturnDashboardResponse> QueryReturnDashboardFromDbAsync(ReturnDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new ReturnDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -500,7 +505,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new ReturnDashboardSummary
@@ -514,9 +520,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -537,8 +543,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
+                return await QueryReturnDashboardFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval(), cancellationToken: cancellationToken);
 
             if (profile.IsSuperAdmin)
             {
@@ -581,7 +587,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        private async Task<VoidDashboardResponse> QueryVoidDashboardFromDbAsync(VoidDashboardQueryRequest request, int userId)
+        private async Task<VoidDashboardResponse> QueryVoidDashboardFromDbAsync(VoidDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new VoidDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -602,7 +608,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new VoidDashboardSummary
@@ -616,9 +623,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -639,8 +646,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval());
+                return await QueryVoidDashboardFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, customTtl: GetSlowMovingRefreshInterval(), customStaleDuration: GetSlowMovingRefreshInterval(), cancellationToken: cancellationToken);
 
             if (profile.IsSuperAdmin)
             {
@@ -683,7 +690,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        private async Task<DcValidateDashboardResponse> QueryDcValidateFromDbAsync(DcValidateDashboardQueryRequest request, int userId)
+        private async Task<DcValidateDashboardResponse> QueryDcValidateFromDbAsync(DcValidateDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new DcValidateDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -703,7 +710,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@UNPROCESSED_HU", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@PROCESSED_ARTICLE_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new DcValidateDashboardSummary
@@ -716,9 +724,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -739,8 +747,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortDirection = request.SortDirection,
                     SortType = request.SortType
                 };
-                return await QueryDcValidateFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+                return await QueryDcValidateFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, cancellationToken: cancellationToken);
 
             // 1. Super Admin or Warehouse Admin: both see company-wide master dataset instantly from RAM!
             if (profile.IsSuperAdmin || string.Equals(profile.UserType, "Warehouse Admin", StringComparison.OrdinalIgnoreCase))
@@ -784,7 +792,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        private async Task<CycleCountDashboardResponse> QueryCycleCountFromDbAsync(CycleCountDashboardQueryRequest request, int userId)
+        private async Task<CycleCountDashboardResponse> QueryCycleCountFromDbAsync(CycleCountDashboardQueryRequest request, int userId, CancellationToken cancellationToken = default)
         {
             var response = new CycleCountDashboardResponse();
             using var connection = new SqlConnection(_connectionString);
@@ -800,7 +808,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            var items = await connection.QueryAsync<dynamic>("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd1 = new CommandDefinition("[SP_New_Dashboard]", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            var items = await connection.QueryAsync<dynamic>(cmd1);
             response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
             response.Summary = new CycleCountDashboardSummary
@@ -823,7 +832,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
             parameters2.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
             parameters2.Add("@Qty", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-            using var multi = await connection.QueryMultipleAsync("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+            var cmd2 = new CommandDefinition("[SP_NEW_REPORT]", parameters2, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+            using var multi = await connection.QueryMultipleAsync(cmd2);
             var graphItems = await multi.ReadAsync<dynamic>();
             var graphDataRows = graphItems.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -886,9 +896,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             return response;
         }
 
-        public async Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request, bool forceRefresh = false)
+        public async Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
-            var profile = await GetUserProfileAsync(request.UserId);
+            var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
             int masterAdminId = await GetActiveSuperAdminIdAsync();
 
             string searchTerm = (request.SearchTerm ?? "").Trim().ToLowerInvariant();
@@ -907,8 +917,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     SortColumn = request.SortColumn,
                     SortDirection = request.SortDirection
                 };
-                return await QueryCycleCountFromDbAsync(masterRequest, masterAdminId);
-            }, forceRefresh);
+                return await QueryCycleCountFromDbAsync(masterRequest, masterAdminId, cancellationToken);
+            }, forceRefresh, cancellationToken: cancellationToken);
 
             if (profile.IsSuperAdmin)
             {
@@ -949,7 +959,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
             };
         }
 
-        public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false)
+        public async Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -986,7 +996,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@HU_DIS_DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@HU_DIFF_TILL_DATE", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_New_Dashboard", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
                     response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new VendorHUDiscrepancySummary
@@ -999,7 +1010,7 @@ namespace VS_Mart_Backend.Features.MainDashboard
                         DifferenceQtyTillDate = parameters.Get<int?>("@HU_DIFF_TILL_DATE") ?? 0
                     };
                     return response;
-                }, forceRefresh);
+                }, forceRefresh, cancellationToken: cancellationToken);
 
                 if (pageIndex == 1 && (pageSize >= masterData.Items.Count || pageSize == 1000))
                 {
@@ -1017,13 +1028,17 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     Summary = masterData.Summary
                 };
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception)
             {
                 return new VendorHUDiscrepancyResponse();
             }
         }
 
-        public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request, bool forceRefresh = false)
+        public async Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -1049,7 +1064,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@WHCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@Newtags", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     // Discard raw individual tag items result set; only summary output parameters are needed by dashboard
-                    await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    await connection.QueryAsync<dynamic>(cmd);
 
                     response.Summary = new TagManagementSummary
                     {
@@ -1060,7 +1076,11 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
                     };
                     return response;
-                }, forceRefresh);
+                }, forceRefresh, cancellationToken: cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception)
             {
@@ -1068,11 +1088,11 @@ namespace VS_Mart_Backend.Features.MainDashboard
             }
         }
 
-        public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false)
+        public async Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default)
         {
             try
             {
-                var profile = await GetUserProfileAsync(request.UserId);
+                var profile = await GetUserProfileAsync(request.UserId, cancellationToken);
                 int filterUserId = 0;
                 // Only filter by specific encoder if user is a standard non-admin operator
                 if (!profile.IsSuperAdmin && 
@@ -1135,7 +1155,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
                     parameters.Add("@T_ENC_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@T_ENC_USERS", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
                     response.Items = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
                     response.Summary = new WarehouseEncodingSummary
@@ -1154,7 +1175,11 @@ namespace VS_Mart_Backend.Features.MainDashboard
                         Hour19To20 = parameters.Get<int?>("@19TO20") ?? 0
                     };
                     return response;
-                }, forceRefresh);
+                }, forceRefresh, cancellationToken: cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception)
             {

@@ -22,7 +22,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
             _logger = logger;
         }
 
-        public async Task<List<StoreDropdownItem>> GetStoresAsync(string? userId)
+        public async Task<List<StoreDropdownItem>> GetStoresAsync(string? userId, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"GetStores_LiveStock_{userId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
@@ -36,10 +36,9 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                     int? userIdInt = null;
                     if (int.TryParse(userId, out int parsed)) userIdInt = parsed;
                     parameters.Add("@USER_ID", userIdInt, DbType.Int32);
-                    //parameters.Add("@FromDate", "", DbType.String);
-                    //parameters.Add("@ToDate", "", DbType.String);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -47,15 +46,19 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                         .Select(x => new StoreDropdownItem { Value = x["STORE_CODE"].ToString()!, Text = x["STORE_CODE"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error fetching stores");
                     return new List<StoreDropdownItem>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<List<ArticleItem>> SearchArticlesAsync(ArticleSearchRequest request)
+        public async Task<List<ArticleItem>> SearchArticlesAsync(ArticleSearchRequest request, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"SearchArticles_LiveStock_{request.SearchTerm}_{request.StoreCode}_{request.FromDate}_{request.ToDate}_{request.UserId}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
@@ -74,7 +77,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                     parameters.Add("@todate", request.ToDate ?? "", DbType.String, size: 20);
                     parameters.Add("@USER_ID", request.UserId ?? 0, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -82,22 +86,25 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                         .Select(x => new ArticleItem { Id = x["MATERIAL"].ToString()!, Text = x["MATERIAL"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error searching articles");
                     return new List<ArticleItem>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<LiveStockReportResponse> GetLiveStockDetailsAsync(LiveStockReportRequest request)
+        public async Task<LiveStockReportResponse> GetLiveStockDetailsAsync(LiveStockReportRequest request, CancellationToken cancellationToken = default)
         {
             // Direct DB call — SP handles pagination natively with actual pageIndex/pageSize.
-            // The old master cache (PageSize=1000) caused a heavy initial fetch on every cache miss.
-            return await QueryLiveStockDetailsFromDbAsync(request);
+            return await QueryLiveStockDetailsFromDbAsync(request, cancellationToken);
         }
 
-        private async Task<LiveStockReportResponse> QueryLiveStockDetailsFromDbAsync(LiveStockReportRequest request)
+        private async Task<LiveStockReportResponse> QueryLiveStockDetailsFromDbAsync(LiveStockReportRequest request, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -122,7 +129,8 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                 parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                var items = await connection.QueryAsync<dynamic>(cmd);
 
                 response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -135,6 +143,10 @@ namespace VS_Mart_Backend.Features.LiveStockReport
                 response.Summary.Date = request.StockDate;
 
                 return response;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

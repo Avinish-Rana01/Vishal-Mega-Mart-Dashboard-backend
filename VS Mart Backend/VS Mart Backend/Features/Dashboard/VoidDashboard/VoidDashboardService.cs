@@ -24,7 +24,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
             _mainDashboardService = mainDashboardService;
         }
 
-        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request)
+        public async Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, CancellationToken cancellationToken = default)
         {
             var mainRequest = new Features.MainDashboard.VoidDashboardQueryRequest
             {
@@ -37,7 +37,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                 SortType = request.SortType
             };
 
-            var mainResponse = await _mainDashboardService.GetVoidDashboardAsync(mainRequest);
+            var mainResponse = await _mainDashboardService.GetVoidDashboardAsync(mainRequest, cancellationToken: cancellationToken);
 
             return new VoidDashboardResponse
             {
@@ -53,7 +53,7 @@ namespace VS_Mart_Backend.Features.VoidDashboard
             };
         }
 
-        public async Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request)
+        public async Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"VoidDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}";
 
@@ -85,7 +85,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -97,14 +98,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
                     return response;
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new VoidDetailsResponse();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request)
+        public async Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"VoidReconciliation_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.pos}_{request.Ean}_{request.SortColumn}_{request.SortDirection}";
 
@@ -138,7 +143,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -150,14 +156,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
                     return response;
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new VoidReconciliationResponse();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request)
+        public async Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"VoidBindPOSCounter_{request.Store}_{request.FromDate}_{request.ToDate}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
@@ -177,7 +187,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     int? uid3 = int.TryParse(request.UserId, out int u3) && u3 > 0 ? u3 : null;
                     parameters.Add("@User_ID", uid3, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -185,14 +196,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                         .Select(x => new POSCounterResponse { id = x["COUNTER_NO"].ToString()!, text = x["COUNTER_NO"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new List<POSCounterResponse>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<List<EANItem>> SearchEAN(SearchEANRequest request)
+        public async Task<List<EANItem>> SearchEAN(SearchEANRequest request, CancellationToken cancellationToken = default)
         {
             string cacheKey = $"SearchEAN_{request.SearchTerm}_{request.Store}_{request.Pos}_{request.FromDate}_{request.ToDate}";
             return await GetOrCreateWithSWRAsync(cacheKey, async () =>
@@ -216,7 +231,8 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                     int? uid4 = int.TryParse(request.UserId, out int u4) && u4 > 0 ? u4 : null;
                     parameters.Add("@User_ID", uid4, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -224,31 +240,28 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                         .Select(x => new EANItem { id = x["EAN"].ToString()!, text = x["EAN"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new List<EANItem>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request)
+        public async Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request, CancellationToken cancellationToken = default)
         {
             try
             {
                 using var connection = new SqlConnection(_connectionString);
 
-                // =========================================
-                // Dapper Parameters
-                // =========================================
-
                 var parameters = new DynamicParameters();
 
                 parameters.Add("@status", "SHOW_SUMMARY_DATA_FOR_VOID", DbType.String);
-
                 parameters.Add("@SearchTerm", (request.SearchTerm ?? "").Trim(), DbType.String);
-
                 parameters.Add("@PageIndex", request.PageIndex <= 0 ? 1 : request.PageIndex, DbType.Int32);
-
                 parameters.Add("@PageSize", request.PageSize <= 0 ? 10 : request.PageSize, DbType.Int32);
 
                 string cleanDate = (request.BillDate ?? "").Trim();
@@ -278,62 +291,36 @@ namespace VS_Mart_Backend.Features.VoidDashboard
                 parameters.Add("@EAN", cleanEan, DbType.String);
 
                 parameters.Add("@SortColumn", string.IsNullOrEmpty(request.SortColumn) ? "VOID_DATE" : request.SortColumn.Trim(), DbType.String);
-
                 parameters.Add("@SortDirection", string.IsNullOrEmpty(request.SortDirection) ? "ASC" : request.SortDirection.Trim(), DbType.String);
                 int? uid5 = int.TryParse(request.UserId, out int u5) && u5 > 0 ? u5 : null;
                 parameters.Add("@User_ID", uid5, DbType.Int32);
 
-                // =========================================
-                // Output Parameters
-                // =========================================
-
                 parameters.Add("@RecordCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
-
                 parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-
-                // =========================================
-                // Execute Stored Procedure
-                // =========================================
-
-                var data = await connection.QueryAsync<VoidReconciliationModel>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure);
-
-
-                // =========================================
-                // Get Output Values
-                // =========================================
+                var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                var data = await connection.QueryAsync<VoidReconciliationModel>(cmd);
 
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
-
                 int voidQty = parameters.Get<int?>("@QTY") ?? 0;
-
                 int encodeQty = parameters.Get<int?>("@ENCQTY") ?? 0;
-
                 int differenceQty = parameters.Get<int?>("@DIFFQTY") ?? 0;
-
-
-                // =========================================
-                // Response
-                // =========================================
 
                 return new VoidReconciliationModelResponse
                 {
                     PageIndex = request.PageIndex,
-
                     RecordCount = recordCount,
-
                     VoidQty = voidQty,
-
                     EncodeQty = encodeQty,
-
                     DifferenceQty = differenceQty,
-
                     Data = data.ToList()
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception)
             {

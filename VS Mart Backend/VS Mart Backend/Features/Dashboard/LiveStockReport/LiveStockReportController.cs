@@ -20,14 +20,18 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         }
 
         [HttpGet("stores")]
-        public async Task<IActionResult> GetStores([FromQuery] string? userId)
+        public async Task<IActionResult> GetStores([FromQuery] string? userId, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(userId);
                 string effectiveUserId = resolvedUid > 0 ? resolvedUid.ToString() : (userId ?? "");
-                var stores = await _liveStockReportService.GetStoresAsync(effectiveUserId);
+                var stores = await _liveStockReportService.GetStoresAsync(effectiveUserId, cancellationToken);
                 return Ok(stores);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -37,13 +41,17 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         }
 
         [HttpGet("articles/search")]
-        public async Task<IActionResult> SearchArticles([FromQuery] ArticleSearchRequest request)
+        public async Task<IActionResult> SearchArticles([FromQuery] ArticleSearchRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 request.UserId = HttpContext.GetResolvedUserId(request.UserId);
-                var articles = await _liveStockReportService.SearchArticlesAsync(request);
+                var articles = await _liveStockReportService.SearchArticlesAsync(request, cancellationToken);
                 return Ok(articles);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -53,7 +61,7 @@ namespace VS_Mart_Backend.Features.LiveStockReport
         }
 
         [HttpGet("live-stock")]
-        public async Task<IActionResult> GetLiveStockDetails([FromQuery] LiveStockReportRequest request)
+        public async Task<IActionResult> GetLiveStockDetails([FromQuery] LiveStockReportRequest request, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(request.StoreName) || 
                 string.IsNullOrWhiteSpace(request.StockDate))
@@ -64,8 +72,12 @@ namespace VS_Mart_Backend.Features.LiveStockReport
             try
             {
                 request.UserId = HttpContext.GetResolvedUserId(request.UserId);
-                var response = await _liveStockReportService.GetLiveStockDetailsAsync(request);
+                var response = await _liveStockReportService.GetLiveStockDetailsAsync(request, cancellationToken);
                 return Ok(response);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {

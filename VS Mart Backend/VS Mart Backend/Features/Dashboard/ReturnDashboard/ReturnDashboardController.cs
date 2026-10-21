@@ -20,12 +20,16 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         [HttpGet("return/details")]
         [HttpGet("dashboard/return-details")]
         [HttpGet("GetReturnDetails")]
-        public async Task<IActionResult> GetReturnDetails([FromQuery] ReturnDetailsRequest request)
+        public async Task<IActionResult> GetReturnDetails([FromQuery] ReturnDetailsRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _returnDashboardService.GetReturnDetailsAsync(request);
+                var result = await _returnDashboardService.GetReturnDetailsAsync(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -37,12 +41,16 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         [HttpGet("return/reconciliation")]
         [HttpGet("void/return-reconciliation")]
         [HttpGet("GetReturnReconciliationData")]
-        public async Task<IActionResult> GetReturnReconciliationData([FromQuery] ReturnReconciliationRequest request)
+        public async Task<IActionResult> GetReturnReconciliationData([FromQuery] ReturnReconciliationRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _returnDashboardService.GetReturnReconciliationData(request);
+                var result = await _returnDashboardService.GetReturnReconciliationData(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -53,12 +61,16 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         [HttpGet("return/pos-counters")]
         [HttpGet("return-pos-counters")]
-        public async Task<IActionResult> ReturnBindPOSCounter([FromQuery] VS_Mart_Backend.Features.VoidDashboard.BindPOSCounterRequest request)
+        public async Task<IActionResult> ReturnBindPOSCounter([FromQuery] VS_Mart_Backend.Features.VoidDashboard.BindPOSCounterRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _returnDashboardService.ReturnBindPOSCounter(request);
+                var result = await _returnDashboardService.ReturnBindPOSCounter(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -69,12 +81,16 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         [HttpGet("return/search-ean")]
         [HttpGet("return-SearchEAN")]
-        public async Task<IActionResult> ReturnSearchEAN([FromQuery] VS_Mart_Backend.Features.VoidDashboard.SearchEANRequest request)
+        public async Task<IActionResult> ReturnSearchEAN([FromQuery] VS_Mart_Backend.Features.VoidDashboard.SearchEANRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _returnDashboardService.ReturnSearchEAN(request);
+                var result = await _returnDashboardService.ReturnSearchEAN(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -85,12 +101,16 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
         [HttpGet("return/reconciliation-model")]
         [HttpGet("GetReturnReconciliationDataModel")]
-        public async Task<IActionResult> GetReturnReconciliationDataModel([FromQuery] ReturnReconciliationModelRequest request)
+        public async Task<IActionResult> GetReturnReconciliationDataModel([FromQuery] ReturnReconciliationModelRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _returnDashboardService.GetReturnReconciliationDataModelAsync(request);
+                var result = await _returnDashboardService.GetReturnReconciliationDataModelAsync(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {

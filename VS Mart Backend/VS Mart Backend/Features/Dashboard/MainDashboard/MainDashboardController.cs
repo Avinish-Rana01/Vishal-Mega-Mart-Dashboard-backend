@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace VS_Mart_Backend.Features.MainDashboard
@@ -16,12 +17,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("live-details")]
-        public async Task<IActionResult> GetLiveStockDetails([FromQuery] LiveStockQueryRequest query)
+        public async Task<IActionResult> GetLiveStockDetails([FromQuery] LiveStockQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetLiveStockDetailsAsync(query);
+                var result = await _dashboardService.GetLiveStockDetailsAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -30,12 +35,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("tag-cycle-count")]
-        public async Task<IActionResult> GetTagCycleCount([FromQuery] TagCycleCountQueryRequest query)
+        public async Task<IActionResult> GetTagCycleCount([FromQuery] TagCycleCountQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetTagCycleCountDataAsync(query);
+                var result = await _dashboardService.GetTagCycleCountDataAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -44,12 +53,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("store-dashboard")]
-        public async Task<IActionResult> GetStoreDashboard([FromQuery] StoreDashboardQueryRequest query)
+        public async Task<IActionResult> GetStoreDashboard([FromQuery] StoreDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetStoreDashboardAsync(query);
+                var result = await _dashboardService.GetStoreDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -58,12 +71,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("sale-dashboard")]
-        public async Task<IActionResult> GetSaleDashboard([FromQuery] SaleDashboardQueryRequest query)
+        public async Task<IActionResult> GetSaleDashboard([FromQuery] SaleDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetSaleDashboardAsync(query);
+                var result = await _dashboardService.GetSaleDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -72,12 +89,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("return-dashboard")]
-        public async Task<IActionResult> GetReturnDashboard([FromQuery] ReturnDashboardQueryRequest query)
+        public async Task<IActionResult> GetReturnDashboard([FromQuery] ReturnDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetReturnDashboardAsync(query);
+                var result = await _dashboardService.GetReturnDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -88,12 +109,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
 
         [HttpGet("dc-validate-dashboard")]
-        public async Task<IActionResult> GetDcValidateDashboard([FromQuery] DcValidateDashboardQueryRequest query)
+        public async Task<IActionResult> GetDcValidateDashboard([FromQuery] DcValidateDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetDcValidateDashboardAsync(query);
+                var result = await _dashboardService.GetDcValidateDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -102,12 +127,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("cycle-count-dashboard")]
-        public async Task<IActionResult> GetCycleCountDashboard([FromQuery] CycleCountDashboardQueryRequest query)
+        public async Task<IActionResult> GetCycleCountDashboard([FromQuery] CycleCountDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetCycleCountDashboardAsync(query);
+                var result = await _dashboardService.GetCycleCountDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -116,15 +145,19 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("vendor-hu-discrepancy")]
-        public async Task<IActionResult> GetVendorHUDiscrepancy([FromQuery] VendorHUDiscrepancyQueryRequest request)
+        public async Task<IActionResult> GetVendorHUDiscrepancy([FromQuery] VendorHUDiscrepancyQueryRequest request, CancellationToken cancellationToken)
         {
             if (request == null)
                 return BadRequest("Request cannot be null.");
 
             try
             {
-                var result = await _dashboardService.GetVendorHUDiscrepancyAsync(request);
+                var result = await _dashboardService.GetVendorHUDiscrepancyAsync(request, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -133,12 +166,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("tag-management-location")]
-        public async Task<IActionResult> GetTagManagementLocation([FromQuery] TagManagementQueryRequest request)
+        public async Task<IActionResult> GetTagManagementLocation([FromQuery] TagManagementQueryRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetTagManagementDataAsync(request);
+                var result = await _dashboardService.GetTagManagementDataAsync(request, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -147,12 +184,16 @@ namespace VS_Mart_Backend.Features.MainDashboard
         }
 
         [HttpGet("warehouse-encoding")]
-        public async Task<IActionResult> GetWarehouseEncoding([FromQuery] WarehouseEncodingQueryRequest request)
+        public async Task<IActionResult> GetWarehouseEncoding([FromQuery] WarehouseEncodingQueryRequest request, CancellationToken cancellationToken)
         {
             try
             {
-                var result = await _dashboardService.GetWarehouseEncodingDataAsync(request);
+                var result = await _dashboardService.GetWarehouseEncodingDataAsync(request, cancellationToken: cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {

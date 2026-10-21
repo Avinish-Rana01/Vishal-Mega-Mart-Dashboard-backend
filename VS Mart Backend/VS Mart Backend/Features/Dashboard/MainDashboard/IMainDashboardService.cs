@@ -20,57 +20,57 @@ namespace VS_Mart_Backend.Features.MainDashboard
         /// <summary>
         /// Retrieves live stock inventory metrics with optional cache bypass.
         /// </summary>
-        Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request, bool forceRefresh = false);
+        Task<LiveStockResponse> GetLiveStockDetailsAsync(LiveStockQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves tag cycle count metrics and discrepancy aggregations.
         /// </summary>
-        Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false);
+        Task<TagCycleCountResponse> GetTagCycleCountDataAsync(TagCycleCountQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves store-level KPI and performance dashboard aggregations.
         /// </summary>
-        Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request, bool forceRefresh = false);
+        Task<StoreDashboardResponse> GetStoreDashboardAsync(StoreDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves sales dashboard summary metrics across retail locations.
         /// </summary>
-        Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request, bool forceRefresh = false);
+        Task<SaleDashboardResponse> GetSaleDashboardAsync(SaleDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves return transaction metrics and statistics.
         /// </summary>
-        Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request, bool forceRefresh = false);
+        Task<ReturnDashboardResponse> GetReturnDashboardAsync(ReturnDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves void transaction metrics and discrepancy trends.
         /// </summary>
-        Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, bool forceRefresh = false);
+        Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves distribution center validation analytics.
         /// </summary>
-        Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request, bool forceRefresh = false);
+        Task<DcValidateDashboardResponse> GetDcValidateDashboardAsync(DcValidateDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves cycle count validation dashboard figures.
         /// </summary>
-        Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request, bool forceRefresh = false);
+        Task<CycleCountDashboardResponse> GetCycleCountDashboardAsync(CycleCountDashboardQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves vendor handling unit discrepancy reports.
         /// </summary>
-        Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false);
+        Task<VendorHUDiscrepancyResponse> GetVendorHUDiscrepancyAsync(VendorHUDiscrepancyQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves RFID tag management and provisioning statistics.
         /// </summary>
-        Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request, bool forceRefresh = false);
+        Task<TagManagementResponse> GetTagManagementDataAsync(TagManagementQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Retrieves warehouse encoding operations analytics.
         /// </summary>
-        Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false);
+        Task<WarehouseEncodingResponse> GetWarehouseEncodingDataAsync(WarehouseEncodingQueryRequest request, bool forceRefresh = false, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Resolves the fallback SuperAdmin user identifier.
@@ -80,6 +80,6 @@ namespace VS_Mart_Backend.Features.MainDashboard
         /// <summary>
         /// Resolves user profile details given an optional user identifier.
         /// </summary>
-        Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId);
+        Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId, CancellationToken cancellationToken = default);
     }
 }

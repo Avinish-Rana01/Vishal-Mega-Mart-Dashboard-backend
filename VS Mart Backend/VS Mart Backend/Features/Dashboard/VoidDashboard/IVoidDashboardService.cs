@@ -8,11 +8,11 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         bool IsCacheEnabled();
         void SetCacheEnabled(bool enabled);
         
-        Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request);
-        Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request);
-        Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request);
-        Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request);
-        Task<List<EANItem>> SearchEAN(SearchEANRequest request);
-        Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request);
+        Task<VoidDashboardResponse> GetVoidDashboardAsync(VoidDashboardQueryRequest request, CancellationToken cancellationToken = default);
+        Task<VoidDetailsResponse> GetVoidDetailsAsync(VoidDetailsRequest request, CancellationToken cancellationToken = default);
+        Task<VoidReconciliationResponse> GetVoidReconciliationDataAsync(VoidReconciliationRequest request, CancellationToken cancellationToken = default);
+        Task<List<POSCounterResponse>> VoidBindPOSCounter(BindPOSCounterRequest request, CancellationToken cancellationToken = default);
+        Task<List<EANItem>> SearchEAN(SearchEANRequest request, CancellationToken cancellationToken = default);
+        Task<VoidReconciliationModelResponse> GetVoidReconciliationDataModelAsync(VoidReconciliationModelRequest request, CancellationToken cancellationToken = default);
     }
 }

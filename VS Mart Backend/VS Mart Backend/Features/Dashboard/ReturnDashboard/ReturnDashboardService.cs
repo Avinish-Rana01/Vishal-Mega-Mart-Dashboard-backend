@@ -15,11 +15,11 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 {
     public interface IReturnDashboardService
     {
-        Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request);
-        Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request);
-        Task<List<POSCounterResponse>> ReturnBindPOSCounter(BindPOSCounterRequest request);
-        Task<List<EANItem>> ReturnSearchEAN(SearchEANRequest request);
-        Task<ReturnReconciliationModelResponse> GetReturnReconciliationDataModelAsync(ReturnReconciliationModelRequest request);
+        Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request, CancellationToken cancellationToken = default);
+        Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request, CancellationToken cancellationToken = default);
+        Task<List<POSCounterResponse>> ReturnBindPOSCounter(BindPOSCounterRequest request, CancellationToken cancellationToken = default);
+        Task<List<EANItem>> ReturnSearchEAN(SearchEANRequest request, CancellationToken cancellationToken = default);
+        Task<ReturnReconciliationModelResponse> GetReturnReconciliationDataModelAsync(ReturnReconciliationModelRequest request, CancellationToken cancellationToken = default);
     }
 
     public class ReturnDashboardService : BaseDashboardService, IReturnDashboardService
@@ -29,7 +29,7 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         {
         }
 
-        public async Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request)
+        public async Task<ReturnDetailsResponse> GetReturnDetailsAsync(ReturnDetailsRequest request, CancellationToken cancellationToken = default)
         {
             int userId = request.UserId ?? 0;
             string cacheKey = $"ReturnDetails_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.SortColumn}_{request.SortDirection}_{userId}";
@@ -77,7 +77,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@ENCODED_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@DIFF_QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_DASHBOARD", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -89,14 +90,18 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
                     return response;
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new ReturnDetailsResponse();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request)
+        public async Task<ReturnReconciliationResponse> GetReturnReconciliationData(ReturnReconciliationRequest request, CancellationToken cancellationToken = default)
         {
             int userId = request.UserId ?? 0;
             string cacheKey = $"ReturnReconciliation_{request.StoreName}_{request.SearchTerm}_{request.PageIndex}_{request.PageSize}_{request.FromDate}_{request.ToDate}_{request.Pos}_{request.Ean}_{request.SortColumn}_{request.SortDirection}_{userId}";
@@ -156,7 +161,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                     parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     response.Data = items.Select(x => ((IDictionary<string, object>)x).ToDictionary(kvp => kvp.Key, kvp => (object?)kvp.Value, StringComparer.OrdinalIgnoreCase)).ToList();
 
@@ -168,14 +174,18 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
 
                     return response;
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new ReturnReconciliationResponse();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<List<POSCounterResponse>> ReturnBindPOSCounter(BindPOSCounterRequest request)
+        public async Task<List<POSCounterResponse>> ReturnBindPOSCounter(BindPOSCounterRequest request, CancellationToken cancellationToken = default)
         {
             int userIdVal = 0;
             int.TryParse(request.UserId, out userIdVal);
@@ -212,7 +222,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@STORE_CODE", cleanStore, DbType.String, size: 50);
                     parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -220,14 +231,18 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                         .Select(x => new POSCounterResponse { id = x["COUNTER_NO"].ToString()!, text = x["COUNTER_NO"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new List<POSCounterResponse>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<List<EANItem>> ReturnSearchEAN(SearchEANRequest request)
+        public async Task<List<EANItem>> ReturnSearchEAN(SearchEANRequest request, CancellationToken cancellationToken = default)
         {
             int userIdVal = 0;
             int.TryParse(request.UserId, out userIdVal);
@@ -268,7 +283,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     parameters.Add("@COUNTER_NO", request.Pos ?? "", DbType.String, size: 50);
                     parameters.Add("@User_ID", userIdVal, DbType.Int32);
 
-                    var items = await connection.QueryAsync<dynamic>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                    var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                    var items = await connection.QueryAsync<dynamic>(cmd);
 
                     return items
                         .Select(x => (IDictionary<string, object>)x)
@@ -276,14 +292,18 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                         .Select(x => new EANItem { id = x["EAN"].ToString()!, text = x["EAN"].ToString()! })
                         .ToList();
                 }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     return new List<EANItem>();
                 }
-            });
+            }, cancellationToken: cancellationToken);
         }
 
-        public async Task<ReturnReconciliationModelResponse> GetReturnReconciliationDataModelAsync(ReturnReconciliationModelRequest request)
+        public async Task<ReturnReconciliationModelResponse> GetReturnReconciliationDataModelAsync(ReturnReconciliationModelRequest request, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -330,7 +350,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                 parameters.Add("@ENCQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@DIFFQTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
-                var data = await connection.QueryAsync<ReturnReconciliationModel>("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
+                var cmd = new CommandDefinition("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120, cancellationToken: cancellationToken);
+                var data = await connection.QueryAsync<ReturnReconciliationModel>(cmd);
 
                 int recordCount = parameters.Get<int?>("@RecordCount") ?? 0;
                 int returnQty = parameters.Get<int?>("@QTY") ?? 0;
@@ -346,6 +367,10 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
                     DifferenceQty = diffQty,
                     Data = data
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception)
             {

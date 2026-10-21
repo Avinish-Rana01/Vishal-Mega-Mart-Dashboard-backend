@@ -22,14 +22,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         /// Retrieves the void dashboard aggregated metrics.
         /// </summary>
         [HttpGet("void-dashboard")]
-        public async Task<IActionResult> GetVoidDashboard([FromQuery] VoidDashboardQueryRequest query)
+        public async Task<IActionResult> GetVoidDashboard([FromQuery] VoidDashboardQueryRequest query, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
                 if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.GetVoidDashboardAsync(query);
+                var result = await _voidDashboardService.GetVoidDashboardAsync(query, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -40,14 +44,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
         [HttpGet("void/details")]
         [HttpGet("GetVoidDetails")]
-        public async Task<IActionResult> GetVoidDetails([FromQuery] VoidDetailsRequest request)
+        public async Task<IActionResult> GetVoidDetails([FromQuery] VoidDetailsRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
                 if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.GetVoidDetailsAsync(request);
+                var result = await _voidDashboardService.GetVoidDetailsAsync(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -58,14 +66,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
         [HttpGet("void/reconciliation")]
         [HttpGet("GetVoidReconciliationData")]
-        public async Task<IActionResult> GetVoidReconciliationData([FromQuery] VoidReconciliationRequest request)
+        public async Task<IActionResult> GetVoidReconciliationData([FromQuery] VoidReconciliationRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
                 if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.GetVoidReconciliationDataAsync(request);
+                var result = await _voidDashboardService.GetVoidReconciliationDataAsync(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -75,14 +87,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
         }
 
         [HttpGet("void/pos-counters")]
-        public async Task<IActionResult> VoidBindPOSCounter([FromQuery] BindPOSCounterRequest request)
+        public async Task<IActionResult> VoidBindPOSCounter([FromQuery] BindPOSCounterRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
                 if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.VoidBindPOSCounter(request);
+                var result = await _voidDashboardService.VoidBindPOSCounter(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -93,14 +109,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
         [HttpGet("void/search-ean")]
         [HttpGet("void-SearchEAN")]
-        public async Task<IActionResult> SearchEAN([FromQuery] SearchEANRequest request)
+        public async Task<IActionResult> SearchEAN([FromQuery] SearchEANRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
                 if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.SearchEAN(request);
+                var result = await _voidDashboardService.SearchEAN(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
@@ -111,14 +131,18 @@ namespace VS_Mart_Backend.Features.VoidDashboard
 
         [HttpGet("void/reconciliation-model")]
         [HttpGet("GetVoidReconciliationDataModel")]
-        public async Task<IActionResult> GetVoidReconciliationDataModel([FromQuery] VoidReconciliationModelRequest request)
+        public async Task<IActionResult> GetVoidReconciliationDataModel([FromQuery] VoidReconciliationModelRequest request, CancellationToken cancellationToken)
         {
             try
             {
                 int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
                 if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
-                var result = await _voidDashboardService.GetVoidReconciliationDataModelAsync(request);
+                var result = await _voidDashboardService.GetVoidReconciliationDataModelAsync(request, cancellationToken);
                 return Ok(result);
+            }
+            catch (OperationCanceledException)
+            {
+                return StatusCode(499);
             }
             catch (Exception ex)
             {
