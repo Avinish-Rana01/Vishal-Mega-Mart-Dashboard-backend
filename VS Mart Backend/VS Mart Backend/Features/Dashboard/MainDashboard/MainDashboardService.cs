@@ -819,6 +819,17 @@ namespace VS_Mart_Backend.Features.MainDashboard
                 RefNo = parameters.Get<int?>("@QTY") ?? 0
             };
 
+            // ---------------------------------------------------------------------------------------------------------
+            // ARCHITECTURAL NOTE: Internal Quantity Enrichment Lookup (SP_NEW_REPORT)
+            // 1. SP_New_Dashboard (CYCLE_COUNT_DASHBOARD) above returns the store list and duration metrics.
+            //    However, it does not calculate stock variance quantities (SCANNED_QTY, SYSTEM_STOCK, NET_DIFF, SHORT_QTY, EXCESS_QTY).
+            // 2. To power the dashboard's Stock Comparison & Variance charts, we perform an internal dictionary lookup
+            //    against SP_NEW_REPORT (CYCLE_COUNT_REPORT_VIEW) to enrich those store rows with audit quantities.
+            // 3. PageIndex=1 and PageSize=1000 are used here because this query acts strictly as an in-memory lookup cache
+            //    across recent audit sessions, ensuring all stores returned on the current dashboard page find their numbers.
+            // 4. Dedicated report views and modal drill-downs are independently handled by CycleCountReportController
+            //    (/api/stock/cycle-count-report and /api/stock/cycle-count-details) with dynamic frontend pagination.
+            // ---------------------------------------------------------------------------------------------------------
             var parameters2 = new DynamicParameters();
             parameters2.Add("@status", "CYCLE_COUNT_REPORT_VIEW", DbType.String, size: 50);
             parameters2.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String, size: 200);
@@ -966,9 +977,9 @@ namespace VS_Mart_Backend.Features.MainDashboard
             try
             {
                 int pageIndex = request.PageIndex > 0 ? request.PageIndex : 1;
-                int pageSize = request.PageSize > 0 ? request.PageSize : 100;
-                string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "DIFF_TILL_DATE" : request.SortColumn;
-                string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "asc" : request.SortDirection;
+                int pageSize = request.PageSize > 0 ? request.PageSize : 10;
+                string sortCol = string.IsNullOrEmpty(request.SortColumn) ? "DISCREPANCY(%)" : request.SortColumn;
+                string sortDir = string.IsNullOrEmpty(request.SortDirection) ? "desc" : request.SortDirection;
                 string sortType = string.IsNullOrEmpty(request.SortType) ? "string" : request.SortType;
                 string searchTerm = request.SearchTerm ?? "";
 

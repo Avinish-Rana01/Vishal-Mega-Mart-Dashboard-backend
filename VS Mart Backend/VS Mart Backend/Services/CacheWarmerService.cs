@@ -115,7 +115,7 @@ namespace VS_Mart_Backend.Services
                         await Task.Delay(150, stoppingToken);
 
                         // 3. Vendor HU Discrepancy
-                        var vendorHuRequest = new VendorHUDiscrepancyQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 1000, SortColumn = "DIFF_TILL_DATE", SortDirection = "asc" };
+                        var vendorHuRequest = new VendorHUDiscrepancyQueryRequest { UserId = superAdminIdStr, SearchTerm = "", PageIndex = 1, PageSize = 10, SortColumn = "DISCREPANCY(%)", SortDirection = "desc" };
                         var vendorHuData = await liveStockService.GetVendorHUDiscrepancyAsync(vendorHuRequest, forceRefresh: true);
                         await _diffEngine.ProcessVendorDiscrepancyDiffAsync(vendorHuData, stoppingToken);
                         await Task.Delay(150, stoppingToken);
