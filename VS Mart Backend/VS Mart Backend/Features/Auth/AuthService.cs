@@ -103,11 +103,24 @@ namespace VS_Mart_Backend.Features.Auth
                 }
 
                 // 3. Store / Warehouse Assignment Check
-                string loginEligibility = row.ContainsKey("Login_Eligibility") && row["Login_Eligibility"] != null
-                    ? row["Login_Eligibility"].ToString()!.Trim()
-                    : "Not_allowed";
+                bool isSuperAdmin = userType.Equals("Super Admin", StringComparison.OrdinalIgnoreCase);
 
-                if (loginEligibility.Equals("Not_allowed", StringComparison.OrdinalIgnoreCase))
+                string loginEligibility = "Allowed";
+                if (row.ContainsKey("Login_Eligibility") && row["Login_Eligibility"] != null)
+                {
+                    loginEligibility = row["Login_Eligibility"].ToString()!.Trim();
+                }
+                else if (!isSuperAdmin)
+                {
+                    bool hasStore = row.ContainsKey("Store_ID") && row["Store_ID"] != null && int.TryParse(row["Store_ID"].ToString(), out int sid) && sid > 0;
+                    bool hasWh = row.ContainsKey("WH_ID") && row["WH_ID"] != null && int.TryParse(row["WH_ID"].ToString(), out int wid) && wid > 0;
+                    if (!hasStore && !hasWh && !isManagerialRole)
+                    {
+                        loginEligibility = "Not_allowed";
+                    }
+                }
+
+                if (!isSuperAdmin && loginEligibility.Equals("Not_allowed", StringComparison.OrdinalIgnoreCase))
                 {
                     return new LoginResponse
                     {
@@ -223,10 +236,10 @@ namespace VS_Mart_Backend.Features.Auth
                     UserName = row.ContainsKey("User_Name") ? row["User_Name"]?.ToString() ?? "" : "",
                     UserID = row.ContainsKey("User_ID") ? row["User_ID"]?.ToString() ?? "" : "",
                     UserType = userType,
-                    StoreName = row.ContainsKey("STORE_NAME") ? row["STORE_NAME"]?.ToString() ?? "" : "",
-                    WarehouseName = row.ContainsKey("WH_NAME") ? row["WH_NAME"]?.ToString() ?? "" : "",
-                    StoreCode = row.ContainsKey("Store_Code") ? row["Store_Code"]?.ToString() ?? "" : "",
-                    WarehouseCode = row.ContainsKey("WH_Code") ? row["WH_Code"]?.ToString() ?? "" : "",
+                    StoreName = row.ContainsKey("STORE_NAME") ? row["STORE_NAME"]?.ToString() ?? "" : (row.ContainsKey("Store_Name") ? row["Store_Name"]?.ToString() ?? "" : ""),
+                    WarehouseName = row.ContainsKey("WH_NAME") ? row["WH_NAME"]?.ToString() ?? "" : (row.ContainsKey("Wh_Name") ? row["Wh_Name"]?.ToString() ?? "" : ""),
+                    StoreCode = row.ContainsKey("Store_Code") ? row["Store_Code"]?.ToString() ?? "" : (row.ContainsKey("STORE_CODE") ? row["STORE_CODE"]?.ToString() ?? "" : ""),
+                    WarehouseCode = row.ContainsKey("WH_Code") ? row["WH_Code"]?.ToString() ?? "" : (row.ContainsKey("Wh_Code") ? row["Wh_Code"]?.ToString() ?? "" : ""),
                     AllowedSections = allowedSections,
                     RedirectPage = redirectPage,
                     RequirePasswordChange = requirePasswordChange,
