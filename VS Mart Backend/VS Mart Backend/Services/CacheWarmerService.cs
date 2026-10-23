@@ -144,6 +144,11 @@ namespace VS_Mart_Backend.Services
                         await _diffEngine.ProcessDcValidationDiffAsync(dcValidateData, stoppingToken);
                         await Task.Delay(150, stoppingToken);
 
+                        // 7b. Sync any user store permission diffs across RAM and SQL
+                        var memoryCache = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+                        await VS_Mart_Backend.Features.Base.BaseDashboardService.SyncUserPermissionDiffsAsync(memoryCache, _serviceProvider, _diffEngine, stoppingToken);
+                        await Task.Delay(100, stoppingToken);
+
                         // 8, 9, 10, 11: Periodic Dashboards (Sale, Void, Return, Tag Cycle Count - refreshed every _periodicInterval)
                         bool shouldRunPeriodicWarmup = _forceTier2WarmupNextPass || ((DateTime.Now - _lastPeriodicWarmupTime) >= _periodicInterval);
 

@@ -14,5 +14,6 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
         Task ProcessTagManagementDiffAsync(TagManagementResponse response, CancellationToken cancellationToken = default);
         Task ProcessDcValidationDiffAsync(DcValidateDashboardResponse response, CancellationToken cancellationToken = default);
         Task ProcessCounterStatusDiffAsync(int storeId, System.Collections.Generic.IEnumerable<VS_Mart_Backend.Features.Store.CounterStatusDetailDto> currentCounters, CancellationToken cancellationToken = default);
+        Task DispatchUserStoreChangesAsync(int userId, System.Collections.Generic.IEnumerable<string> addedStores, System.Collections.Generic.IEnumerable<string> removedStores, CancellationToken cancellationToken = default);
     }
 }

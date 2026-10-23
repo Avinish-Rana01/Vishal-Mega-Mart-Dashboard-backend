@@ -60,6 +60,67 @@ namespace VS_Mart_Backend.Features.Base
             }
         }
 
+        public static void InvalidateUserProfiles(IMemoryCache cache)
+        {
+            InvalidateKeysByPrefix(cache, "UserProfile_Dto_");
+        }
+
+        public static void InvalidateUserProfile(IMemoryCache cache, int userId)
+        {
+            string key = $"UserProfile_Dto_{userId}";
+            cache.Remove(key);
+            _allCacheKeys.TryRemove(key, out _);
+        }
+
+        public static async Task SyncUserPermissionDiffsAsync(
+            IMemoryCache cache,
+            IServiceProvider serviceProvider,
+            Features.Dashboard.DiffEngine.IDashboardDiffEngine diffEngine,
+            CancellationToken cancellationToken = default)
+        {
+            var connectedUserIds = VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.GetConnectedUserIds();
+            if (!connectedUserIds.Any()) return;
+
+            using var scope = serviceProvider.CreateScope();
+            var mainDashboardService = scope.ServiceProvider.GetRequiredService<Features.MainDashboard.IMainDashboardService>();
+
+            foreach (var uid in connectedUserIds)
+            {
+                if (uid <= 0) continue;
+
+                // Fetch fresh profile from DB by forcing refresh
+                var freshProfile = await mainDashboardService.GetUserProfileAsync(uid.ToString(), forceRefresh: true, cancellationToken);
+                if (freshProfile == null || freshProfile.IsSuperAdmin) continue;
+
+                var currentDbStores = (freshProfile.AuthorizedStoreCodes ?? new List<string>())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim().ToUpperInvariant())
+                    .Distinct()
+                    .ToList();
+
+                var knownStores = VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.GetUserKnownStores(uid);
+                if (knownStores == null)
+                {
+                    VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.SetUserKnownStores(uid, currentDbStores);
+                    continue;
+                }
+
+                var currentDbStoreSet = new HashSet<string>(currentDbStores, StringComparer.OrdinalIgnoreCase);
+
+                var addedStores = currentDbStores.Where(s => !knownStores.Contains(s)).ToList();
+                var removedStores = knownStores.Where(s => !currentDbStoreSet.Contains(s)).ToList();
+
+                if (addedStores.Any() || removedStores.Any())
+                {
+                    // Update user's known store baseline
+                    VS_Mart_Backend.Features.Dashboard.Hubs.DashboardHub.SetUserKnownStores(uid, currentDbStores);
+
+                    // Dispatch delta patches & update SignalR group subscriptions
+                    await diffEngine.DispatchUserStoreChangesAsync(uid, addedStores, removedStores, cancellationToken);
+                }
+            }
+        }
+
         protected BaseDashboardService(IConfiguration configuration, IMemoryCache cache)
         {
             _configuration = configuration;
@@ -221,13 +282,24 @@ namespace VS_Mart_Backend.Features.Base
 
         public async Task<UserProfileDto> GetUserProfileAsync(string? userId, CancellationToken cancellationToken = default)
         {
+            return await GetUserProfileAsync(userId, forceRefresh: false, cancellationToken);
+        }
+
+        public async Task<UserProfileDto> GetUserProfileAsync(string? userId, bool forceRefresh, CancellationToken cancellationToken = default)
+        {
             if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out int uid) || uid <= 0)
             {
                 return new UserProfileDto { UserType = "Super Admin" }; // Default to Super Admin if unspecified
             }
 
             string cacheKey = $"UserProfile_Dto_{uid}";
-            if (_cache.TryGetValue(cacheKey, out UserProfileDto? cachedProfile) && cachedProfile != null)
+
+            if (forceRefresh)
+            {
+                _cache.Remove(cacheKey);
+                _allCacheKeys.TryRemove(cacheKey, out _);
+            }
+            else if (_cache.TryGetValue(cacheKey, out UserProfileDto? cachedProfile) && cachedProfile != null)
             {
                 return cachedProfile;
             }
@@ -283,7 +355,8 @@ namespace VS_Mart_Backend.Features.Base
                         }
                     }
 
-                    _cache.Set(cacheKey, profile, TimeSpan.FromMinutes(10));
+                    _allCacheKeys.TryAdd(cacheKey, true);
+                    _cache.Set(cacheKey, profile, TimeSpan.FromSeconds(30));
                     return profile;
                 }
             }

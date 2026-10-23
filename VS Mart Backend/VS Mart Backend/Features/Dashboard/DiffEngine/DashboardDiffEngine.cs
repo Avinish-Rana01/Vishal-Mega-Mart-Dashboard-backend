@@ -203,7 +203,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             };
 
                             _logger.LogInformation("DashboardDiffEngine: LiveStock patch for Store {StoreCode}: Delta RFID {DeltaRfid:+0;-#}", storeCode, deltaRfid);
-                            await _hubContext.Clients.All.SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                            string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
                         }
                     }
                     else
@@ -238,7 +239,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             }
                         };
                         _logger.LogInformation("DashboardDiffEngine: LiveStock new store patch for {StoreCode}: RFID {NewRfid}", storeCode, newRfid);
-                        await _hubContext.Clients.All.SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                        string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
                     }
                 }
 
@@ -268,7 +270,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         }
                     };
                     _logger.LogInformation("DashboardDiffEngine: LiveStock removed store patch for {StoreCode}", removedStore);
-                    await _hubContext.Clients.All.SendAsync("ReceiveLiveStockPatch", removePatch, cancellationToken);
+                    string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
+                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveLiveStockPatch", removePatch, cancellationToken);
                 }
 
                 _lastTotalRfid = currentTotalRfid;
@@ -415,7 +418,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             };
 
                             _logger.LogInformation("DashboardDiffEngine: CycleCount patch for Store {StoreCode} (Ref {RefNo}): Delta Scanned {DeltaScanned:+0;-#}", storeCode, refNo, deltaScanned);
-                            await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                            string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
                         }
                     }
                     else
@@ -465,7 +469,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             }
                         };
                         _logger.LogInformation("DashboardDiffEngine: CycleCount new entry patch for Store {StoreCode}: Scanned {ScannedQty}", storeCode, scannedQty);
-                        await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                        string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
                     }
                 }
 
@@ -495,7 +500,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         }
                     };
                     _logger.LogInformation("DashboardDiffEngine: CycleCount removed store patch for {StoreCode}", removedStore);
-                    await _hubContext.Clients.All.SendAsync("ReceiveCycleCountPatch", removePatch, cancellationToken);
+                    string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
+                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveCycleCountPatch", removePatch, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -730,7 +736,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             };
 
                             _logger.LogInformation("DashboardDiffEngine: StoreValidation patch for {StoreCode}: Delta Validated {DeltaValidated:+0;-#}", storeCode, deltaValidated);
-                            await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                            string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
                         }
                     }
                     else
@@ -772,7 +779,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             }
                         };
                         _logger.LogInformation("DashboardDiffEngine: StoreValidation new store patch for {StoreCode}: Validated {HuValidated}", storeCode, huValidated);
-                        await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                        string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
+                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
                     }
                 }
 
@@ -807,7 +815,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         }
                     };
                     _logger.LogInformation("DashboardDiffEngine: StoreValidation removed store patch for {StoreCode}", removedStore);
-                    await _hubContext.Clients.All.SendAsync("ReceiveStoreValidationPatch", removePatch, cancellationToken);
+                    string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
+                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveStoreValidationPatch", removePatch, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -1037,7 +1046,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             };
 
                             _logger.LogInformation("DashboardDiffEngine: DcValidation patch for {Plant}: Delta Processed HU {DeltaProc:+0;-#}", plant, deltaProc);
-                            await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                            string plantGroup = $"store_{plant.Trim().ToUpperInvariant()}";
+                            await _hubContext.Clients.Groups("role_super_admin", plantGroup).SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
                         }
                     }
                     else
@@ -1070,7 +1080,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                             }
                         };
                         _logger.LogInformation("DashboardDiffEngine: DcValidation new plant patch for {Plant}: Processed HU {ProcHu}", plant, procHu);
-                        await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                        string plantGroup = $"store_{plant.Trim().ToUpperInvariant()}";
+                        await _hubContext.Clients.Groups("role_super_admin", plantGroup).SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
                     }
                 }
 
@@ -1104,7 +1115,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         }
                     };
                     _logger.LogInformation("DashboardDiffEngine: DcValidation removed plant patch for {Plant}", removedPlant);
-                    await _hubContext.Clients.All.SendAsync("ReceiveDcValidationPatch", removePatch, cancellationToken);
+                    string removedGroup = $"store_{removedPlant.Trim().ToUpperInvariant()}";
+                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveDcValidationPatch", removePatch, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -1200,6 +1212,224 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
         // =====================================================================
         // Helper Methods
         // =====================================================================
+        public async Task DispatchUserStoreChangesAsync(int userId, IEnumerable<string> addedStores, IEnumerable<string> removedStores, CancellationToken cancellationToken = default)
+        {
+            if (userId <= 0) return;
+
+            string userGroup = $"user_{userId}";
+            var addedList = (addedStores ?? Enumerable.Empty<string>()).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList();
+            var removedList = (removedStores ?? Enumerable.Empty<string>()).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList();
+
+            if (!addedList.Any() && !removedList.Any()) return;
+
+            _logger.LogInformation("DashboardDiffEngine: Dispatching store permission diffs for User {UserId}: Added [{Added}], Removed [{Removed}]",
+                userId, string.Join(", ", addedList), string.Join(", ", removedList));
+
+            // 1. Update SignalR connection groups on the server
+            await DashboardHub.UpdateUserStoreGroupsAsync(_hubContext, userId, addedList, removedList);
+
+            // 2. Dispatch Removed Store Patches
+            foreach (var removedStore in removedList)
+            {
+                // Live Stock removal patch
+                await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveLiveStockPatch", new LiveStockDeltaPatch
+                {
+                    Type = "STOCK_DELTA",
+                    Timestamp = DateTime.UtcNow,
+                    StoreCode = removedStore,
+                    IsRemoved = true
+                }, cancellationToken);
+
+                // Cycle Count removal patch
+                await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveCycleCountPatch", new CycleCountDeltaPatch
+                {
+                    Type = "CYCLE_COUNT_DELTA",
+                    Timestamp = DateTime.UtcNow,
+                    StoreCode = removedStore,
+                    IsRemoved = true
+                }, cancellationToken);
+
+                // Store Validation removal patch
+                await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveStoreValidationPatch", new StoreValidationDeltaPatch
+                {
+                    Type = "STORE_VALIDATION_DELTA",
+                    Timestamp = DateTime.UtcNow,
+                    StoreCode = removedStore,
+                    IsRemoved = true
+                }, cancellationToken);
+
+                // DC Validation removal patch
+                await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveDcValidationPatch", new DcValidationDeltaPatch
+                {
+                    Type = "DC_VALIDATION_DELTA",
+                    Timestamp = DateTime.UtcNow,
+                    RecivingPlant = removedStore,
+                    IsRemoved = true
+                }, cancellationToken);
+            }
+
+            // 3. Dispatch Added Store Patches with existing master snapshot data (or clean zero baseline if not scanned yet)
+            foreach (var addedStore in addedList)
+            {
+                // Live Stock addition patch
+                if (_liveStockSnapshots.TryGetValue(addedStore, out var liveSnap))
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveLiveStockPatch", new LiveStockDeltaPatch
+                    {
+                        Type = "STOCK_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = liveSnap.StoreName ?? addedStore,
+                        DeltaRfid = liveSnap.RfidStock,
+                        DeltaDiff = liveSnap.Difference,
+                        NewRfidStock = liveSnap.RfidStock,
+                        NewSapStock = liveSnap.SapStock,
+                        NewDifference = liveSnap.Difference,
+                        NewPercentage = liveSnap.Percentage
+                    }, cancellationToken);
+                }
+                else
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveLiveStockPatch", new LiveStockDeltaPatch
+                    {
+                        Type = "STOCK_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = addedStore,
+                        DeltaRfid = 0,
+                        DeltaDiff = 0,
+                        NewRfidStock = 0,
+                        NewSapStock = 0,
+                        NewDifference = 0,
+                        NewPercentage = 0
+                    }, cancellationToken);
+                }
+
+                // Cycle Count addition patch
+                if (_cycleSnapshots.TryGetValue(addedStore, out var cycSnap))
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveCycleCountPatch", new CycleCountDeltaPatch
+                    {
+                        Type = "CYCLE_COUNT_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = cycSnap.StoreName ?? addedStore,
+                        RefNo = cycSnap.RefNo,
+                        DeltaScannedQty = cycSnap.ScannedQty,
+                        DeltaNetDiff = cycSnap.NetDiff,
+                        NewScannedQty = cycSnap.ScannedQty,
+                        NewSystemStock = cycSnap.SystemStock,
+                        NewNetDifference = cycSnap.NetDiff,
+                        NewNoOfArticles = cycSnap.NoOfArticles,
+                        NewShortQty = cycSnap.ShortQty,
+                        NewExcessQty = cycSnap.ExcessQty,
+                        TimeTaken = cycSnap.TimeTaken,
+                        StartTime = cycSnap.StartTime,
+                        EndTime = cycSnap.EndTime,
+                        CycleCountType = cycSnap.CycleCountType,
+                        Date = cycSnap.Date
+                    }, cancellationToken);
+                }
+                else
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveCycleCountPatch", new CycleCountDeltaPatch
+                    {
+                        Type = "CYCLE_COUNT_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = addedStore,
+                        RefNo = "0",
+                        DeltaScannedQty = 0,
+                        DeltaNetDiff = 0,
+                        NewScannedQty = 0,
+                        NewSystemStock = 0,
+                        NewNetDifference = 0,
+                        NewNoOfArticles = 0,
+                        NewShortQty = 0,
+                        NewExcessQty = 0,
+                        CycleCountType = "AUDIT",
+                        Date = DateTime.UtcNow.ToString("yyyy-MM-dd")
+                    }, cancellationToken);
+                }
+
+                // Store Validation addition patch
+                if (_storeValidationSnapshots.TryGetValue(addedStore, out var storeSnap))
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveStoreValidationPatch", new StoreValidationDeltaPatch
+                    {
+                        Type = "STORE_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = addedStore,
+                        DeltaHuValidated = storeSnap.HuValidated,
+                        DeltaHuWrong = storeSnap.HuWrong,
+                        DeltaHhtValidate = storeSnap.HhtValidate,
+                        DeltaEncoded = storeSnap.Encoded,
+                        NewHuReceivedQty = storeSnap.HuReceived,
+                        NewHuValidatedQty = storeSnap.HuValidated,
+                        NewHuWrongQty = storeSnap.HuWrong,
+                        NewHhtValidateQty = storeSnap.HhtValidate,
+                        NewEncodedQty = storeSnap.Encoded,
+                        NewStorePendingQty = storeSnap.StorePending
+                    }, cancellationToken);
+                }
+                else
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveStoreValidationPatch", new StoreValidationDeltaPatch
+                    {
+                        Type = "STORE_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        StoreCode = addedStore,
+                        StoreName = addedStore,
+                        DeltaHuValidated = 0,
+                        DeltaHuWrong = 0,
+                        DeltaHhtValidate = 0,
+                        DeltaEncoded = 0,
+                        NewHuReceivedQty = 0,
+                        NewHuValidatedQty = 0,
+                        NewHuWrongQty = 0,
+                        NewHhtValidateQty = 0,
+                        NewEncodedQty = 0,
+                        NewStorePendingQty = 0
+                    }, cancellationToken);
+                }
+
+                // DC Validation addition patch
+                if (_dcValidationSnapshots.TryGetValue(addedStore, out var dcSnap))
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveDcValidationPatch", new DcValidationDeltaPatch
+                    {
+                        Type = "DC_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        RecivingPlant = addedStore,
+                        StoreName = addedStore,
+                        DeltaProcessedHu = dcSnap.ProcessedHu,
+                        DeltaUnprocessedHu = dcSnap.UnprocessedHu,
+                        DeltaProcessedArticleQty = dcSnap.ProcessedArticleQty,
+                        NewProcessedHu = dcSnap.ProcessedHu,
+                        NewUnprocessedHu = dcSnap.UnprocessedHu,
+                        NewProcessedArticleQty = dcSnap.ProcessedArticleQty
+                    }, cancellationToken);
+                }
+                else
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveDcValidationPatch", new DcValidationDeltaPatch
+                    {
+                        Type = "DC_VALIDATION_DELTA",
+                        Timestamp = DateTime.UtcNow,
+                        RecivingPlant = addedStore,
+                        StoreName = addedStore,
+                        DeltaProcessedHu = 0,
+                        DeltaUnprocessedHu = 0,
+                        DeltaProcessedArticleQty = 0,
+                        NewProcessedHu = 0,
+                        NewUnprocessedHu = 0,
+                        NewProcessedArticleQty = 0
+                    }, cancellationToken);
+                }
+            }
+        }
+
         private static string GetString(Dictionary<string, object?> dict, string key)
         {
             if (dict.TryGetValue(key, out var val) && val != null) return val.ToString() ?? string.Empty;

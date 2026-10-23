@@ -17,13 +17,22 @@ namespace VS_Mart_Backend.Features.Master
         private readonly string _connectionString;
         private readonly ILogger<MasterService> _logger;
         private readonly IMemoryCache _cache;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly Features.Dashboard.DiffEngine.IDashboardDiffEngine _diffEngine;
 
-        public MasterService(IConfiguration configuration, ILogger<MasterService> logger, IMemoryCache cache)
+        public MasterService(
+            IConfiguration configuration, 
+            ILogger<MasterService> logger, 
+            IMemoryCache cache,
+            IServiceProvider serviceProvider,
+            Features.Dashboard.DiffEngine.IDashboardDiffEngine diffEngine)
         {
             _connectionString = configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
             _logger = logger;
             _cache = cache;
+            _serviceProvider = serviceProvider;
+            _diffEngine = diffEngine;
         }
 
         public async Task<MasterResponse> ExecuteMasterAsync(MasterRequest request)
@@ -290,21 +299,38 @@ namespace VS_Mart_Backend.Features.Master
                     message = mappedRows.Count > 0 ? $"Retrieved {mappedRows.Count} record(s) successfully." : "Operation executed.";
                 }
 
-                // If store status was updated/deleted/inserted, immediately evict Tier 2 caches and trigger background refresh
-                if (isSuccess && !string.IsNullOrEmpty(request.Status) &&
-                    (request.Status.Equals("Delete_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
-                     request.Status.Equals("Update_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
-                     request.Status.Equals("Insert_tbl_Store_Master", StringComparison.OrdinalIgnoreCase)))
+                // If store or user was updated/deleted/inserted, immediately evict user permissions and dashboard caches
+                if (isSuccess && !string.IsNullOrEmpty(request.Status))
                 {
-                    _logger.LogInformation("MasterService: Store master modified with status {Status}. Evicting Tier 2 dashboard caches and triggering warmup.", request.Status);
+                    bool isStoreModification = request.Status.Equals("Delete_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
+                                               request.Status.Equals("Update_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
+                                               request.Status.Equals("Insert_tbl_Store_Master", StringComparison.OrdinalIgnoreCase);
 
-                    BaseDashboardService.InvalidateKeysByPrefix(_cache, 
-                        "SaleDashboard_Master_", 
-                        "VoidDashboard_Master_", 
-                        "ReturnDashboard_Master_", 
-                        "TagCycleCount_Master_");
+                    bool isUserModification = request.Status.IndexOf("User_Registration", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                              request.Status.IndexOf("User_Master", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                    CacheWarmerService.TriggerTier2WarmupWithReset();
+                    if (isStoreModification || isUserModification)
+                    {
+                        _logger.LogInformation("MasterService: Master modified with status {Status}. Syncing user permission diffs and evicting caches.", request.Status);
+
+                        // 1. Compute diff between old cached store lists and fresh DB store lists, dispatching delta patches to affected users
+                        await BaseDashboardService.SyncUserPermissionDiffsAsync(_cache, _serviceProvider, _diffEngine);
+
+                        // 2. Clear remaining user profile caches
+                        BaseDashboardService.InvalidateUserProfiles(_cache);
+
+                        if (isStoreModification)
+                        {
+                            // 2. Evict slow-moving Tier 2 caches (Sale, Void, Return, TagCycleCount)
+                            BaseDashboardService.InvalidateKeysByPrefix(_cache, 
+                                "SaleDashboard_Master_", 
+                                "VoidDashboard_Master_", 
+                                "ReturnDashboard_Master_", 
+                                "TagCycleCount_Master_");
+
+                            CacheWarmerService.TriggerTier2WarmupWithReset();
+                        }
+                    }
                 }
 
                 return new MasterResponse

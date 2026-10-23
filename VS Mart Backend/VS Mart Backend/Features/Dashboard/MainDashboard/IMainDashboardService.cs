@@ -78,8 +78,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         Task<int> GetActiveSuperAdminIdAsync();
 
         /// <summary>
-        /// Resolves user profile details given an optional user identifier.
+        /// Resolves user profile details given an optional user identifier with optional cache bypass.
         /// </summary>
-        Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId, CancellationToken cancellationToken = default);
+        Task<VS_Mart_Backend.Features.Base.UserProfileDto> GetUserProfileAsync(string? userId, bool forceRefresh = false, CancellationToken cancellationToken = default);
     }
 }
