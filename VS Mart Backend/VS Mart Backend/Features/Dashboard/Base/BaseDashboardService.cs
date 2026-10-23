@@ -335,7 +335,10 @@ namespace VS_Mart_Backend.Features.Base
                                   OR S.ZFM_ID = @Uid
                                   OR S.LP_ID = @Uid
                                   OR S.SM_ID = @Uid
-                                  OR S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid)
+                                  OR (
+                                      S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid)
+                                      AND (S.SM_ID IS NULL OR S.SM_ID = 0 OR S.SM_ID = @Uid)
+                                  )
                               )", new { Uid = uid }, cancellationToken: cancellationToken);
 
                         var authorizedStores = (await connection.QueryAsync<string>(storesCmd))
@@ -345,13 +348,17 @@ namespace VS_Mart_Backend.Features.Base
 
                         profile.AuthorizedStoreCodes = authorizedStores;
 
-                        if (!string.IsNullOrEmpty(profile.StoreCode) && !profile.AuthorizedStoreCodes.Contains(profile.StoreCode, StringComparer.OrdinalIgnoreCase))
+                        // Align profile.StoreCode strictly with authorized stores
+                        if (profile.AuthorizedStoreCodes.Count > 0)
                         {
-                            profile.AuthorizedStoreCodes.Add(profile.StoreCode);
+                            if (string.IsNullOrEmpty(profile.StoreCode) || !profile.AuthorizedStoreCodes.Contains(profile.StoreCode, StringComparer.OrdinalIgnoreCase))
+                            {
+                                profile.StoreCode = profile.AuthorizedStoreCodes[0];
+                            }
                         }
-                        else if (profile.AuthorizedStoreCodes.Count == 1 && string.IsNullOrEmpty(profile.StoreCode))
+                        else
                         {
-                            profile.StoreCode = profile.AuthorizedStoreCodes[0];
+                            profile.StoreCode = string.Empty;
                         }
                     }
 
