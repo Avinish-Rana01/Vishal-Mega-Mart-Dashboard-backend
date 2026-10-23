@@ -244,33 +244,8 @@ namespace VS_Mart_Backend.Features.Base
                     return superAdminId.Value;
                 }
 
-                // Self-healing: if 0 active super admins found, restore 'Admin' or insert SYSTEM_VMM_SERVICE
-                await connection.ExecuteAsync(@"
-                    IF EXISTS (SELECT 1 FROM dbo.User_Registration WHERE User_Name = 'Admin')
-                    BEGIN
-                        UPDATE dbo.User_Registration 
-                        SET User_Type = 'Super Admin', Is_Status = '1' 
-                        WHERE User_Name = 'Admin';
-                    END
-                    ELSE
-                    BEGIN
-                        INSERT INTO dbo.User_Registration (User_Name, Password, User_Type, Is_Status, Entry_Date)
-                        VALUES ('SYSTEM_VMM_SERVICE', 'Sys@vmm2026', 'Super Admin', '1', GETDATE());
-                    END
-                ");
-
-                var restoredId = await connection.QueryFirstOrDefaultAsync<int?>(
-                    @"SELECT TOP 1 User_ID 
-                      FROM dbo.User_Registration 
-                      WHERE User_Type = 'Super Admin' 
-                        AND (Is_Status = '1' OR Is_Status IS NULL)
-                      ORDER BY User_ID ASC");
-
-                if (restoredId.HasValue && restoredId.Value > 0)
-                {
-                    _cache.Set(cacheKey, restoredId.Value, TimeSpan.FromMinutes(30));
-                    return restoredId.Value;
-                }
+                // Fallback to primary Admin (User_ID = 1) if no active Super Admin found
+                return 1;
             }
             catch
             {
@@ -337,7 +312,12 @@ namespace VS_Mart_Backend.Features.Base
                                   OR S.SM_ID = @Uid
                                   OR (
                                       S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid)
-                                      AND (S.SM_ID IS NULL OR S.SM_ID = 0 OR S.SM_ID = @Uid)
+                                      AND (
+                                          (SELECT ISNULL(User_Type, '') FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @Uid) <> 'Store Admin'
+                                          OR S.SM_ID IS NULL 
+                                          OR S.SM_ID = 0 
+                                          OR S.SM_ID = @Uid
+                                      )
                                   )
                               )", new { Uid = uid }, cancellationToken: cancellationToken);
 

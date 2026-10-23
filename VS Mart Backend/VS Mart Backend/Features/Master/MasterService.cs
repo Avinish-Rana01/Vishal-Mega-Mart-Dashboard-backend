@@ -306,17 +306,6 @@ namespace VS_Mart_Backend.Features.Master
                                                request.Status.Equals("Update_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) ||
                                                request.Status.Equals("Insert_tbl_Store_Master", StringComparison.OrdinalIgnoreCase);
 
-                    if (request.Status.Equals("Update_tbl_Store_Master", StringComparison.OrdinalIgnoreCase) && smId > 0 && request.Store_ID > 0)
-                    {
-                        // Clean up previous store managers in User_Registration so they don't retain stale store permissions
-                        await connection.ExecuteAsync(
-                            "UPDATE dbo.User_Registration SET Store_ID = NULL WHERE Store_ID = @StoreId AND User_ID <> @SmId",
-                            new { StoreId = request.Store_ID, SmId = smId });
-                        await connection.ExecuteAsync(
-                            "UPDATE dbo.User_Registration SET Store_ID = @StoreId WHERE User_ID = @SmId",
-                            new { StoreId = request.Store_ID, SmId = smId });
-                    }
-
                     bool isUserModification = request.Status.IndexOf("User_Registration", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                               request.Status.IndexOf("User_Master", StringComparison.OrdinalIgnoreCase) >= 0;
 

@@ -77,7 +77,15 @@ namespace VS_Mart_Backend.Features.Store
                               OR S.ZFM_ID = @UserId
                               OR S.LP_ID = @UserId
                               OR S.SM_ID = @UserId
-                              OR S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @UserId)
+                              OR (
+                                  S.Store_ID = (SELECT Store_ID FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @UserId)
+                                  AND (
+                                      (SELECT ISNULL(User_Type, '') FROM dbo.User_Registration WITH (NOLOCK) WHERE User_ID = @UserId) <> 'Store Admin'
+                                      OR S.SM_ID IS NULL 
+                                      OR S.SM_ID = 0 
+                                      OR S.SM_ID = @UserId
+                                  )
+                              )
                           )", new { UserId = userId })).ToList();
 
                     var authorizedStoreIds = authorizedStores.Select(s => s.Store_ID).ToHashSet();
