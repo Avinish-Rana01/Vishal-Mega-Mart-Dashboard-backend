@@ -223,11 +223,17 @@ namespace VS_Mart_Backend.Features.Auth
                         break;
                 }
 
-                string rawLoginStatus = row.ContainsKey("Is_Login_Status") && row["Is_Login_Status"] != null
-                    ? row["Is_Login_Status"].ToString()!.Trim()
-                    : "0";
+                string rawLoginStatus = "1";
+                if (row.ContainsKey("Is_Login_Status") && row["Is_Login_Status"] != null)
+                {
+                    rawLoginStatus = row["Is_Login_Status"].ToString()!.Trim();
+                }
+                else if (row.ContainsKey("Is_Created_By_Admin_Flag") && row["Is_Created_By_Admin_Flag"] != null)
+                {
+                    rawLoginStatus = row["Is_Created_By_Admin_Flag"].ToString()!.Trim() == "1" ? "0" : "1";
+                }
 
-                bool requirePasswordChange = (rawLoginStatus == "0" || string.IsNullOrEmpty(rawLoginStatus));
+                bool requirePasswordChange = (rawLoginStatus == "0");
 
                 var response = new LoginResponse
                 {
