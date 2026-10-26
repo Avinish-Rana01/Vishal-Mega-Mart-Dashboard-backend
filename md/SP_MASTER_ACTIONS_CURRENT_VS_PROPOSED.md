@@ -201,37 +201,65 @@ END
 
 ### Unified, Production-Ready Action (Proposed):
 ```sql
-ELSE IF(@status = 'Change_Password' OR @status = 'Update_User_Password_First_Time_Login')
+ELSE IF (@status = 'Change_Password' OR @status = 'Update_User_Password_First_Time_Login')
 BEGIN
-    -- Determine target new password (handles both @New_Password and @Password parameter styles):
-    DECLARE @TargetNewPassword NVARCHAR(50);
-    SET @TargetNewPassword = COALESCE(NULLIF(@New_Password, ''), NULLIF(@Password, ''));
-
-    IF (@TargetNewPassword IS NULL OR @TargetNewPassword = '')
+    -- 1. Determine target new password (handles both @New_Password and legacy @Password)
+    IF (@New_Password IS NULL OR @New_Password = '')
     BEGIN
-        SET @Message = 'New password cannot be empty.';
+        IF (@status = 'Update_User_Password_First_Time_Login' AND @Password IS NOT NULL AND @Password <> '')
+            SET @New_Password = @Password;
+        ELSE
+        BEGIN
+            SET @Message = 'New password cannot be empty.';
+            RETURN;
+        END
     END
-    -- Verify user exists, is active, and matches current password (if current password is provided):
-    ELSE IF EXISTS (
-        SELECT 1 FROM dbo.User_Registration 
-        WHERE ((@User_Name <> '' AND User_Name = @User_Name) OR (@User_ID <> 0 AND User_ID = @User_ID))
-          AND (@Password = '' OR @New_Password = '' OR Password = @Password)
-          AND (Is_Status = '1' OR Is_Status IS NULL)
-    )
-    BEGIN
-        UPDATE dbo.User_Registration
-        SET Password                 = @TargetNewPassword,
-            Is_Login_Status          = '1',  -- Clears first-time login modal
-            Is_Created_By_Admin_Flag = 0,    -- Clears admin creation flag
-            Modify_By                = CASE WHEN @Modify_By <> 0 THEN @Modify_By WHEN @User_ID <> 0 THEN @User_ID ELSE Modify_By END,
-            Modify_Date              = GETDATE()
-        WHERE ((@User_Name <> '' AND User_Name = @User_Name) OR (@User_ID <> 0 AND User_ID = @User_ID));
 
-        SET @Message = 'Password changed successfully.';
+    -- 2. Validate current password input
+    IF (@Password IS NULL OR @Password = '')
+    BEGIN
+        SET @Message = 'Current password is required.';
+        RETURN;
+    END
+
+    -- 3. Resolve target User ID if only username was provided
+    IF (@User_ID IS NULL OR @User_ID = 0)
+    BEGIN
+        SELECT TOP 1 @User_ID = User_ID 
+        FROM dbo.User_Registration 
+        WHERE User_Name = LTRIM(RTRIM(@User_Name));
+    END
+
+    IF (@User_ID IS NULL OR @User_ID = 0)
+    BEGIN
+        SET @Message = 'User account not found.';
+        RETURN;
+    END
+
+    -- 4. Atomic Update:
+    --    - Updates password
+    --    - Sets Is_Login_Status = '1' (Breaks the infinite login popup loop!)
+    --    - Sets Is_Created_By_Admin_Flag = 0 (Clears admin creation flag)
+    --    - Never touches or wipes User_Name
+    --    - Verifies current password & active account status
+    UPDATE dbo.User_Registration
+    SET Password                 = @New_Password,
+        Is_Login_Status          = '1',
+        Is_Created_By_Admin_Flag = 0,
+        Modify_By                = CASE WHEN @Modify_By > 0 THEN @Modify_By ELSE @User_ID END,
+        Modify_Date              = GETDATE()
+    WHERE User_ID = @User_ID
+      AND Password = @Password
+      AND (Is_Status = '1' OR Is_Status IS NULL);
+
+    -- 5. Verify the update result immediately
+    IF (@@ROWCOUNT = 0)
+    BEGIN
+        SET @Message = 'Current password is incorrect or user account is not active.';
     END
     ELSE
     BEGIN
-        SET @Message = 'Current password is incorrect or user account is not active.';
+        SET @Message = 'Password changed successfully.';
     END
 END
 ```

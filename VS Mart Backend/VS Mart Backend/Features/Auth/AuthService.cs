@@ -223,17 +223,18 @@ namespace VS_Mart_Backend.Features.Auth
                         break;
                 }
 
-                string rawLoginStatus = "1";
-                if (row.ContainsKey("Is_Login_Status") && row["Is_Login_Status"] != null)
+                // Primary check: Force password change if account was created by an admin with a temporary password (Is_Created_By_Admin_Flag == 1)
+                // If 1 -> requirePasswordChange is true (triggers first-time setup popup)
+                // If 0 or NULL -> requirePasswordChange is false (standard user, direct dashboard access)
+                bool requirePasswordChange = false;
+                var adminFlagEntry = row.FirstOrDefault(kv => string.Equals(kv.Key, "Is_Created_By_Admin_Flag", StringComparison.OrdinalIgnoreCase));
+                if (adminFlagEntry.Value != null && adminFlagEntry.Value != DBNull.Value)
                 {
-                    rawLoginStatus = row["Is_Login_Status"].ToString()!.Trim();
-                }
-                else if (row.ContainsKey("Is_Created_By_Admin_Flag") && row["Is_Created_By_Admin_Flag"] != null)
-                {
-                    rawLoginStatus = row["Is_Created_By_Admin_Flag"].ToString()!.Trim() == "1" ? "0" : "1";
+                    string adminFlag = adminFlagEntry.Value.ToString()?.Trim() ?? "";
+                    requirePasswordChange = (adminFlag == "1" || adminFlag.Equals("true", StringComparison.OrdinalIgnoreCase));
                 }
 
-                bool requirePasswordChange = (rawLoginStatus == "0");
+                string rawLoginStatus = requirePasswordChange ? "0" : "1";
 
                 var response = new LoginResponse
                 {
