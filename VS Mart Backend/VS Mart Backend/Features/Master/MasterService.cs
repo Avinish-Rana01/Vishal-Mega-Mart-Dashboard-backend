@@ -64,8 +64,6 @@ namespace VS_Mart_Backend.Features.Master
                     status = "Delete_tbl_Store_Floor_Master";
                 else if (normalizedStatus == "sp_bind_usermaster")
                     status = "SP_Bind_User_Master";
-                else if (normalizedStatus == "sp_ddl_storeid")
-                    status = "SP_Bind_DDL_StoreID";
 
                 // 2. Resolve IDs from string names if frontend passed text values
                 int stateId = request.State_ID;
@@ -95,12 +93,15 @@ namespace VS_Mart_Backend.Features.Master
                 int smId = request.SM_ID;
                 if (smId <= 0 && !string.IsNullOrWhiteSpace(request.Store_Manager))
                 {
-                    if (int.TryParse(request.Store_Manager, out int parsedId)) smId = parsedId;
-                    else
+                    var uId = await connection.ExecuteScalarAsync<int?>(
+                        "SELECT TOP 1 User_ID FROM dbo.User_Registration WHERE User_Name = @Name", new { Name = request.Store_Manager.Trim() });
+                    if (uId.HasValue && uId.Value > 0)
                     {
-                        var uId = await connection.ExecuteScalarAsync<int?>(
-                            "SELECT TOP 1 User_ID FROM dbo.User_Registration WHERE User_Name = @Name", new { Name = request.Store_Manager.Trim() });
-                        smId = uId ?? 0;
+                        smId = uId.Value;
+                    }
+                    else if (int.TryParse(request.Store_Manager, out int parsedId))
+                    {
+                        smId = parsedId;
                     }
                 }
 
@@ -196,6 +197,13 @@ namespace VS_Mart_Backend.Features.Master
                     }
                 }
 
+                // Compatibility safeguard: In server DB (172.20.204.233), SP_DDL_StoreID only checks "IF(@Role_ID=5 or @Role_ID=6)" to return all stores.
+                // If a Super Admin (Role_ID 4) or unassigned caller requests SP_DDL_StoreID, adapt roleId to 5 so the server SP returns all stores.
+                if (status.Equals("SP_DDL_StoreID", StringComparison.OrdinalIgnoreCase) && (roleId == 4 || roleId <= 0))
+                {
+                    roleId = 5;
+                }
+
                 parameters.Add("@Role_ID", roleId);
                 parameters.Add("@Emp_ID", request.Emp_ID);
                 parameters.Add("@UserType", request.User_Type?.Trim() ?? string.Empty);
@@ -275,6 +283,19 @@ namespace VS_Mart_Backend.Features.Master
                     {
                         dict["Warehouse_Name"] = whName;
                         dict["WarehouseName"] = whName;
+                    }
+
+                    // Server SP_DDL_StoreID returns ID and Name
+                    if (dict.TryGetValue("Name", out var nVal))
+                    {
+                        if (!dict.ContainsKey("Store_Name")) dict["Store_Name"] = nVal;
+                        if (!dict.ContainsKey("Wh_Name")) dict["Wh_Name"] = nVal;
+                        if (!dict.ContainsKey("Warehouse_Name")) dict["Warehouse_Name"] = nVal;
+                    }
+                    if (dict.TryGetValue("ID", out var idVal))
+                    {
+                        if (!dict.ContainsKey("Store_ID")) dict["Store_ID"] = idVal;
+                        if (!dict.ContainsKey("WH_ID")) dict["WH_ID"] = idVal;
                     }
 
                     mappedRows.Add(dict);

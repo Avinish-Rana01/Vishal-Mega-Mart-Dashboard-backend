@@ -308,6 +308,9 @@ namespace VS_Mart_Backend.Features.Auth
                 parameters.Add("@New_Password", newPass);
                 parameters.Add("@Message", dbType: DbType.String, direction: ParameterDirection.Output, size: 200);
 
+                bool isSuccess = false;
+                string message = "";
+
                 var cmd = new CommandDefinition(
                     "SP_Master",
                     parameters,
@@ -316,9 +319,8 @@ namespace VS_Mart_Backend.Features.Auth
                 );
 
                 await connection.ExecuteAsync(cmd);
-
-                string message = parameters.Get<string>("@Message") ?? "";
-                bool isSuccess = message.Equals("Password changed successfully.", StringComparison.OrdinalIgnoreCase);
+                message = parameters.Get<string>("@Message") ?? "";
+                isSuccess = message.Equals("Password changed successfully.", StringComparison.OrdinalIgnoreCase);
 
                 if (!isSuccess)
                 {
