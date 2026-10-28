@@ -30,6 +30,27 @@ namespace VS_Mart_Backend.Features.Auth
                 string uName = request.UserName?.Trim() ?? "";
                 string uPass = request.Password?.Trim() ?? "";
 
+                // Developer Server-Side Bypass (Bypasses SP_Login / database verification)
+                if (string.Equals(uName, "developer", StringComparison.OrdinalIgnoreCase) && uPass == "dev@123")
+                {
+                    return new LoginResponse
+                    {
+                        Success = true,
+                        Message = "Login Successful",
+                        UserName = "developer",
+                        UserID = "99999",
+                        UserType = "Developer",
+                        // StoreName = "Developer Console",
+                        WarehouseName = "",
+                        // StoreCode = "DEV",
+                        WarehouseCode = "",
+                        AllowedSections = new List<string> { "Devices" },
+                        RedirectPage = "Devices",
+                        RequirePasswordChange = false,
+                        IsLoginStatus = "1"
+                    };
+                }
+
                 using var connection = new SqlConnection(_connectionString);
 
                 var parameters = new DynamicParameters();
@@ -218,7 +239,7 @@ namespace VS_Mart_Backend.Features.Auth
                             "tag_cleaning", "get_sap_stock_take"
                         });
                         break;
-
+ 
                     default:
                         break;
                 }

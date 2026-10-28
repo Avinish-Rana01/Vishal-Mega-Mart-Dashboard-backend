@@ -42,6 +42,7 @@ builder.Services.AddScoped<VS_Mart_Backend.Features.VoidDashboard.IVoidDashboard
 builder.Services.AddScoped<VS_Mart_Backend.Features.Auth.IAuthService, VS_Mart_Backend.Features.Auth.AuthService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.SystemUtility.ISystemUtilityService, VS_Mart_Backend.Features.SystemUtility.SystemUtilityService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IMasterService, VS_Mart_Backend.Features.Master.MasterService>();
+builder.Services.AddScoped<VS_Mart_Backend.Features.Master.IDeviceMasterService, VS_Mart_Backend.Features.Master.DeviceMasterService>();
 builder.Services.AddScoped<VS_Mart_Backend.Features.Store.IStoreService, VS_Mart_Backend.Features.Store.StoreService>();
 builder.Services.AddSingleton<VS_Mart_Backend.Features.Dashboard.DiffEngine.IDashboardDiffEngine, VS_Mart_Backend.Features.Dashboard.DiffEngine.DashboardDiffEngine>();
 builder.Services.AddSingleton<VS_Mart_Backend.Features.Dashboard.DCEncoding.IWHEncodingDetails, VS_Mart_Backend.Features.Dashboard.DCEncoding.WHEncodingDetailsService>();
