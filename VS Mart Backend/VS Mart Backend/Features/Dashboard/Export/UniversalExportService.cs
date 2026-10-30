@@ -120,42 +120,15 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 return false;
             }
 
-            Func<Task<SqlDataReader?>>? secondaryReaderFactory = null;
-            if (string.Equals(config.ReportName, "TAG_INVENTORY_DISTRIBUTION", StringComparison.OrdinalIgnoreCase))
-            {
-                secondaryReaderFactory = async () =>
-                {
-                    var secondaryConn = new SqlConnection(_connectionString);
-                    await secondaryConn.OpenAsync(cancellationToken);
-
-                    const string vmmQuery = @"
-SELECT 
-    CAST(ISNULL(MAX(ReadTime), GETDATE()) AS DATE) AS [DATE],
-    EPC AS [TID],
-    0 AS [CYCLE_COUNT],
-    'Warehouse' AS [LOCATION],
-    'VMM LUHARI' AS [LOCATION_NAME],
-    'New Tag Inward' AS [STATUS]
-FROM [dbo].[VMM_TAG_MST]
-WHERE (@SearchTerm = '' OR EPC LIKE '%' + @SearchTerm + '%' OR 'Warehouse' LIKE '%' + @SearchTerm + '%' OR 'VMM LUHARI' LIKE '%' + @SearchTerm + '%' OR 'New Tag Inward' LIKE '%' + @SearchTerm + '%')
-GROUP BY EPC;";
-
-                    var vmmCmd = new SqlCommand(vmmQuery, secondaryConn);
-                    vmmCmd.CommandTimeout = 300;
-                    vmmCmd.Parameters.AddWithValue("@SearchTerm", request.SearchTerm ?? "");
-                    return await vmmCmd.ExecuteReaderAsync(CommandBehavior.CloseConnection, cancellationToken);
-                };
-            }
-
             bool hasData;
             if (format == "csv")
             {
-                hasData = await ExportCsvAsync(reader, secondaryReaderFactory, outputStream, cancellationToken);
+                hasData = await ExportCsvAsync(reader, outputStream, cancellationToken);
             }
             else
             {
                 // Default: Professional XLSX Workbook
-                hasData = await ExportXlsxAsync(reader, secondaryReaderFactory, outputStream, config.ReportName, cancellationToken);
+                hasData = await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
             }
 
             if (hasData)
@@ -167,7 +140,6 @@ GROUP BY EPC;";
 
         private async Task<bool> ExportXlsxAsync(
             SqlDataReader reader,
-            Func<Task<SqlDataReader?>>? secondaryReaderFactory,
             Stream outputStream,
             string reportName,
             CancellationToken cancellationToken)
@@ -202,26 +174,6 @@ GROUP BY EPC;";
 
             int rowIdx = 2;
             rowIdx = await WriteReaderRowsToWorksheetAsync(reader, worksheet, validColIndices, rowIdx, cancellationToken);
-
-            // Read secondary supplementary stream if present (e.g. VMM_TAG_MST for Tag Inventory Distribution)
-            if (secondaryReaderFactory != null && rowIdx <= 1_048_570)
-            {
-                await using var secondaryReader = await secondaryReaderFactory();
-                if (secondaryReader != null)
-                {
-                    var secondaryColIndices = new List<int>();
-                    for (int i = 0; i < secondaryReader.FieldCount; i++)
-                    {
-                        string colName = secondaryReader.GetName(i);
-                        if (string.Equals(colName, "RowNumber", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-                        secondaryColIndices.Add(i);
-                    }
-                    rowIdx = await WriteReaderRowsToWorksheetAsync(secondaryReader, worksheet, secondaryColIndices, rowIdx, cancellationToken);
-                }
-            }
 
             if (rowIdx == 2)
             {
@@ -296,7 +248,6 @@ GROUP BY EPC;";
 
         private async Task<bool> ExportCsvAsync(
             SqlDataReader reader,
-            Func<Task<SqlDataReader?>>? secondaryReaderFactory,
             Stream outputStream,
             CancellationToken cancellationToken)
         {
@@ -324,25 +275,6 @@ GROUP BY EPC;";
             await writer.WriteLineAsync(string.Join(",", headers));
 
             long rowCount = await WriteReaderRowsToCsvAsync(reader, writer, validColIndices, cancellationToken);
-
-            if (secondaryReaderFactory != null)
-            {
-                await using var secondaryReader = await secondaryReaderFactory();
-                if (secondaryReader != null)
-                {
-                    var secondaryColIndices = new List<int>();
-                    for (int i = 0; i < secondaryReader.FieldCount; i++)
-                    {
-                        string colName = secondaryReader.GetName(i);
-                        if (string.Equals(colName, "RowNumber", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-                        secondaryColIndices.Add(i);
-                    }
-                    rowCount += await WriteReaderRowsToCsvAsync(secondaryReader, writer, secondaryColIndices, cancellationToken);
-                }
-            }
 
             await writer.FlushAsync(cancellationToken);
             return rowCount > 0;

@@ -17,7 +17,6 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
             _logger = logger;
         }
 
-
         public async Task<TagDetailsResponse> GetTagDetailsAsync(TagDetailsRequest request)
         {
             try
@@ -28,16 +27,12 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
 
                 // Input parameters
                 parameters.Add("@status", "TAG_MANAGEMENT_LOCATION", DbType.String);
-
                 parameters.Add("@SearchTerm", request.SearchTerm ?? "", DbType.String);
-
                 parameters.Add("@PageIndex", request.PageIndex, DbType.Int32);
-
                 parameters.Add("@PageSize", request.PageSize, DbType.Int32);
-
                 parameters.Add("@SortColumn", string.IsNullOrWhiteSpace(request.SortColumn) ? "CYCLE_COUNT" : request.SortColumn, DbType.String);
-
                 parameters.Add("@SortDirection", string.IsNullOrWhiteSpace(request.SortDirection) ? "desc" : request.SortDirection, DbType.String);
+                
                 int userIdVal = 0;
                 int.TryParse(request.UserId, out userIdVal);
                 parameters.Add("@User_ID", userIdVal, DbType.Int32);
@@ -47,6 +42,7 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
                 parameters.Add("@QTY", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@STORECOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
                 parameters.Add("@WHCOUNT", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                parameters.Add("@Newtags", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                 // Execute stored procedure and read multiple result sets
                 using var multi = await connection.QueryMultipleAsync("SP_NEW_REPORT", parameters, commandType: CommandType.StoredProcedure, commandTimeout: 120);
@@ -64,45 +60,10 @@ namespace VS_Mart_Backend.Features.Dashboard.TagManagement
                 int cycleCount = parameters.Get<int?>("@QTY") ?? 0;
                 int storeCount = parameters.Get<int?>("@STORECOUNT") ?? 0;
                 int whCount = parameters.Get<int?>("@WHCOUNT") ?? 0;
+                int newTags = parameters.Get<int?>("@Newtags") ?? 0;
 
-                // If requested page extends into inward master tags (VMM_TAG_MST), fill remaining items from VMM_TAG_MST
-                int historyCount = 554_376;
-                int pageStartRow = (request.PageIndex - 1) * request.PageSize + 1;
-                if (data.Count < request.PageSize && (pageStartRow + data.Count) > historyCount)
-                {
-                    int needed = request.PageSize - data.Count;
-                    int vmmOffset = Math.Max(0, (pageStartRow + data.Count) - historyCount - 1);
-
-                    const string vmmQuery = @"
-SELECT 
-    CAST(ISNULL(MAX(ReadTime), GETDATE()) AS DATE) AS [DATE],
-    EPC AS [TID],
-    0 AS [CYCLE_COUNT],
-    'Warehouse' AS [LOCATION],
-    'VMM LUHARI' AS [LOCATION_NAME],
-    'New Tag Inward' AS [STATUS]
-FROM [dbo].[VMM_TAG_MST]
-WHERE (@SearchTerm = '' OR EPC LIKE '%' + @SearchTerm + '%' OR 'Warehouse' LIKE '%' + @SearchTerm + '%' OR 'VMM LUHARI' LIKE '%' + @SearchTerm + '%' OR 'New Tag Inward' LIKE '%' + @SearchTerm + '%')
-GROUP BY EPC
-ORDER BY EPC
-OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
-
-                    var vmmRows = await connection.QueryAsync<TagDetailsData>(
-                        vmmQuery,
-                        new { SearchTerm = request.SearchTerm ?? "", Offset = vmmOffset, Limit = needed },
-                        commandTimeout: 120);
-
-                    long currentNum = pageStartRow + data.Count;
-                    foreach (var row in vmmRows)
-                    {
-                        row.RowNumber = currentNum++;
-                        data.Add(row);
-                    }
-                }
-
-                int calculatedWhCount = (storeCount > 0 && recordCount > storeCount)
-                    ? (recordCount - storeCount)
-                    : whCount;
+                // Filter out VMM_TAG_MST inward tags; strictly show tbl_tagmanagement_history records
+                int historyCount = (recordCount > newTags && newTags > 0) ? (recordCount - newTags) : recordCount;
 
                 // Build response
                 return new TagDetailsResponse
@@ -112,10 +73,10 @@ OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
                     Pager = new TagDetailsPager
                     {
                         PageIndex = request.PageIndex,
-                        RecordCount = recordCount,
+                        RecordCount = historyCount,
                         CycleCount = cycleCount,
                         StoreCount = storeCount,
-                        WhCount = calculatedWhCount
+                        WhCount = whCount
                     }
                 };
             }
@@ -124,10 +85,5 @@ OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
                 throw;
             }
         }
-
-
-
-
-
     }
 }
