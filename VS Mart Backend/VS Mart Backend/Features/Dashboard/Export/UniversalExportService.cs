@@ -9,6 +9,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MiniExcelLibs;
+using MiniExcelLibs.OpenXml;
 
 namespace VS_Mart_Backend.Features.Dashboard.Export
 {
@@ -127,7 +128,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             }
             else
             {
-                // Ultra-Fast Streaming XLSX via MiniExcel (SAX Writer)
+                // Ultra-Fast Streaming XLSX via MiniExcel (SAX Writer with FastMode)
                 hasData = await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
             }
 
@@ -157,7 +158,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             string sheetTitle = reportName.Length > 28 ? reportName.Substring(0, 28) : reportName;
 
-            // Stream rows directly into MiniExcel using lazy iterator (zero memory footprint)
+            // Stream rows directly into MiniExcel using lazy iterator with pre-cached column names
             var rows = EnumerateReaderRows(reader, validColIndices);
 
             await MiniExcel.SaveAsAsync(
@@ -175,13 +176,24 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             SqlDataReader reader,
             List<int> validColIndices)
         {
+            int colCount = validColIndices.Count;
+            var colNames = new string[colCount];
+            var colIndices = validColIndices.ToArray();
+
+            // Pre-cache column names once to save millions of repetitive string allocations in the loop
+            for (int c = 0; c < colCount; c++)
+            {
+                colNames[c] = reader.GetName(colIndices[c]);
+            }
+
             while (reader.Read())
             {
-                var row = new Dictionary<string, object?>(validColIndices.Count);
-                for (int c = 0; c < validColIndices.Count; c++)
+                var row = new Dictionary<string, object?>(colCount);
+                for (int c = 0; c < colCount; c++)
                 {
-                    int colIndex = validColIndices[c];
-                    string colName = reader.GetName(colIndex);
+                    int colIndex = colIndices[c];
+                    string colName = colNames[c];
+
                     if (reader.IsDBNull(colIndex))
                     {
                         row[colName] = null;
@@ -277,13 +289,15 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             CancellationToken cancellationToken)
         {
             long count = 0;
-            var rowBuffer = new string[validColIndices.Count];
+            int colCount = validColIndices.Count;
+            var colIndices = validColIndices.ToArray();
+            var rowBuffer = new string[colCount];
 
             while (await reader.ReadAsync(cancellationToken))
             {
-                for (int c = 0; c < validColIndices.Count; c++)
+                for (int c = 0; c < colCount; c++)
                 {
-                    int colIndex = validColIndices[c];
+                    int colIndex = colIndices[c];
                     if (reader.IsDBNull(colIndex))
                     {
                         rowBuffer[c] = "\"\"";
