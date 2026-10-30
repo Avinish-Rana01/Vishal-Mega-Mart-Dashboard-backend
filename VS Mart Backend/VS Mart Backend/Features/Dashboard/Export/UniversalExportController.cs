@@ -62,25 +62,29 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
 
             try
             {
-                using var memoryBuffer = new System.IO.MemoryStream();
-                bool hasData = await _exportService.StreamExportAsync(request, memoryBuffer, cancellationToken);
-
-                if (!hasData || memoryBuffer.Length == 0)
+                // Allow synchronous IO on this endpoint because ZipArchive/MiniExcel writes central directory headers via BinaryWriter
+                var syncIoFeature = HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpBodyControlFeature>();
+                if (syncIoFeature != null)
                 {
-                    _logger.LogInformation("Export requested for {ReportName} produced 0 rows. Returning 204 No Content.", request.ReportName);
-                    Response.StatusCode = StatusCodes.Status204NoContent;
-                    return;
+                    syncIoFeature.AllowSynchronousIO = true;
                 }
 
+                // Immediate response headers so browser triggers the download bar in ~0.1s
                 Response.ContentType = contentType;
                 Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{safeFileName}\"");
                 Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
                 Response.Headers.Append("Pragma", "no-cache");
                 Response.Headers.Append("Expires", "0");
-                Response.Headers.Append("Content-Length", memoryBuffer.Length.ToString());
 
-                memoryBuffer.Position = 0;
-                await memoryBuffer.CopyToAsync(Response.Body, cancellationToken);
+                // Stream directly to Response.Body (zero intermediate MemoryStream buffer)
+                bool hasData = await _exportService.StreamExportAsync(request, Response.Body, cancellationToken);
+
+                if (!hasData && !Response.HasStarted)
+                {
+                    _logger.LogInformation("Export requested for {ReportName} produced 0 rows. Returning 204 No Content.", request.ReportName);
+                    Response.StatusCode = StatusCodes.Status204NoContent;
+                    return;
+                }
             }
             catch (OperationCanceledException)
             {

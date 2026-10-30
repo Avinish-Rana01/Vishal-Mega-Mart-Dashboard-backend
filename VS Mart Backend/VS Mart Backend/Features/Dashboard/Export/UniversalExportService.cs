@@ -5,10 +5,10 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ClosedXML.Excel;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MiniExcelLibs;
 
 namespace VS_Mart_Backend.Features.Dashboard.Export
 {
@@ -17,7 +17,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
         private readonly string _connectionString;
         private readonly ILogger<UniversalExportService> _logger;
 
-        public UniversalExportService(IConfiguration configuration, ILogger<UniversalExportService> logger)
+        public UniversalExportService(Microsoft.Extensions.Configuration.IConfiguration configuration, ILogger<UniversalExportService> logger)
         {
             _connectionString = configuration.GetConnectionString("POS")
                 ?? throw new InvalidOperationException("Connection string 'POS' was not found in configuration.");
@@ -37,7 +37,7 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             // Resolve SP status dynamically (supports single-date vs date-range branching)
             string resolvedStatus = config.ResolveStatus(request);
 
-            _logger.LogInformation("Starting export for report: {ReportName} in format {Format} using SP: {StoredProcedure} (@status='{Status}')",
+            _logger.LogInformation("Starting streaming export for report: {ReportName} in format {Format} using SP: {StoredProcedure} (@status='{Status}')",
                 config.ReportName, format, config.StoredProcedure, resolvedStatus);
 
             await using var connection = new SqlConnection(_connectionString);
@@ -127,27 +127,23 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             }
             else
             {
-                // Default: Professional XLSX Workbook
+                // Ultra-Fast Streaming XLSX via MiniExcel (SAX Writer)
                 hasData = await ExportXlsxAsync(reader, outputStream, config.ReportName, cancellationToken);
             }
 
             if (hasData)
             {
-                _logger.LogInformation("Export completed successfully for {ReportName} in {Format}", config.ReportName, format);
+                _logger.LogInformation("Export streaming completed successfully for {ReportName} in {Format}", config.ReportName, format);
             }
             return hasData;
         }
 
-        private async Task<bool> ExportXlsxAsync(
+        private static async Task<bool> ExportXlsxAsync(
             SqlDataReader reader,
             Stream outputStream,
             string reportName,
             CancellationToken cancellationToken)
         {
-            using var workbook = new XLWorkbook();
-            string sheetTitle = reportName.Length > 28 ? reportName.Substring(0, 28) : reportName;
-            var worksheet = workbook.Worksheets.Add(sheetTitle);
-
             var validColIndices = new List<int>();
             for (int i = 0; i < reader.FieldCount; i++)
             {
@@ -159,87 +155,65 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 validColIndices.Add(i);
             }
 
-            // Styled Header
-            for (int c = 0; c < validColIndices.Count; c++)
-            {
-                int colIndex = validColIndices[c];
-                var cell = worksheet.Cell(1, c + 1);
-                cell.Value = reader.GetName(colIndex);
-                cell.Style.Font.Bold = true;
-                cell.Style.Font.FontColor = XLColor.FromArgb(15, 23, 42); // slate-900
-                cell.Style.Fill.BackgroundColor = XLColor.FromArgb(241, 245, 249); // slate-100
-                cell.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-                cell.Style.Border.BottomBorderColor = XLColor.FromArgb(203, 213, 225);
-            }
+            string sheetTitle = reportName.Length > 28 ? reportName.Substring(0, 28) : reportName;
 
-            int rowIdx = 2;
-            rowIdx = await WriteReaderRowsToWorksheetAsync(reader, worksheet, validColIndices, rowIdx, cancellationToken);
+            // Stream rows directly into MiniExcel using lazy iterator (zero memory footprint)
+            var rows = EnumerateReaderRows(reader, validColIndices);
 
-            if (rowIdx == 2)
-            {
-                return false;
-            }
+            await MiniExcel.SaveAsAsync(
+                outputStream,
+                rows,
+                printHeader: true,
+                sheetName: sheetTitle,
+                excelType: ExcelType.XLSX,
+                cancellationToken: cancellationToken);
 
-            if (validColIndices.Count > 0)
-            {
-                worksheet.SheetView.FreezeRows(1);
-                worksheet.Range(1, 1, rowIdx - 1, validColIndices.Count).SetAutoFilter();
-                // Fast fixed column width avoids expensive per-cell font measurement on large datasets
-                worksheet.Columns(1, validColIndices.Count).Width = 18;
-            }
-
-            using var ms = new MemoryStream();
-            workbook.SaveAs(ms);
-            ms.Position = 0;
-            await ms.CopyToAsync(outputStream, cancellationToken);
             return true;
         }
 
-        private static async Task<int> WriteReaderRowsToWorksheetAsync(
+        private static IEnumerable<Dictionary<string, object?>> EnumerateReaderRows(
             SqlDataReader reader,
-            IXLWorksheet worksheet,
-            List<int> validColIndices,
-            int startRowIdx,
-            CancellationToken cancellationToken)
+            List<int> validColIndices)
         {
-            int rowIdx = startRowIdx;
-            while (await reader.ReadAsync(cancellationToken))
+            while (reader.Read())
             {
+                var row = new Dictionary<string, object?>(validColIndices.Count);
                 for (int c = 0; c < validColIndices.Count; c++)
                 {
                     int colIndex = validColIndices[c];
-                    if (!reader.IsDBNull(colIndex))
+                    string colName = reader.GetName(colIndex);
+                    if (reader.IsDBNull(colIndex))
+                    {
+                        row[colName] = null;
+                    }
+                    else
                     {
                         object val = reader.GetValue(colIndex);
-                        var cell = worksheet.Cell(rowIdx, c + 1);
-
                         if (val is int or long or short or byte)
                         {
-                            cell.Value = Convert.ToInt64(val);
+                            row[colName] = Convert.ToInt64(val);
                         }
                         else if (val is decimal dec)
                         {
-                            cell.Value = dec;
-                            cell.Style.NumberFormat.Format = "#,##0.00";
+                            row[colName] = dec;
                         }
                         else if (val is double or float)
                         {
-                            cell.Value = Convert.ToDouble(val);
-                            cell.Style.NumberFormat.Format = "#,##0.00";
+                            row[colName] = Convert.ToDouble(val);
                         }
                         else if (val is DateTime dt)
                         {
-                            cell.Value = dt.TimeOfDay == TimeSpan.Zero
+                            row[colName] = dt.TimeOfDay == TimeSpan.Zero
                                 ? dt.ToString("yyyy-MM-dd")
                                 : dt.ToString("yyyy-MM-dd HH:mm:ss");
                         }
                         else if (val is DateOnly d)
                         {
-                            cell.Value = d.ToString("yyyy-MM-dd");
+                            row[colName] = d.ToString("yyyy-MM-dd");
                         }
                         else if (val is DateTimeOffset dto)
                         {
-                            cell.Value = dto.TimeOfDay == TimeSpan.Zero
+                            row[colName] = dto.TimeOfDay == TimeSpan.Zero
                                 ? dto.ToString("yyyy-MM-dd")
                                 : dto.ToString("yyyy-MM-dd HH:mm:ss");
                         }
@@ -254,17 +228,12 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                             {
                                 strVal = strVal.Substring(0, strVal.Length - 9);
                             }
-                            cell.Value = strVal;
+                            row[colName] = strVal;
                         }
                     }
                 }
-                rowIdx++;
-                if (rowIdx > 1_048_570)
-                {
-                    break;
-                }
+                yield return row;
             }
-            return rowIdx;
         }
 
         private async Task<bool> ExportCsvAsync(

@@ -11,6 +11,16 @@ builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
+// Allow synchronous IO for streaming zip/xlsx archives (required by ZipArchive/MiniExcel)
+builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+{
+    options.AllowSynchronousIO = true;
+});
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.AllowSynchronousIO = true;
+});
+
 // Add Swagger / OpenAPI documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
