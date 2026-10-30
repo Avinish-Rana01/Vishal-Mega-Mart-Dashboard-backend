@@ -229,11 +229,32 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                         }
                         else if (val is DateTime dt)
                         {
-                            cell.Value = dt.ToString("yyyy-MM-dd HH:mm:ss");
+                            cell.Value = dt.TimeOfDay == TimeSpan.Zero
+                                ? dt.ToString("yyyy-MM-dd")
+                                : dt.ToString("yyyy-MM-dd HH:mm:ss");
+                        }
+                        else if (val is DateOnly d)
+                        {
+                            cell.Value = d.ToString("yyyy-MM-dd");
+                        }
+                        else if (val is DateTimeOffset dto)
+                        {
+                            cell.Value = dto.TimeOfDay == TimeSpan.Zero
+                                ? dto.ToString("yyyy-MM-dd")
+                                : dto.ToString("yyyy-MM-dd HH:mm:ss");
                         }
                         else
                         {
-                            cell.Value = val.ToString() ?? "";
+                            string strVal = val.ToString() ?? "";
+                            if (strVal.EndsWith(" 00:00:00"))
+                            {
+                                strVal = strVal.Substring(0, strVal.Length - 9);
+                            }
+                            else if (strVal.EndsWith("T00:00:00"))
+                            {
+                                strVal = strVal.Substring(0, strVal.Length - 9);
+                            }
+                            cell.Value = strVal;
                         }
                     }
                 }
@@ -303,10 +324,21 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                         object val = reader.GetValue(colIndex);
                         string strVal = val switch
                         {
-                            DateTime dt => dt.ToString("yyyy-MM-dd HH:mm:ss"),
+                            DateTime dt => dt.TimeOfDay == TimeSpan.Zero ? dt.ToString("yyyy-MM-dd") : dt.ToString("yyyy-MM-dd HH:mm:ss"),
                             DateOnly d => d.ToString("yyyy-MM-dd"),
+                            DateTimeOffset dto => dto.TimeOfDay == TimeSpan.Zero ? dto.ToString("yyyy-MM-dd") : dto.ToString("yyyy-MM-dd HH:mm:ss"),
                             _ => val.ToString() ?? ""
                         };
+
+                        if (strVal.EndsWith(" 00:00:00"))
+                        {
+                            strVal = strVal.Substring(0, strVal.Length - 9);
+                        }
+                        else if (strVal.EndsWith("T00:00:00"))
+                        {
+                            strVal = strVal.Substring(0, strVal.Length - 9);
+                        }
+
                         rowBuffer[c] = EscapeCsv(strVal);
                     }
                 }
