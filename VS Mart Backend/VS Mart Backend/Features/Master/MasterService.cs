@@ -177,7 +177,7 @@ namespace VS_Mart_Backend.Features.Master
                 parameters.Add("@MAIL_ID", emailVal);
                 parameters.Add("@State_ID", stateId);
                 parameters.Add("@City_ID", cityId);
-                parameters.Add("@SM_ID", smId);
+                parameters.Add("@SM_ID", smId > 0 ? smId : (int?)null, DbType.Int32);
                 parameters.Add("@AM_ID", amId);
                 parameters.Add("@ZFM_ID", zfmId);
                 parameters.Add("@LP_ID", lpId);
@@ -307,6 +307,7 @@ namespace VS_Mart_Backend.Features.Master
                 if (!string.IsNullOrEmpty(message))
                 {
                     if (message.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
+                        message.Contains("already assigned", StringComparison.OrdinalIgnoreCase) ||
                         message.Contains("INVALID USER", StringComparison.OrdinalIgnoreCase) ||
                         message.Contains("INCORRECT PASSWORD", StringComparison.OrdinalIgnoreCase) ||
                         message.Contains("USER IS INACTIVE", StringComparison.OrdinalIgnoreCase))
