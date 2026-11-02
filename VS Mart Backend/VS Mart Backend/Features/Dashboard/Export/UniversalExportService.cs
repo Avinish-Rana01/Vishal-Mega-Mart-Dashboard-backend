@@ -161,12 +161,40 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
             // Stream rows directly into MiniExcel using lazy iterator with pre-cached column names
             var rows = EnumerateReaderRows(reader, validColIndices);
 
+            var dynamicColumns = new List<MiniExcelLibs.Attributes.DynamicExcelColumn>();
+            foreach (var colIndex in validColIndices)
+            {
+                string colName = reader.GetName(colIndex);
+                double width = 16;
+                string upper = colName.ToUpperInvariant();
+
+                if (upper.Contains("DATE")) width = 16;
+                else if (upper.Contains("DESC") || upper.Contains("NAME") || upper.Contains("REASON") || upper.Contains("REMARK")) width = 32;
+                else if (upper.Contains("ARTICLE") || upper.Contains("TID") || upper.Contains("EPC") || upper.Contains("BARCODE") || upper.Contains("HU_NO")) width = 24;
+                else if (upper.Contains("CODE") || upper.Contains("STATUS") || upper.Contains("LOCATION")) width = 18;
+                else if (upper.Contains("QTY") || upper.Contains("STOCK") || upper.Contains("COUNT") || upper.Contains("DIFF") || upper.Contains("SALE")) width = 14;
+                else width = Math.Max(colName.Length + 4, 16);
+
+                dynamicColumns.Add(new MiniExcelLibs.Attributes.DynamicExcelColumn(colName) { Width = width });
+            }
+
+            var openXmlConfig = new OpenXmlConfiguration
+            {
+                StyleOptions = new OpenXmlStyleOptions
+                {
+                    HorizontalAlignment = HorizontalCellAlignment.Center,
+                    VerticalAlignment = VerticalCellAlignment.Center
+                },
+                DynamicColumns = dynamicColumns.ToArray()
+            };
+
             await MiniExcel.SaveAsAsync(
                 outputStream,
                 rows,
                 printHeader: true,
                 sheetName: sheetTitle,
                 excelType: ExcelType.XLSX,
+                configuration: openXmlConfig,
                 cancellationToken: cancellationToken);
 
             return true;
