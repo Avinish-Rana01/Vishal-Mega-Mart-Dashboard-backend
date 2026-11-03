@@ -153,3 +153,83 @@ GO
 
 Once the schema migration is applied, the 3 modernized stored procedures (`SP_Master`, `SP_New_Dashboard`, `SP_NEW_REPORT`) from `VMM_RFID_RETAIL_SOLUTION` should be scripted into `VMM_RFID_RETAIL_SOLUTION_NEW`.
 
+---
+
+## 7. Sandbox Database Cloning Protocol (`[FUN_VMM_RFID_RETAIL_SOLUTION]`)
+
+To enable radical schema experiments, role reassignments, and security testing without risking operational data in `[VMM_RFID_RETAIL_SOLUTION]`, a dedicated sandbox clone is provisioned:
+
+```sql
+-- 1. Take a safe COPY_ONLY compressed backup of current working DB
+BACKUP DATABASE [VMM_RFID_RETAIL_SOLUTION] 
+TO DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup\VMM_COPY_SANDBOX.bak' 
+WITH COPY_ONLY, COMPRESSION, INIT;
+
+-- 2. Restore into isolated sandbox catalog with dedicated MDF/LDF storage
+RESTORE DATABASE [FUN_VMM_RFID_RETAIL_SOLUTION] 
+FROM DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup\VMM_COPY_SANDBOX.bak' 
+WITH 
+    MOVE N'VMM_RFID_RETAIL_SOLUTION' TO N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\DATA\FUN_VMM_RFID_RETAIL_SOLUTION.mdf',
+    MOVE N'VMM_RFID_RETAIL_SOLUTION_log' TO N'C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\DATA\FUN_VMM_RFID_RETAIL_SOLUTION_log.ldf',
+    RECOVERY;
+```
+
+### Sandbox Sanitization & Persona Injection
+1. **Reset Store Management Links**: Reset `SM_ID`, `AM_ID`, `ZFM_ID`, `LP_ID` to `NULL` across all stores in `tbl_Store_Master` to test assignment workflows.
+2. **Purge Legacy Logins**: Retain Super Admin (ID: 30) and inject structured test personas for Super Admin, Store Admin, and Warehouse Logistics roles.
+
+---
+
+## 8. Forensic Access & Clearance Audit Query
+
+This high-performance, read-only diagnostic query evaluates the clearance tier, node binding, and cryptographic hash fingerprint of all active identities across `User_Registration`, `Role_Master`, `tbl_Store_Master`, and `tbl_Warehouse_Mst`:
+
+```sql
+WITH SecurityClearanceCTE AS (
+    SELECT 
+        U.User_ID,
+        U.User_Name,
+        U.User_Type AS Declared_UserType,
+        COALESCE(R.Role_Name, 'UNMAPPED_ROLE') AS System_Role,
+        U.Role_ID,
+        CASE 
+            WHEN U.Role_ID = 4 THEN 'LEVEL-5 [ROOT / NATIONWIDE]'
+            WHEN U.Role_ID IN (1, 2, 3) THEN 'LEVEL-4 [REGIONAL AUDIT]'
+            WHEN U.Role_ID = 8 THEN 'LEVEL-3.5 [CENTRAL DC ADMIN]'
+            WHEN U.Role_ID = 5 THEN 'LEVEL-3 [STORE ADMIN]'
+            WHEN U.Role_ID IN (6, 7) THEN 'LEVEL-2 [FLOOR OPERATOR]'
+            ELSE 'LEVEL-1 [RESTRICTED]'
+        END AS Security_Clearance,
+        CASE 
+            WHEN U.Store_ID IS NOT NULL THEN 'RETAIL POS FACILITY'
+            WHEN U.WH_ID IS NOT NULL THEN 'CENTRAL DISTRIBUTION HUB'
+            ELSE 'ENTERPRISE GLOBAL'
+        END AS Operational_Scope,
+        COALESCE(S.Store_Code, W.Wh_Code, 'GLOBAL_CLUSTER') AS Node_Code,
+        COALESCE(S.Store_Name, W.Wh_Name, 'CENTRAL DATA CENTER') AS Node_Name,
+        COALESCE(NULLIF(U.User_Email_ID, ''), 'UNREGISTERED_COMMS') AS Communication_Endpoint,
+        CASE WHEN U.Is_Status = '1' THEN 'ACTIVE / OPERATIONAL' ELSE 'LOCKED / REVOKED' END AS Account_State,
+        U.Entry_Date AS Provisioned_Timestamp,
+        CONCAT('SHA256$', SUBSTRING(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', CONVERT(VARCHAR(50), U.Password)), 2), 1, 16), '...[PROTECTED]') AS Credential_Hash_Fingerprint
+    FROM dbo.User_Registration U WITH (NOLOCK)
+    LEFT JOIN dbo.Role_Master R WITH (NOLOCK) ON U.Role_ID = R.Role_ID
+    LEFT JOIN dbo.tbl_Store_Master S WITH (NOLOCK) ON U.Store_ID = S.Store_ID
+    LEFT JOIN dbo.tbl_Warehouse_Mst W WITH (NOLOCK) ON U.WH_ID = W.WH_ID
+)
+SELECT 
+    DENSE_RANK() OVER (ORDER BY U.Role_ID ASC, U.User_ID ASC) AS Clearance_Rank,
+    U.User_ID,
+    UPPER(U.User_Name) AS Operator_Identity,
+    U.Security_Clearance,
+    U.System_Role,
+    U.Operational_Scope,
+    U.Node_Code + ' :: ' + U.Node_Name AS Bound_Operational_Node,
+    U.Communication_Endpoint,
+    U.Account_State,
+    U.Credential_Hash_Fingerprint,
+    U.Provisioned_Timestamp
+FROM SecurityClearanceCTE U
+ORDER BY U.Role_ID ASC, U.User_ID ASC;
+```
+
+
