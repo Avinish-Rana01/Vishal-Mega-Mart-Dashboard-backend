@@ -228,3 +228,17 @@ Since there is no menu-rights table in SQL, page navigation in the React UI shou
 * **Warehouse Admin**: DC Encoding, Tag Verification, Dispatch Loading.
 * **Tag Admin**: Exclusively restricted to the **Reports** module with 2 items: **Tag Cleaning** (`/reports/tag-cleaning`) and **Stock Take** (`/reports/stock-take`). All other modules (Dashboard, Store, Authentication) are hidden.
 * **Dispatch Admin**: Full backend and frontend modules to be implemented in a dedicated phase.
+
+---
+
+## 🧪 7. Sandbox Testing Environment (`[FUN_VMM_RFID_RETAIL_SOLUTION]`)
+
+To provide safe experimentation without impacting production/development baseline `[VMM_RFID_RETAIL_SOLUTION]`:
+* **Cloned Catalog**: `[FUN_VMM_RFID_RETAIL_SOLUTION]` is hosted on the same SQL Server instance (`172.20.204.134` / `localhost`).
+* **Cleaned Store Role Columns**: `tbl_Store_Master` columns (`SM_ID`, `AM_ID`, `ZFM_ID`, `LP_ID`) reset to `NULL` across all 9 retail stores.
+* **Streamlined User Directory**: All non-essential legacy records purged; provisioned with structured mock accounts (`Password = '123'`):
+  - **Super Admins (`Role_ID: 4`)**: `Admin` (ID: 30), `Nitin Chauhan` (ID: 72), `Ashish Singh` (ID: 73).
+  - **Store Admins (`Role_ID: 5`)**: `Gaurav Rana` (HD55), `Siddharth` (HH15), `Ayush` (HD44), `Rahul Meetha` (HH40), `Vinayak Chi` (HH45).
+  - **Warehouse Admins (`Role_ID: 8`)**: `Victor Falcon`, `Orion Vance`, `Marcus Sterling` (all bound to `VMM LUHARI`).
+  - **Warehouse Scanning Users (`Role_ID: 7`)**: `Cyrus Hunter`, `Raymond Raven`, `Felix Phoenix`, `Shawn Drake`, `Leo Griffin`.
+
