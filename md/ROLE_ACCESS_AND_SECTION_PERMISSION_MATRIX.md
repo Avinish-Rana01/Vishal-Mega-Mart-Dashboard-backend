@@ -352,3 +352,111 @@ All backend service layers pass `@USER_ID` into SQL Server Stored Procedures (`S
 * Stock Take Report (`GetStockTakeReportsAsync`)
 * Warehouse Encoding (`GetOperatorWiseEncodingDataAsync`, `GetDateWiseEncodingDataAsync`)
 * Main Dashboard Aggregator (`GetTagCycleCountDataAsync`, `GetTagManagementDataAsync`, `GetWarehouseEncodingDataAsync`)
+
+---
+
+## 🗺️ 7. Architecture Flowcharts
+
+### 7.1 High-Level Role Routing & Module Access
+```mermaid
+flowchart TD
+    Login["User Logs In<br/>(User_Name & Password)"] --> Auth["AuthService / SP_Master<br/>Validates Credentials"]
+    Auth --> CheckRole{"Check Role_ID / User_Type"}
+
+    %% Super Admin
+    CheckRole -->|Role 4: Super Admin| SuperAdmin["SUPER ADMIN<br/>(Global Access)"]
+    SuperAdmin --> SA_Access["• All 10 Dashboard Tabs<br/>• Store & DC Reports (All Stores)<br/>• Master Registrations (Stores, Users, WH, Floors)<br/>• Unrestricted Dropdowns"]
+
+    %% Store Roles
+    CheckRole -->|Role 5 & 6: Store Admin / User| StoreGroup["STORE SCOPE<br/>(Bound to Store_ID)"]
+    StoreGroup --> StoreTabs["• Live Stock, Cycle Count<br/>• Sales, Void, Return Dashboards<br/>• Store Counter Status"]
+    StoreGroup --> StoreAdminOnly{"Is Store Admin?"}
+    StoreAdminOnly -->|Yes| StoreAdminExtra["• User Registration (Store Users)<br/>• Floor Registration"]
+    StoreAdminOnly -->|No| StoreReadOnly["• Floor Operations & Reports Only"]
+
+    %% Warehouse Roles
+    CheckRole -->|Role 7 & 8: WH Admin / User| WHGroup["WAREHOUSE / DC SCOPE<br/>(Bound to WH_ID)"]
+    WHGroup --> WHTabs["• DC Validation<br/>• DC Encoding"]
+    WHGroup --> WHAdminOnly{"Is WH Admin?"}
+    WHAdminOnly -->|Yes| WHAdminExtra["• Tag Management<br/>• Vendor Discrepancy<br/>• DC User Registration"]
+    WHAdminOnly -->|No| WHReadOnly["• Scanning / Encoding Operations Only"]
+
+    %% Regional & Loss Prevention
+    CheckRole -->|Role 1, 2, 3: AM / ZFM / LP| RegionalGroup["REGIONAL AUDIT<br/>(Zonal / Multi-Store)"]
+    RegionalGroup --> RegionalTabs["• Multi-Store Stock Audits<br/>• Loss Prevention & Shrinkage<br/>• Sales Reconciliation<br/>• Read-Only Store Views"]
+
+    %% Isolated Special Ops
+    CheckRole -->|Role 9: Tag Admin| TagAdmin["TAG ADMIN"]
+    TagAdmin --> TagTabs["• Tag Cleaning Report<br/>• SAP Stock Take"]
+
+    CheckRole -->|Role 10: Dispatch Admin| DispatchAdmin["DISPATCH ADMIN"]
+    DispatchAdmin --> DispatchTabs["• Dispatch Tracking<br/>• Picklist Creation"]
+```
+
+### 7.2 End-to-End Request & Data Filtering Pipeline
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Browser
+    participant UI as Frontend (React UI)
+    participant API as C# Backend (AuthService / Controller)
+    participant DB as SQL Server (SP_New_Dashboard / SP_Master)
+
+    User->>UI: Submits Login (e.g. Nitin Chauhan / Gaurav Rana)
+    UI->>API: POST /api/auth/login
+    API->>DB: EXEC SP_Master @Status='SP_Login'
+    DB-->>API: Returns User_ID, Role_ID, Store_ID, WH_ID
+    
+    Note over API: Builds JWT Claims & Section Permissions Matrix
+    API-->>UI: Returns Token + user: { roleId, storeId, sections: [...] }
+    
+    Note over UI: Sidebar & Navigation render ONLY permitted tabs.<br/>Store dropdown is LOCKED for Store Admins, OPEN for Super Admin.
+
+    User->>UI: Clicks Report (e.g., Live Stock Report)
+    UI->>API: GET /api/reports/live-stock (Bearer Token)
+    API->>DB: EXEC SP_NEW_REPORT @status='LIVE_STOCK_VIEW', @User_Type=Role, @Store_ID=StoreID
+    
+    alt If Super Admin
+        DB-->>API: Returns Nationwide Data (All Stores)
+    else If Store Admin / Store User
+        DB-->>API: Returns Data WHERE Store_ID = @Store_ID
+    else If Warehouse User
+        DB-->>API: Returns Data WHERE WH_ID = @WH_ID
+    end
+
+    API-->>UI: Returns Filtered Records
+    UI-->>User: Displays Report Table
+```
+
+---
+
+## 🧪 8. Database Sandbox Environment & Mock Directory (`[FUN_VMM_RFID_RETAIL_SOLUTION]`)
+
+To enable risk-free testing and verification of RBAC rules without disturbing the live/production catalog `[VMM_RFID_RETAIL_SOLUTION]`, a dedicated sandbox clone is provisioned:
+
+### 1. Catalog Architecture
+* **Catalog Name**: `FUN_VMM_RFID_RETAIL_SOLUTION`
+* **Baseline Cloning Method**: `BACKUP ... WITH COPY_ONLY, COMPRESSION` restored to separate `.mdf` and `.ldf` physical storage.
+* **Store Master Normalization**: Role assignments in `tbl_Store_Master` (`SM_ID`, `AM_ID`, `ZFM_ID`, `LP_ID`) are set to `NULL` to test unassigned and dynamic assignment states.
+
+### 2. Active Test User Directory
+
+| User ID | Username | Role / User Type | Role ID | Scope / Assigned Node | Realistic Corporate Email | Password |
+| :---: | :--- | :--- | :---: | :--- | :--- | :---: |
+| **30** | **Admin** | Super Admin | 4 | Global Enterprise | *System Root* | `123` |
+| **72** | **Nitin Chauhan** | Super Admin | 4 | Global Enterprise | `nitin.chauhan@vishalretail.co.in` | `123` |
+| **73** | **Ashish Singh** | Super Admin | 4 | Global Enterprise | `ashish.singh@vishalretail.co.in` | `123` |
+| **74** | **Gaurav Rana** | Store Admin | 5 | `HD55 - Dwarka` (Store 1) | `gaurav.rana@vishalretail.co.in` | `123` |
+| **75** | **Siddharth** | Store Admin | 5 | `HH15 - Dundahera` (Store 5) | `siddharth@vishalretail.co.in` | `123` |
+| **76** | **Ayush** | Store Admin | 5 | `HD44 - Uttam Nagar 2` (Store 6) | `ayush.updates@vishalretail.co.in` | `123` |
+| **77** | **Rahul Meetha** | Store Admin | 5 | `HH40 - GURGAON SEC-89` (Store 11) | `rahul.meetha@vishalretail.co.in` | `123` |
+| **78** | **Vinayak Chi** | Store Admin | 5 | `HH45 - GURGAON SEC-92` (Store 12) | `vinayak.chi@vishalretail.co.in` | `123` |
+| **79** | **Victor Falcon** | Warehouse Admin | 8 | `VMM LUHARI` (WH 1) | `victor.falcon@vishalretail.co.in` | `123` |
+| **80** | **Orion Vance** | Warehouse Admin | 8 | `VMM LUHARI` (WH 1) | `orion.vance@vishalretail.co.in` | `123` |
+| **81** | **Marcus Sterling** | Warehouse Admin | 8 | `VMM LUHARI` (WH 1) | `marcus.sterling@vishalretail.co.in` | `123` |
+| **82** | **Cyrus Hunter** | Warehouse User | 7 | `VMM LUHARI` (WH 1) | `cyrus.hunter@vishalretail.co.in` | `123` |
+| **83** | **Raymond Raven** | Warehouse User | 7 | `VMM LUHARI` (WH 1) | `raymond.raven@vishalretail.co.in` | `123` |
+| **84** | **Felix Phoenix** | Warehouse User | 7 | `VMM LUHARI` (WH 1) | `felix.phoenix@vishalretail.co.in` | `123` |
+| **85** | **Shawn Drake** | Warehouse User | 7 | `VMM LUHARI` (WH 1) | `shawn.drake@vishalretail.co.in` | `123` |
+| **86** | **Leo Griffin** | Warehouse User | 7 | `VMM LUHARI` (WH 1) | `leo.griffin@vishalretail.co.in` | `123` |
+
