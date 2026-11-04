@@ -76,6 +76,20 @@ namespace VS_Mart_Backend.Features.Dashboard.Export
                 Response.Headers.Append("Pragma", "no-cache");
                 Response.Headers.Append("Expires", "0");
 
+                // Download-start signal: this cookie travels with the response headers, which are only
+                // flushed with the first packet - the frontend hides its loader the moment it appears.
+                string downloadToken = Request.Query["downloadToken"].ToString();
+                if (!string.IsNullOrWhiteSpace(downloadToken))
+                {
+                    Response.Cookies.Append("vmm_download_token", downloadToken, new CookieOptions
+                    {
+                        Path = "/",
+                        HttpOnly = false,
+                        SameSite = SameSiteMode.Lax,
+                        MaxAge = TimeSpan.FromMinutes(2)
+                    });
+                }
+
                 // Stream directly to Response.Body (zero intermediate MemoryStream buffer)
                 bool hasData = await _exportService.StreamExportAsync(request, Response.Body, cancellationToken);
 
