@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
@@ -22,6 +23,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid;
                 var result = await _cycleCountReportService.GetCycleCountReportViewAsync(query);
                 return Ok(result);
             }
@@ -39,6 +42,8 @@ namespace VS_Mart_Backend.Features.CycleCountReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid;
                 var result = await _cycleCountReportService.GetCycleCountDetailsAsync(query);
                 return Ok(result);
             }

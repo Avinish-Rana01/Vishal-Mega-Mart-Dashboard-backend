@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
@@ -20,6 +21,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dcDashboardService.GetDCDetailsAsync(request);
                 return Ok(result);
             }
@@ -38,6 +41,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dcDashboardService.GetHUDetailsAsync(request);
                 return Ok(result);
             }
@@ -58,6 +63,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(userId);
+                if (resolvedUid > 0) userId = resolvedUid.ToString();
                 var result = await _dcDashboardService.SearchValidationHuNumbersAsync(huStatus, receivingPlant, fromDate, toDate, searchTerm, userId);
                 return Ok(result);
             }
@@ -72,6 +79,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dcDashboardService.GetHUReportViewDetailsAsync(request);
                 return Ok(result);
             }
@@ -86,6 +95,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dcDashboardService.GetHUReportViewDetailsAsync(request);
                 return Ok(result);
             }
@@ -100,6 +111,8 @@ namespace VS_Mart_Backend.Features.DcDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dcDashboardService.GetHUSummaryDetailsAsync(request);
 
                 return Ok(result);

@@ -264,7 +264,7 @@ namespace VS_Mart_Backend.Features.Base
         {
             if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out int uid) || uid <= 0)
             {
-                return new UserProfileDto { UserType = "Super Admin" }; // Default to Super Admin if unspecified
+                return new UserProfileDto { UserId = 0, UserType = "Unauthorized", AuthorizedStoreCodes = new List<string>() };
             }
 
             string cacheKey = $"UserProfile_Dto_{uid}";
@@ -356,7 +356,7 @@ namespace VS_Mart_Backend.Features.Base
                 // Fallback on transient error
             }
 
-            return new UserProfileDto { UserId = uid, UserType = "Store Admin" };
+            return new UserProfileDto { UserId = uid, UserType = "Unauthorized", AuthorizedStoreCodes = new List<string>() };
         }
     }
 }

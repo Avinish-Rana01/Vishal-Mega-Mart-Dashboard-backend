@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
@@ -23,6 +24,8 @@ namespace VS_Mart_Backend.Features.HUDiscrepancy
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _huDiscrepancyService.GetVendorHUDiscrepancyDataAsync(request);
 
                 return Ok(result);

@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
@@ -23,6 +24,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _service.SearchHuNumbersAsync(request);
                 return Ok(result);
             }
@@ -38,6 +41,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _service.GetGrcDetailsAsync(request);
                 return Ok(result);
             }
@@ -53,6 +58,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _service.GetGrcModalDetailsAsync(request);
                 return Ok(result);
             }
@@ -67,6 +74,8 @@ namespace VS_Mart_Backend.Features.StoreGrcReport
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _service.GetStoreGrcReportAsync(query);
                 return Ok(result);
             }

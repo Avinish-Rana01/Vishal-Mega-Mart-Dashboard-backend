@@ -204,7 +204,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                             _logger.LogInformation("DashboardDiffEngine: LiveStock patch for Store {StoreCode}: Delta RFID {DeltaRfid:+0;-#}", storeCode, deltaRfid);
                             string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveLiveStockPatch", patch.WithoutSummary(), cancellationToken);
                         }
                     }
                     else
@@ -240,7 +241,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         };
                         _logger.LogInformation("DashboardDiffEngine: LiveStock new store patch for {StoreCode}: RFID {NewRfid}", storeCode, newRfid);
                         string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                        await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveLiveStockPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveLiveStockPatch", patch.WithoutSummary(), cancellationToken);
                     }
                 }
 
@@ -271,7 +273,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     };
                     _logger.LogInformation("DashboardDiffEngine: LiveStock removed store patch for {StoreCode}", removedStore);
                     string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
-                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveLiveStockPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveLiveStockPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group(removedGroup).SendAsync("ReceiveLiveStockPatch", removePatch.WithoutSummary(), cancellationToken);
                 }
 
                 _lastTotalRfid = currentTotalRfid;
@@ -419,7 +422,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                             _logger.LogInformation("DashboardDiffEngine: CycleCount patch for Store {StoreCode} (Ref {RefNo}): Delta Scanned {DeltaScanned:+0;-#}", storeCode, refNo, deltaScanned);
                             string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveCycleCountPatch", patch.WithoutSummary(), cancellationToken);
                         }
                     }
                     else
@@ -470,7 +474,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         };
                         _logger.LogInformation("DashboardDiffEngine: CycleCount new entry patch for Store {StoreCode}: Scanned {ScannedQty}", storeCode, scannedQty);
                         string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                        await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveCycleCountPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveCycleCountPatch", patch.WithoutSummary(), cancellationToken);
                     }
                 }
 
@@ -501,7 +506,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     };
                     _logger.LogInformation("DashboardDiffEngine: CycleCount removed store patch for {StoreCode}", removedStore);
                     string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
-                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveCycleCountPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveCycleCountPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group(removedGroup).SendAsync("ReceiveCycleCountPatch", removePatch.WithoutSummary(), cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -737,7 +743,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                             _logger.LogInformation("DashboardDiffEngine: StoreValidation patch for {StoreCode}: Delta Validated {DeltaValidated:+0;-#}", storeCode, deltaValidated);
                             string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                            await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveStoreValidationPatch", patch.WithoutSummary(), cancellationToken);
                         }
                     }
                     else
@@ -780,7 +787,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         };
                         _logger.LogInformation("DashboardDiffEngine: StoreValidation new store patch for {StoreCode}: Validated {HuValidated}", storeCode, huValidated);
                         string storeGroup = $"store_{storeCode.Trim().ToUpperInvariant()}";
-                        await _hubContext.Clients.Groups("role_super_admin", storeGroup).SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                        await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveStoreValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(storeGroup).SendAsync("ReceiveStoreValidationPatch", patch.WithoutSummary(), cancellationToken);
                     }
                 }
 
@@ -816,7 +824,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     };
                     _logger.LogInformation("DashboardDiffEngine: StoreValidation removed store patch for {StoreCode}", removedStore);
                     string removedGroup = $"store_{removedStore.Trim().ToUpperInvariant()}";
-                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveStoreValidationPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveStoreValidationPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group(removedGroup).SendAsync("ReceiveStoreValidationPatch", removePatch.WithoutSummary(), cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -1047,7 +1056,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
 
                             _logger.LogInformation("DashboardDiffEngine: DcValidation patch for {Plant}: Delta Processed HU {DeltaProc:+0;-#}", plant, deltaProc);
                             string plantGroup = $"store_{plant.Trim().ToUpperInvariant()}";
-                            await _hubContext.Clients.Groups("role_super_admin", plantGroup).SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(plantGroup).SendAsync("ReceiveDcValidationPatch", patch.WithoutSummary(), cancellationToken);
                         }
                     }
                     else
@@ -1081,7 +1091,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                         };
                         _logger.LogInformation("DashboardDiffEngine: DcValidation new plant patch for {Plant}: Processed HU {ProcHu}", plant, procHu);
                         string plantGroup = $"store_{plant.Trim().ToUpperInvariant()}";
-                        await _hubContext.Clients.Groups("role_super_admin", plantGroup).SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                        await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveDcValidationPatch", patch, cancellationToken);
+                            await _hubContext.Clients.Group(plantGroup).SendAsync("ReceiveDcValidationPatch", patch.WithoutSummary(), cancellationToken);
                     }
                 }
 
@@ -1116,7 +1127,8 @@ namespace VS_Mart_Backend.Features.Dashboard.DiffEngine
                     };
                     _logger.LogInformation("DashboardDiffEngine: DcValidation removed plant patch for {Plant}", removedPlant);
                     string removedGroup = $"store_{removedPlant.Trim().ToUpperInvariant()}";
-                    await _hubContext.Clients.Groups("role_super_admin", removedGroup).SendAsync("ReceiveDcValidationPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group("role_super_admin").SendAsync("ReceiveDcValidationPatch", removePatch, cancellationToken);
+                    await _hubContext.Clients.Group(removedGroup).SendAsync("ReceiveDcValidationPatch", removePatch.WithoutSummary(), cancellationToken);
                 }
             }
             catch (Exception ex)

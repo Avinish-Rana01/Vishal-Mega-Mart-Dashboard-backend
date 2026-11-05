@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
@@ -24,6 +25,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid;
                 var result = await _returnDashboardService.GetReturnDetailsAsync(request, cancellationToken);
                 return Ok(result);
             }
@@ -45,6 +48,8 @@ namespace VS_Mart_Backend.Features.ReturnDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid;
                 var result = await _returnDashboardService.GetReturnReconciliationData(request, cancellationToken);
                 return Ok(result);
             }

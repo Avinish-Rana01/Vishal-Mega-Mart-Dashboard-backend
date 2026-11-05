@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
@@ -23,6 +24,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _saleDashboardService.GetStoreSaleReportAsync(query);
                 return Ok(result);
             }
@@ -37,6 +40,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _saleDashboardService.BindPOSCounterAsync(request);
                 return Ok(result);
             }
@@ -51,6 +56,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _saleDashboardService.SearchArticlesSaleAsync(request);
                 return Ok(result);
             }
@@ -65,6 +72,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _saleDashboardService.SearchEANSaleAsync(request);
                 return Ok(result);
             }
@@ -79,6 +88,8 @@ namespace VS_Mart_Backend.Features.SaleDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _saleDashboardService.GetSaleDataAsync(request);
                 return Ok(result);
             }

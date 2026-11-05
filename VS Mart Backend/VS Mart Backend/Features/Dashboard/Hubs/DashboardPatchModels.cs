@@ -28,6 +28,22 @@
             public decimal NewPercentage { get; set; }
             public bool IsRemoved { get; set; } = false;
             public LiveStockSummaryDelta? SummaryDelta { get; set; }
+
+            public LiveStockDeltaPatch WithoutSummary() => new()
+            {
+                Type = Type,
+                Timestamp = Timestamp,
+                StoreCode = StoreCode,
+                StoreName = StoreName,
+                DeltaRfid = DeltaRfid,
+                DeltaDiff = DeltaDiff,
+                NewRfidStock = NewRfidStock,
+                NewSapStock = NewSapStock,
+                NewDifference = NewDifference,
+                NewPercentage = NewPercentage,
+                IsRemoved = IsRemoved,
+                SummaryDelta = null
+            };
         }
 
         // ==========================================
@@ -61,6 +77,30 @@
             public string? Date { get; set; }
             public bool IsRemoved { get; set; } = false;
             public CycleCountSummaryDelta? SummaryDelta { get; set; }
+
+            public CycleCountDeltaPatch WithoutSummary() => new()
+            {
+                Type = Type,
+                Timestamp = Timestamp,
+                RefNo = RefNo,
+                StoreCode = StoreCode,
+                StoreName = StoreName,
+                DeltaScannedQty = DeltaScannedQty,
+                DeltaNetDiff = DeltaNetDiff,
+                NewScannedQty = NewScannedQty,
+                NewSystemStock = NewSystemStock,
+                NewNetDifference = NewNetDifference,
+                NewNoOfArticles = NewNoOfArticles,
+                NewShortQty = NewShortQty,
+                NewExcessQty = NewExcessQty,
+                TimeTaken = TimeTaken,
+                StartTime = StartTime,
+                EndTime = EndTime,
+                CycleCountType = CycleCountType,
+                Date = Date,
+                IsRemoved = IsRemoved,
+                SummaryDelta = null
+            };
         }
 
         // ==========================================
@@ -94,6 +134,26 @@
             public int NewStorePendingQty { get; set; }
             public bool IsRemoved { get; set; } = false;
             public StoreValidationSummaryDelta? SummaryDelta { get; set; }
+
+            public StoreValidationDeltaPatch WithoutSummary() => new()
+            {
+                Type = Type,
+                Timestamp = Timestamp,
+                StoreCode = StoreCode,
+                StoreName = StoreName,
+                DeltaHuValidated = DeltaHuValidated,
+                DeltaHuWrong = DeltaHuWrong,
+                DeltaHhtValidate = DeltaHhtValidate,
+                DeltaEncoded = DeltaEncoded,
+                NewHuReceivedQty = NewHuReceivedQty,
+                NewHuValidatedQty = NewHuValidatedQty,
+                NewHuWrongQty = NewHuWrongQty,
+                NewHhtValidateQty = NewHhtValidateQty,
+                NewEncodedQty = NewEncodedQty,
+                NewStorePendingQty = NewStorePendingQty,
+                IsRemoved = IsRemoved,
+                SummaryDelta = null
+            };
         }
 
         // ==========================================
@@ -178,6 +238,22 @@
             public int NewProcessedArticleQty { get; set; }
             public bool IsRemoved { get; set; } = false;
             public DcValidationSummaryDelta? SummaryDelta { get; set; }
+
+            public DcValidationDeltaPatch WithoutSummary() => new()
+            {
+                Type = Type,
+                Timestamp = Timestamp,
+                RecivingPlant = RecivingPlant,
+                StoreName = StoreName,
+                DeltaProcessedHu = DeltaProcessedHu,
+                DeltaUnprocessedHu = DeltaUnprocessedHu,
+                DeltaProcessedArticleQty = DeltaProcessedArticleQty,
+                NewProcessedHu = NewProcessedHu,
+                NewUnprocessedHu = NewUnprocessedHu,
+                NewProcessedArticleQty = NewProcessedArticleQty,
+                IsRemoved = IsRemoved,
+                SummaryDelta = null
+            };
         }
 
         // ==========================================

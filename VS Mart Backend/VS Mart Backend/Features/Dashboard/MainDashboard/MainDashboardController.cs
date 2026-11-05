@@ -1,3 +1,4 @@
+using VS_Mart_Backend.Features.Base;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading;
@@ -21,6 +22,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetLiveStockDetailsAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -39,6 +42,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetTagCycleCountDataAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -57,6 +62,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetStoreDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -75,6 +82,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetSaleDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -93,6 +102,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetReturnDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -113,6 +124,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetDcValidateDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -131,6 +144,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
         {
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(query.UserId);
+                if (resolvedUid > 0) query.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetCycleCountDashboardAsync(query, cancellationToken: cancellationToken);
                 return Ok(result);
             }
@@ -152,6 +167,8 @@ namespace VS_Mart_Backend.Features.MainDashboard
 
             try
             {
+                int resolvedUid = HttpContext.GetResolvedUserId(request.UserId);
+                if (resolvedUid > 0) request.UserId = resolvedUid.ToString();
                 var result = await _dashboardService.GetVendorHUDiscrepancyAsync(request, cancellationToken: cancellationToken);
                 return Ok(result);
             }
